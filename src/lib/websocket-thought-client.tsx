@@ -106,36 +106,14 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
         // If no session is selected, select the most recent one
         if (!currentSessionId && data.sessions.length > 0) {
           const mostRecentSession = data.sessions[0].path;
-          setCurrentSessionId(mostRecentSession);
-
-          // Request data for this session
-          wsRef.current?.send(JSON.stringify({
-            type: 'subscribe_session',
-            sessionId: mostRecentSession
-          }));
+          // Use the same logic as manual selection (will try API first, then WebSocket)
+          handleSetCurrentSessionId(mostRecentSession);
         }
         break;
 
       case 'session_thoughts_update':
-        const nodeMap = new Map<string, ThoughtNode>();
-
-        // Convert serialized data back to ThoughtNode instances
-        for (const [id, nodeData] of Object.entries(data.nodes as any)) {
-          const node = new ThoughtNode(id);
-          const typedNodeData = nodeData as any;
-          node.meanings = typedNodeData.meanings || [];
-          node.values = new Map(Object.entries(typedNodeData.values || {}));
-          node.relationships = typedNodeData.relationships || [];
-          node.metaphorBranches = typedNodeData.metaphorBranches || [];
-          node.tension = typedNodeData.tension;
-          node.history = typedNodeData.history || [];
-
-          nodeMap.set(id, node);
-        }
-
-        setNodes(nodeMap);
-        setLoadedSessionIds(prev => new Set(prev).add(data.sessionId));
-        setLastUpdate(new Date(data.timestamp));
+        // Use the same parsing logic as the API
+        parseSessionData(data, data.sessionId, data.timestamp);
         break;
 
       default:
@@ -152,13 +130,63 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
       return;
     }
 
-    // Clear current nodes and request data for new session
+    // Clear current nodes and load session data
     setNodes(new Map());
 
-    wsRef.current?.send(JSON.stringify({
-      type: 'subscribe_session',
-      sessionId
-    }));
+    // Try loading from TypeScript-based API first
+    loadSessionFromAPI(sessionId).catch(() => {
+      // Fallback to WebSocket if API fails
+      wsRef.current?.send(JSON.stringify({
+        type: 'subscribe_session',
+        sessionId
+      }));
+    });
+  };
+
+  // Shared function to parse session data (works with both API and WebSocket formats)
+  const parseSessionData = (data: any, sessionId: string, timestamp?: string) => {
+    // Handle both new Session structure and old format
+    const thoughtSpaceData = data.thoughtSpace || data; // New format has thoughtSpace, old format is flat
+    const nodesData = thoughtSpaceData.nodes || data.nodes || {}; // Support both structures
+
+    const nodeMap = new Map<string, ThoughtNode>();
+
+    // Convert serialized data back to ThoughtNode instances
+    for (const [id, nodeData] of Object.entries(nodesData)) {
+      const node = new ThoughtNode(id);
+      const typedNodeData = nodeData as any;
+      node.meanings = typedNodeData.meanings || [];
+      node.values = new Map(Object.entries(typedNodeData.values || {}));
+      node.relationships = typedNodeData.relationships || [];
+      node.metaphorBranches = typedNodeData.metaphorBranches || [];
+      node.tension = typedNodeData.tension;
+      node.history = typedNodeData.history || [];
+
+      nodeMap.set(id, node);
+    }
+
+    setNodes(nodeMap);
+    setLoadedSessionIds(prev => new Set(prev).add(sessionId));
+    setLastUpdate(timestamp ? new Date(timestamp) : new Date());
+
+    console.log(`✅ Loaded session data: ${nodeMap.size} thoughts`);
+  };
+
+  // Load session data from the new TypeScript-based API
+  const loadSessionFromAPI = async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/thoughts-direct`);
+      if (!response.ok) {
+        throw new Error(`Failed to load session: ${response.status}`);
+      }
+
+      const data = await response.json();
+      parseSessionData(data, sessionId);
+
+    } catch (error) {
+      console.warn('Failed to load from TypeScript API, will try WebSocket:', error);
+      throw error;
+    }
   };
 
   // Initialize WebSocket connection

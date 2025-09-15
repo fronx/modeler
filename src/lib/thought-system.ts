@@ -247,6 +247,65 @@ export class ThoughtSpace {
   }
 }
 
+export interface SessionMetadata {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: number;
+}
+
+export class Session {
+  public metadata: SessionMetadata;
+  private thoughtSpace: ThoughtSpace;
+
+  constructor(id: string, title: string, description: string) {
+    this.metadata = {
+      id,
+      title,
+      description,
+      createdAt: Date.now()
+    };
+    this.thoughtSpace = new ThoughtSpace();
+  }
+
+  // Clean API: create/retrieve thoughts and auto-register them
+  thought(id: NodeId): ThoughtNode {
+    return this.thoughtSpace.thought(id);
+  }
+
+  // Delegate ThoughtSpace methods
+  collapseMetaphor(nodeId: NodeId, context: string): string | null {
+    return this.thoughtSpace.collapseMetaphor(nodeId, context);
+  }
+
+  propagate(fromId: NodeId, key: string): void {
+    this.thoughtSpace.propagate(fromId, key);
+  }
+
+  reflect(): string {
+    return this.thoughtSpace.reflect();
+  }
+
+  getAllNodes(): Map<NodeId, ThoughtNode> {
+    return this.thoughtSpace.getAllNodes();
+  }
+
+  // Subscribe to changes for real-time updates
+  subscribe(listener: (space: ThoughtSpace) => void): () => void {
+    return this.thoughtSpace.subscribe(listener);
+  }
+
+  // Self-serialization: complete JSON including metadata and all thoughts
+  serialize(): object {
+    const thoughtSpaceData = this.thoughtSpace.serialize();
+
+    return {
+      metadata: this.metadata,
+      thoughtSpace: thoughtSpaceData
+    };
+  }
+}
+
 // Create a default space for shared use
 export const globalThoughtSpace = new ThoughtSpace();
 export const thought = (id: NodeId) => globalThoughtSpace.thought(id);
