@@ -1,0 +1,62 @@
+{
+  "demo1": {
+    "after_change_productivity_interval": [0.126, 0.21],
+    "baseline_productivity_interval": [0.294, 0.378],
+    "explain_productivity": {
+      "contributors": [
+        {
+          "current": [0.126, 0.21],
+          "expr": "val('alertness.level') * val('alertness->productivity:causes.beta')",
+          "expr_value": [0.126, 0.21],
+          "id": "r:linear_cause:productivity.level",
+          "note": "linear_cause",
+          "strength": 1.0
+        }
+      ],
+      "path": "productivity.level"
+    }
+  },
+  "jsonl_out_first3": [
+    {
+      "ok": true,
+      "op": "create_node",
+      "result": {
+        "attrs": {"text": "LLMs hallucinate"},
+        "id": "c1",
+        "type": "Claim"
+      }
+    },
+    {
+      "ok": true,
+      "op": "create_node",
+      "result": {
+        "attrs": {"text": "No explicit model grounding"},
+        "id": "r1",
+        "type": "Reason"
+      }
+    },
+    {
+      "ok": true,
+      "op": "create_edge",
+      "result": {
+        "attrs": {"weight": 0.8},
+        "from": "r1",
+        "id": "r1->c1:supports",
+        "to": "c1",
+        "type": "supports"
+      }
+    }
+  ],
+  "jsonl_out_last2": [
+    {
+      "ok": true,
+      "op": "simulate",
+      "result": {"steps": 1, "total_updates": 0}
+    },
+    {
+      "ok": true,
+      "op": "query_attr",
+      "result": {"path": "c1.score", "value": null, "version": 25}
+    }
+  ]
+}

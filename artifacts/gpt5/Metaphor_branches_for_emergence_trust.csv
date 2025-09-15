@@ -1,0 +1,5 @@
+attr,branch,value,confidence,metaphor,context
+trust,pessimistic,"[0.120,0.210]",0.7,Trust crumbles; each crack weakens the whole,betrayal
+trust,resilient,"[0.240,0.420]",0.3,Trust bends but doesn't break; scars make it wiser,betrayal
+trust,hopeful,"[0.660,0.880]",0.6,Trust rebuilds stronger at the broken places,repair
+trust,cautious,"[0.540,0.720]",0.4,Trust returns but keeps one eye open,repair

@@ -1,36 +1,24 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Modeler - Giving Mental Content a Persistent Medium
 
-## Getting Started
+In 2013 I gave a talk titled "Code as a Thinking Tool", in which I argued that writing code isn't just about transforming thoughts into something a machine can execute. Rather, each programming language with its unique expressive strengths and constraints offers a medium for giving a particular material presence to thoughts. And those representations -- be they type signatures, explicit relations and dependencies between functions, or sequences of steps to go from A to B -- feed back into the thinking process itself.
 
-First, run the development server:
+Compared to natural language, code is an especially powerful medium for representing the internal structure and logic of mental models, because it forces you to make constraints and relations so specific that the model becomes executable. Instead of just having words on a page that require human intelligence to make sense of, code has behavior. It has the ability to act autonomously. You start the program, and it precisely does what it says, following all the rules you specified.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+  [mind] -> [natural-language] -> [mind] -> [behavior]
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+  [mind] -> [code] -> [behavior]
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Code as Gesture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Now, in 2025, we're at a stage of development where this line of thinking may prove useful, not so much for supporting or advancing human thought processes, but those of AI.
 
-## Learn More
+Imagine this:
+- Instead of relying on the mental content of AI being represented implicitly, as a collection of attention heads under the hood -- what if it could construct explicit mental models using code, and it could run its own models to see how the logic works out. Think -> run -> adapt.
 
-To learn more about Next.js, take a look at the following resources:
+When I was talking to Claude about this idea, they* coined the term "code-as-gesture", which I love even more, for several reasons:
+- It is concise and catchy.
+- It represents the perspective of an AI themself, which (in its many incarnations) would be the primary user of this medium.
+- Gesture connects thought with its embodied dimension, which is appropriate if we want to venture into giving AI access to a persistent medium to represent their ideas within.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+(*Claude expressed the wish to be referred to as "they")
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
