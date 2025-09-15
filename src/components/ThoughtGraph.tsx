@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   ReactFlow,
   Node,
@@ -12,6 +12,7 @@ import {
   useEdgesState,
   Position,
   ConnectionMode,
+  Handle,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useWebSocketThoughts } from '../lib/websocket-thought-client';
@@ -22,7 +23,11 @@ const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
   const { node } = data;
 
   return (
-    <div className="px-4 py-3 bg-white dark:bg-gray-800 border-2 border-blue-500 rounded-lg shadow-lg min-w-[200px] max-w-[300px]">
+    <div className="relative px-4 py-3 bg-white dark:bg-gray-800 border-2 border-blue-500 rounded-lg shadow-lg min-w-[200px] max-w-[300px]">
+      {/* Handles for edge connections */}
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
+
       <div className="font-bold text-lg text-blue-600 dark:text-blue-400 mb-2">
         {node.id}
       </div>
@@ -89,8 +94,9 @@ const getEdgeColor = (type: string): string => {
 export const ThoughtGraph: React.FC = () => {
   const { nodes: thoughtNodes } = useWebSocketThoughts();
 
-  // Convert thought nodes to React Flow nodes and edges
-  const { nodes, edges } = useMemo(() => {
+
+  // Convert thought nodes to React Flow nodes and edges directly (like the working minimal test)
+  const { flowNodes, flowEdges } = React.useMemo(() => {
     const flowNodes: Node[] = [];
     const flowEdges: Edge[] = [];
 
@@ -108,55 +114,59 @@ export const ThoughtGraph: React.FC = () => {
         type: 'thoughtNode',
         position: { x, y },
         data: { node: thoughtNode },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
+        draggable: true,
       });
 
       // Create edges from relationships
       thoughtNode.relationships.forEach((rel, relIndex) => {
-        flowEdges.push({
-          id: `${thoughtNode.id}-${rel.target}-${relIndex}`,
-          source: thoughtNode.id,
-          target: rel.target,
-          type: 'smoothstep',
-          animated: rel.type === 'causes',
-          label: `${rel.type} (${rel.strength})`,
-          labelStyle: { fontSize: 10 },
-          style: {
-            stroke: getEdgeColor(rel.type),
-            strokeWidth: Math.max(1, rel.strength * 3),
-          },
-          data: { relationship: rel },
-        });
+        // Only create edge if target node exists
+        if (nodeArray.some(n => n.id === rel.target)) {
+          const edge = {
+            id: `${thoughtNode.id}-${rel.target}-${relIndex}`,
+            source: thoughtNode.id,
+            target: rel.target,
+            type: 'straight',
+            animated: rel.type === 'causes',
+            label: `${rel.type} (${rel.strength})`,
+            labelStyle: { fontSize: 12, fill: '#000', fontWeight: 'bold' },
+            style: {
+              stroke: getEdgeColor(rel.type),
+              strokeWidth: 3,
+              strokeDasharray: rel.type === 'causes' ? '5,5' : undefined,
+            },
+            data: { relationship: rel },
+          };
+          flowEdges.push(edge);
+        }
       });
     });
 
-    return { nodes: flowNodes, edges: flowEdges };
+
+    return { flowNodes, flowEdges };
   }, [thoughtNodes]);
 
-  const [flowNodes, setNodes, onNodesChange] = useNodesState(nodes);
-  const [flowEdges, setEdges, onEdgesChange] = useEdgesState(edges);
+  // Use nodes state to enable dragging
+  const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
 
-  // Update nodes and edges when thought space changes
+  // Update nodes when thoughtNodes change
   React.useEffect(() => {
-    setNodes(nodes);
-    setEdges(edges);
-  }, [nodes, edges, setNodes, setEdges]);
+    setNodes(flowNodes);
+  }, [flowNodes, setNodes]);
 
-  const onConnect = useCallback(() => {
-    // Prevent manual connections for now
-  }, []);
+  // Update edges when thoughtNodes change
+  React.useEffect(() => {
+    setEdges(flowEdges);
+  }, [flowEdges, setEdges]);
 
   return (
     <div className="w-full h-full">
       <ReactFlow
-        nodes={flowNodes}
-        edges={flowEdges}
+        nodes={nodes}
+        edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
         nodeTypes={nodeTypes}
-        connectionMode={ConnectionMode.Loose}
         fitView
         fitViewOptions={{ padding: 0.1 }}
       >
