@@ -192,16 +192,65 @@ export const ThoughtGraph: React.FC = () => {
     return { flowNodes, allEdges: flowEdges };
   }, [thoughtNodes]);
 
-  // Filter edges to only show those connected to hovered node
-  const visibleEdges = React.useMemo(() => {
-    if (!hoveredNodeId) return [];
-    return allEdges.filter(edge =>
-      edge.source === hoveredNodeId || edge.target === hoveredNodeId
-    );
-  }, [allEdges, hoveredNodeId]);
+  // Function to calculate best handles based on node positions
+  const calculateHandles = React.useCallback((sourceNode: Node, targetNode: Node) => {
+    const deltaX = targetNode.position.x - sourceNode.position.x;
+    const deltaY = targetNode.position.y - sourceNode.position.y;
+
+    let sourceHandle = 'source-right';
+    let targetHandle = 'target-left';
+
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      // Horizontal connection
+      if (deltaX > 0) {
+        sourceHandle = 'source-right';
+        targetHandle = 'target-left';
+      } else {
+        sourceHandle = 'source-left';
+        targetHandle = 'target-right';
+      }
+    } else {
+      // Vertical connection
+      if (deltaY > 0) {
+        sourceHandle = 'source-bottom';
+        targetHandle = 'target-top';
+      } else {
+        sourceHandle = 'source-top';
+        targetHandle = 'target-bottom';
+      }
+    }
+
+    return { sourceHandle, targetHandle };
+  }, []);
 
   // Use nodes state to enable dragging
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
+
+  // Filter edges to only show those connected to hovered node and update handles
+  const visibleEdges = React.useMemo(() => {
+    if (!hoveredNodeId) return [];
+
+    const filteredEdges = allEdges.filter(edge =>
+      edge.source === hoveredNodeId || edge.target === hoveredNodeId
+    );
+
+    // Update handles based on current node positions
+    return filteredEdges.map(edge => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      const targetNode = nodes.find(n => n.id === edge.target);
+
+      if (sourceNode && targetNode) {
+        const { sourceHandle, targetHandle } = calculateHandles(sourceNode, targetNode);
+        return {
+          ...edge,
+          sourceHandle,
+          targetHandle,
+        };
+      }
+      return edge;
+    });
+  }, [allEdges, hoveredNodeId, nodes, calculateHandles]);
+
   const [edges, setEdges, onEdgesChange] = useEdgesState(visibleEdges);
 
   // Update nodes when thoughtNodes change
