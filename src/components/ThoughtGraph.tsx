@@ -126,10 +126,14 @@ export const ThoughtGraph: React.FC = () => {
             id: `${thoughtNode.id}-${rel.target}-${relIndex}`,
             source: thoughtNode.id,
             target: rel.target,
-            type: 'straight',
+            // type: 'straight',
             animated: rel.type === 'causes',
             label: `${rel.type} (${rel.strength})`,
             labelStyle: { fontSize: 12, fill: '#000', fontWeight: 'bold' },
+            markerEnd: {
+              type: 'arrowclosed',
+              color: getEdgeColor(rel.type),
+            },
             style: {
               stroke: getEdgeColor(rel.type),
               strokeWidth: 3,
