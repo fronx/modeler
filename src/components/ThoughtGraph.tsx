@@ -1,23 +1,17 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import {
   ReactFlow,
-  Node,
-  Edge,
   Background,
   Controls,
   MiniMap,
-  useNodesState,
-  useEdgesState,
   Position,
-  ConnectionMode,
   Handle,
-  MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useWebSocketThoughts } from '../lib/websocket-thought-client';
-import { ThoughtNode } from '../lib/thought-system';
+import { useThoughtGraphState } from '../hooks/useThoughtGraphState';
 
 // Custom node component for thoughts
 const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
@@ -77,191 +71,17 @@ const nodeTypes = {
   thoughtNode: ThoughtNodeComponent,
 };
 
-// Helper function to get edge color based on relationship type
-const getEdgeColor = (type: string): string => {
-  const colors: Record<string, string> = {
-    causes: '#ef4444', // red
-    supports: '#22c55e', // green
-    contradicts: '#f59e0b', // amber
-    means: '#3b82f6', // blue
-    becomes: '#8b5cf6', // violet
-    observes: '#06b6d4', // cyan
-    enables: '#10b981', // emerald
-    'builds-on': '#6366f1', // indigo
-    transcends: '#ec4899', // pink
-    challenges: '#f97316', // orange
-    implements: '#84cc16', // lime
-    fulfills: '#14b8a6', // teal
-    validates: '#a855f7', // purple
-    'based-on': '#64748b', // slate
-  };
-  return colors[type] || '#6b7280';
-};
-
 export const ThoughtGraph: React.FC = () => {
   const { nodes: thoughtNodes } = useWebSocketThoughts();
-  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
-
-  // Convert thought nodes to React Flow nodes and edges directly (like the working minimal test)
-  const { flowNodes, allEdges } = React.useMemo(() => {
-    const flowNodes: Node[] = [];
-    const flowEdges: Edge[] = [];
-
-    // Position nodes in a circle layout for better visualization
-    const nodeArray = Array.from(thoughtNodes.values());
-    const radius = Math.max(200, nodeArray.length * 50);
-
-    nodeArray.forEach((thoughtNode: ThoughtNode, index: number) => {
-      const angle = (index / nodeArray.length) * 2 * Math.PI;
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
-
-      flowNodes.push({
-        id: thoughtNode.id,
-        type: 'thoughtNode',
-        position: { x, y },
-        data: { node: thoughtNode },
-        draggable: true,
-      });
-
-      // Create edges from relationships
-      thoughtNode.relationships.forEach((rel, relIndex) => {
-        // Only create edge if target node exists
-        const targetNode = nodeArray.find(n => n.id === rel.target);
-        if (targetNode) {
-          const targetIndex = nodeArray.indexOf(targetNode);
-          const targetAngle = (targetIndex / nodeArray.length) * 2 * Math.PI;
-          const targetX = Math.cos(targetAngle) * radius;
-          const targetY = Math.sin(targetAngle) * radius;
-
-          // Calculate direction from source to target
-          const deltaX = targetX - x;
-          const deltaY = targetY - y;
-
-          // Determine best handles based on direction
-          let sourceHandle = 'source-right';
-          let targetHandle = 'target-left';
-
-          if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            // Horizontal connection
-            if (deltaX > 0) {
-              sourceHandle = 'source-right';
-              targetHandle = 'target-left';
-            } else {
-              sourceHandle = 'source-left';
-              targetHandle = 'target-right';
-            }
-          } else {
-            // Vertical connection
-            if (deltaY > 0) {
-              sourceHandle = 'source-bottom';
-              targetHandle = 'target-top';
-            } else {
-              sourceHandle = 'source-top';
-              targetHandle = 'target-bottom';
-            }
-          }
-
-          const edge = {
-            id: `${thoughtNode.id}-${rel.target}-${relIndex}`,
-            source: thoughtNode.id,
-            target: rel.target,
-            sourceHandle,
-            targetHandle,
-            animated: rel.type === 'causes',
-            label: `${rel.type} (${rel.strength})`,
-            labelStyle: { fontSize: 12, fill: '#000', fontWeight: 'bold' },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: getEdgeColor(rel.type),
-            },
-            style: {
-              stroke: getEdgeColor(rel.type),
-              strokeWidth: 3,
-              strokeDasharray: rel.type === 'causes' ? '5,5' : undefined,
-            },
-            data: { relationship: rel },
-          };
-          flowEdges.push(edge);
-        }
-      });
-    });
-
-
-    return { flowNodes, allEdges: flowEdges };
-  }, [thoughtNodes]);
-
-  // Function to calculate best handles based on node positions
-  const calculateHandles = React.useCallback((sourceNode: Node, targetNode: Node) => {
-    const deltaX = targetNode.position.x - sourceNode.position.x;
-    const deltaY = targetNode.position.y - sourceNode.position.y;
-
-    let sourceHandle = 'source-right';
-    let targetHandle = 'target-left';
-
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      // Horizontal connection
-      if (deltaX > 0) {
-        sourceHandle = 'source-right';
-        targetHandle = 'target-left';
-      } else {
-        sourceHandle = 'source-left';
-        targetHandle = 'target-right';
-      }
-    } else {
-      // Vertical connection
-      if (deltaY > 0) {
-        sourceHandle = 'source-bottom';
-        targetHandle = 'target-top';
-      } else {
-        sourceHandle = 'source-top';
-        targetHandle = 'target-bottom';
-      }
-    }
-
-    return { sourceHandle, targetHandle };
-  }, []);
-
-  // Use nodes state to enable dragging
-  const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
-
-  // Filter edges to only show those connected to hovered node and update handles
-  const visibleEdges = React.useMemo(() => {
-    if (!hoveredNodeId) return [];
-
-    const filteredEdges = allEdges.filter(edge =>
-      edge.source === hoveredNodeId || edge.target === hoveredNodeId
-    );
-
-    // Update handles based on current node positions
-    return filteredEdges.map(edge => {
-      const sourceNode = nodes.find(n => n.id === edge.source);
-      const targetNode = nodes.find(n => n.id === edge.target);
-
-      if (sourceNode && targetNode) {
-        const { sourceHandle, targetHandle } = calculateHandles(sourceNode, targetNode);
-        return {
-          ...edge,
-          sourceHandle,
-          targetHandle,
-        };
-      }
-      return edge;
-    });
-  }, [allEdges, hoveredNodeId, nodes, calculateHandles]);
-
-  const [edges, setEdges, onEdgesChange] = useEdgesState(visibleEdges);
-
-  // Update nodes when thoughtNodes change
-  React.useEffect(() => {
-    setNodes(flowNodes);
-  }, [flowNodes, setNodes]);
-
-  // Update edges when visibleEdges change
-  React.useEffect(() => {
-    setEdges(visibleEdges);
-  }, [visibleEdges, setEdges]);
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    hoveredNodeId,
+    setHoveredNodeId,
+  } = useThoughtGraphState(thoughtNodes);
 
   return (
     <div className="w-full h-full">
