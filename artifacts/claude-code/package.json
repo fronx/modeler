@@ -1,0 +1,13 @@
+{
+  "name": "thought-system",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "example": "tsx example.ts",
+    "test": "tsx test.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.6.0",
+    "typescript": "^5.0.0"
+  }
+}
