@@ -13,6 +13,7 @@ import {
   Position,
   ConnectionMode,
   Handle,
+  MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useWebSocketThoughts } from '../lib/websocket-thought-client';
@@ -24,9 +25,15 @@ const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
 
   return (
     <div className="relative px-4 py-3 bg-white dark:bg-gray-800 border-2 border-blue-500 rounded-lg shadow-lg min-w-[200px] max-w-[300px]">
-      {/* Handles for edge connections */}
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
+      {/* Handles for edge connections on all sides */}
+      <Handle type="target" position={Position.Top} id="target-top" />
+      <Handle type="target" position={Position.Right} id="target-right" />
+      <Handle type="target" position={Position.Bottom} id="target-bottom" />
+      <Handle type="target" position={Position.Left} id="target-left" />
+      <Handle type="source" position={Position.Top} id="source-top" />
+      <Handle type="source" position={Position.Right} id="source-right" />
+      <Handle type="source" position={Position.Bottom} id="source-bottom" />
+      <Handle type="source" position={Position.Left} id="source-left" />
 
       <div className="font-bold text-lg text-blue-600 dark:text-blue-400 mb-2">
         {node.id}
@@ -121,17 +128,52 @@ export const ThoughtGraph: React.FC = () => {
       // Create edges from relationships
       thoughtNode.relationships.forEach((rel, relIndex) => {
         // Only create edge if target node exists
-        if (nodeArray.some(n => n.id === rel.target)) {
+        const targetNode = nodeArray.find(n => n.id === rel.target);
+        if (targetNode) {
+          const targetIndex = nodeArray.indexOf(targetNode);
+          const targetAngle = (targetIndex / nodeArray.length) * 2 * Math.PI;
+          const targetX = Math.cos(targetAngle) * radius;
+          const targetY = Math.sin(targetAngle) * radius;
+
+          // Calculate direction from source to target
+          const deltaX = targetX - x;
+          const deltaY = targetY - y;
+
+          // Determine best handles based on direction
+          let sourceHandle = 'source-right';
+          let targetHandle = 'target-left';
+
+          if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            // Horizontal connection
+            if (deltaX > 0) {
+              sourceHandle = 'source-right';
+              targetHandle = 'target-left';
+            } else {
+              sourceHandle = 'source-left';
+              targetHandle = 'target-right';
+            }
+          } else {
+            // Vertical connection
+            if (deltaY > 0) {
+              sourceHandle = 'source-bottom';
+              targetHandle = 'target-top';
+            } else {
+              sourceHandle = 'source-top';
+              targetHandle = 'target-bottom';
+            }
+          }
+
           const edge = {
             id: `${thoughtNode.id}-${rel.target}-${relIndex}`,
             source: thoughtNode.id,
             target: rel.target,
-            // type: 'straight',
+            sourceHandle,
+            targetHandle,
             animated: rel.type === 'causes',
             label: `${rel.type} (${rel.strength})`,
             labelStyle: { fontSize: 12, fill: '#000', fontWeight: 'bold' },
             markerEnd: {
-              type: 'arrowclosed',
+              type: MarkerType.ArrowClosed,
               color: getEdgeColor(rel.type),
             },
             style: {
