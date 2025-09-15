@@ -35,6 +35,14 @@ npx tsx execute-session.ts example-session
 
 ## Available Examples
 
+### [`simple-session.ts`](simple-session.ts)
+**Purpose**: Quick introduction to basic cognitive modeling
+**Patterns Covered**:
+- Creating thoughts with meanings and values
+- Basic relationships between thoughts
+- Tension holding
+- Perfect for first-time users
+
 ### [`session.ts`](session.ts)
 **Purpose**: Demonstrates fundamental patterns for cognitive modeling
 **Patterns Covered**:
@@ -44,6 +52,22 @@ npx tsx execute-session.ts example-session
 - Tension holding (`holdsTension`)
 - Self-referential meta-cognition
 - Network integration effects
+- Good balance of features without overwhelming complexity
+
+### [`comprehensive-session.ts`](comprehensive-session.ts)
+**Purpose**: Complete showcase of ALL cognitive modeling capabilities
+**Advanced Features Demonstrated**:
+- Multiple meanings with confidence levels
+- Thought transformation (`.becomes()`)
+- Interval values for uncertainty
+- All relationship types
+- Metaphor forking and collapse
+- Self-observation and meta-cognition
+- History-aware transforms
+- Value propagation through networks
+- System reflection and monitoring
+- Complex multi-layered tensions
+- Use this as a reference for advanced cognitive modeling
 
 ### Core API Patterns
 
@@ -122,13 +146,72 @@ session.thought('Variable')
 
 ## Advanced Patterns
 
-### Self-Referential Modeling
-Create thoughts that observe the modeling process itself:
+### Multiple Meanings with Confidence
+Add layered meanings with different confidence levels:
 
 ```typescript
-session.thought('SelfReference')
-  .means('This session modeling its own construction')
-  .relatesTo('PrimaryThought', 'observes', 1.0);
+session.thought('Consciousness')
+  .means('Subjective experience of being', 0.9)
+  .means('Information integration in global workspace', 0.7)
+  .means('Emergent property of neural complexity', 0.6);
+```
+
+### Thought Transformation
+Let thoughts evolve their meaning:
+
+```typescript
+session.thought('Learning')
+  .means('Acquiring new information')
+  .becomes('Restructuring mental models based on experience');
+```
+
+### Self-Observation
+Thoughts that can observe themselves:
+
+```typescript
+session.thought('SelfAware')
+  .means('A thought that knows it thinks')
+  .observesSelf('This thought observes its own recursive nature');
+```
+
+### History-Aware Transforms
+Transformations that weaken with repetition:
+
+```typescript
+session.thought('Concept')
+  .applyHistoryAwareTransform('refinement', 0.8)
+  .applyHistoryAwareTransform('refinement', 0.6); // Diminished effect
+```
+
+### Value Propagation
+Spread values through causal relationships:
+
+```typescript
+session.thought('Cause')
+  .hasValue('strength', 0.8)
+  .relatesTo('Effect', 'causes', 0.9);
+
+session.propagate('Cause', 'strength'); // Effect gets value 0.72
+```
+
+### Metaphor Collapse
+Choose best metaphor based on context:
+
+```typescript
+session.thought('Mind')
+  .forkMetaphor('computer', 'Processing machine', 1.0)
+  .forkMetaphor('ocean', 'Deep and mysterious', 1.2);
+
+const interpretation = session.collapseMetaphor('Mind', 'processing data');
+// Returns computer metaphor in computational context
+```
+
+### System Reflection
+Get insights about the thought space:
+
+```typescript
+const reflection = session.reflect();
+// "ThoughtSpace contains 5 nodes, 12 meanings, 8 relationships"
 ```
 
 ### Multi-Metaphor Competition
