@@ -9,11 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@types/ws": "^8.18.1",
     "@xyflow/react": "^12.8.4",
     "chokidar": "^4.0.3",
     "next": "15.5.3",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

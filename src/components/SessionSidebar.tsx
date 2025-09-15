@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 interface Session {
   id: string;
@@ -13,41 +13,19 @@ interface Session {
 }
 
 interface SessionSidebarProps {
+  sessions: Session[];
   currentSessionId: string | null;
   onSessionSelect: (sessionId: string) => void;
   onNewSession: () => void;
 }
 
 export const SessionSidebar: React.FC<SessionSidebarProps> = ({
+  sessions,
   currentSessionId,
-  onSessionSelect,
-  onNewSession
+  onSessionSelect
 }) => {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
-
-  const loadSessions = async () => {
-    try {
-      const response = await fetch('/api/sessions');
-      if (response.ok) {
-        const data = await response.json();
-        setSessions(data.sessions);
-      }
-    } catch (error) {
-      console.error('Failed to load sessions:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadSessions();
-
-    // Refresh sessions periodically
-    const interval = setInterval(loadSessions, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const isLoading = sessions.length === 0;
 
   const handleNewSession = async () => {
     const title = prompt('Enter session title:');
@@ -64,7 +42,6 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        await loadSessions(); // Refresh the list
         onSessionSelect(data.session.path);
       }
     } catch (error) {

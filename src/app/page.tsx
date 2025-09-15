@@ -2,25 +2,17 @@
 
 import { ThoughtGraph } from '@/components/ThoughtGraph';
 import { SessionSidebar } from '@/components/SessionSidebar';
-import { useSessionThoughts } from '@/lib/session-thought-watcher';
+import { useWebSocketThoughts } from '@/lib/websocket-thought-client';
 
 export default function CognitiveDashboard() {
-  const { nodes, lastUpdate, currentSessionId, setCurrentSessionId } = useSessionThoughts();
+  const { nodes, sessions, lastUpdate, currentSessionId, setCurrentSessionId, connectionStatus, hasLoadedCurrentSession } = useWebSocketThoughts();
 
-  const handleCreateExampleThoughts = async () => {
-    // This would typically be done via Claude Code creating thoughts
-    // For now, show instructions
-    if (currentSessionId) {
-      alert(`Create thoughts by running: npx tsx create-session-thoughts.ts ${currentSessionId}`);
-    } else {
-      alert('Please select or create a session first');
-    }
-  };
 
   return (
     <div className="w-screen h-screen flex bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
       <SessionSidebar
+        sessions={sessions}
         currentSessionId={currentSessionId}
         onSessionSelect={setCurrentSessionId}
         onNewSession={() => {
@@ -43,16 +35,19 @@ export default function CognitiveDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  connectionStatus === 'connected' ? 'bg-green-500' :
+                  connectionStatus === 'connecting' ? 'bg-yellow-500' :
+                  connectionStatus === 'error' ? 'bg-red-500' : 'bg-gray-500'
+                }`}></div>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {connectionStatus}
+                </span>
+              </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 {nodes.size} thoughts {lastUpdate && `(last update: ${lastUpdate.toLocaleTimeString()})`}
               </div>
-              <button
-                onClick={handleCreateExampleThoughts}
-                disabled={!currentSessionId}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Create Example Thoughts
-              </button>
             </div>
           </div>
         </header>
@@ -71,21 +66,26 @@ export default function CognitiveDashboard() {
                 </p>
               </div>
             </div>
+          ) : !hasLoadedCurrentSession ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Loading session...
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Please wait while we load the thoughts for this session.
+                </p>
+              </div>
+            </div>
           ) : nodes.size === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
                   No thoughts in this session
                 </h2>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Create your first thought to see the visualization come alive
+                <p className="text-gray-500 dark:text-gray-400">
+                  This session is empty. Create thoughts using Claude Code to see them appear here in real-time.
                 </p>
-                <button
-                  onClick={handleCreateExampleThoughts}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Create Example Thoughts
-                </button>
               </div>
             </div>
           ) : (

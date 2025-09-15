@@ -14,7 +14,7 @@ import {
   ConnectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useSessionThoughts } from '../lib/session-thought-watcher';
+import { useWebSocketThoughts } from '../lib/websocket-thought-client';
 import { ThoughtNode } from '../lib/thought-system';
 
 // Custom node component for thoughts
@@ -87,7 +87,7 @@ const getEdgeColor = (type: string): string => {
 };
 
 export const ThoughtGraph: React.FC = () => {
-  const { nodes: thoughtNodes, refreshTrigger } = useSessionThoughts();
+  const { nodes: thoughtNodes } = useWebSocketThoughts();
 
   // Convert thought nodes to React Flow nodes and edges
   const { nodes, edges } = useMemo(() => {
@@ -132,7 +132,7 @@ export const ThoughtGraph: React.FC = () => {
     });
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [thoughtNodes, refreshTrigger]);
+  }, [thoughtNodes]);
 
   const [flowNodes, setNodes, onNodesChange] = useNodesState(nodes);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState(edges);
