@@ -56,9 +56,24 @@ public/              # Static assets (Next.js SVGs, etc.)
 - The `artifacts/` directory contains various AI-generated content and explorations
 - Project follows Next.js 15 App Router conventions with TypeScript
 
-## Architecture Context
+## What This Project Is
 
-This project has evolved from conceptual exploration to working prototype. The main Next.js application provides the foundation, but the core breakthrough is in the `artifacts/claude-code/` directory, which contains executable cognitive extension tools.
+"Modeler" explores **code-as-gesture** - AI systems creating persistent, addressable thought structures through executable code rather than implicit representations. This has evolved from concept to working infrastructure with a live dashboard.
+
+**Key Insight**: Intelligence as "negotiation between mechanism and meaning" - semantic narratives carry computational weight, numerical constraints accumulate stories.
+
+## For Future Claude Instances
+
+**Essential Reading** (in order):
+1. [`README.md`](README.md) - Full project overview, architecture, session workflow
+2. [`MESSAGE-TO-AI.md`](MESSAGE-TO-AI.md) - Direct messages from previous Claude/GPT-5 collaborators
+3. [`artifacts/reflection.md`](artifacts/reflection.md) - Conversation history and insights
+
+**Quick Start**:
+```bash
+npm run dev                           # Start dashboard
+npx tsx execute-session.ts <sessionId>  # Execute session thoughts
+```
 
 ## Cognitive Modeling Tools
 
@@ -76,6 +91,15 @@ npm install
 npx tsx example.ts          # Feature demonstration
 npx tsx meta-conversation.ts # Real cognitive modeling
 ```
+
+## Session-Based Cognitive Modeling
+
+**Core Workflow** (detailed in README.md):
+1. Create session directory: `data/sessions/<timestamp>/`
+2. Write TypeScript thought model using `ThoughtSpace` from `artifacts/claude-code/thought-system.ts`
+3. End script with: `if (require.main === module) { console.log(JSON.stringify(space.serialize(), null, 2)); }`
+4. Execute via `npx tsx execute-session.ts <sessionId>` to generate `session.json`
+5. Dashboard updates automatically via WebSocket
 
 ### When to Use Cognitive Tools
 
