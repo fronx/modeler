@@ -20,7 +20,7 @@ async function executeSession(sessionId: string) {
     process.exit(1);
   }
 
-  // Find TypeScript files (excluding ones starting with _)
+  // Find TypeScript files (excluding ones starting with _), prioritizing session.ts
   try {
     const files = await fs.readdir(sessionDir);
     const tsFiles = files.filter(file =>
@@ -32,11 +32,12 @@ async function executeSession(sessionId: string) {
       process.exit(1);
     }
 
-    if (tsFiles.length > 1) {
-      console.warn(`Warning: Multiple TypeScript files found, using: ${tsFiles[0]}`);
-    }
+    // Prioritize session.ts if it exists, otherwise use first file found
+    let tsFile = tsFiles.find(file => file === 'session.ts') || tsFiles[0];
 
-    const tsFile = tsFiles[0];
+    if (tsFiles.length > 1 && tsFile !== 'session.ts') {
+      console.warn(`Warning: Multiple TypeScript files found, using: ${tsFile} (consider renaming to session.ts)`);
+    }
     const tsFilePath = path.join(sessionDir, tsFile);
     const outputPath = path.join(sessionDir, 'session.json');
 

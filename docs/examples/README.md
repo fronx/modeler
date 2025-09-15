@@ -1,0 +1,185 @@
+# Cognitive Modeling Examples
+
+This directory contains canonical examples demonstrating different patterns and capabilities of the Session-based cognitive modeling system.
+
+## Quick Start
+
+### Running an Example
+
+```bash
+# From the project root directory
+npx tsx docs/examples/session.ts
+
+# Or use the session execution system
+cp docs/examples/session.ts data/sessions/example-session/session.ts
+npx tsx execute-session.ts example-session
+```
+
+### Creating Your Own Session
+
+1. **Copy the basic pattern**:
+   ```bash
+   cp docs/examples/session.ts data/sessions/my-session/session.ts
+   ```
+
+2. **Modify for your exploration**:
+   - Change session metadata (id, title, description)
+   - Replace example thoughts with your concepts
+   - Adjust relationships and values
+
+3. **Execute and visualize**:
+   ```bash
+   npx tsx execute-session.ts my-session
+   npm run dev  # View in dashboard
+   ```
+
+## Available Examples
+
+### [`session.ts`](session.ts)
+**Purpose**: Demonstrates fundamental patterns for cognitive modeling
+**Patterns Covered**:
+- Simple thoughts with meanings and values
+- Relationship building (`relatesTo`)
+- Multiple metaphorical interpretations (`forkMetaphor`)
+- Tension holding (`holdsTension`)
+- Self-referential meta-cognition
+- Network integration effects
+
+### Core API Patterns
+
+#### 1. Creating Thoughts
+```typescript
+session.thought('ConceptName')
+  .means('What this concept represents')
+  .hasValue('property', 0.8);
+```
+
+#### 2. Building Relationships
+```typescript
+session.thought('SecondConcept')
+  .relatesTo('ConceptName', 'supports', 0.9);
+```
+
+**Relationship Types**:
+- `'supports'` - One concept reinforces another
+- `'builds-on'` - One concept extends another
+- `'challenges'` - One concept questions another
+- `'enables'` - One concept makes another possible
+- `'transcends'` - One concept goes beyond another
+- `'observes'` - One concept watches another
+- `'implements'` - One concept realizes another
+- `'fulfills'` - One concept completes another
+- `'validates'` - One concept confirms another
+
+#### 3. Metaphorical Interpretations
+```typescript
+session.thought('GrowthConcept')
+  .forkMetaphor('organic', 'Like biological growth', 1.2)
+  .forkMetaphor('construction', 'Like building', 0.9);
+```
+
+#### 4. Holding Tensions
+```typescript
+session.thought('Paradox')
+  .holdsTension('Between stability and change');
+```
+
+#### 5. Value Intervals
+```typescript
+session.thought('Variable')
+  .hasValue('uncertainty', [0.3, 0.8]);  // Range of possible values
+```
+
+## Best Practices
+
+### Structure Your Exploration
+
+1. **Start with Foundation**: Create core concepts first
+2. **Build Relationships**: Connect concepts with meaningful relationships
+3. **Add Nuance**: Use metaphors and tensions for complexity
+4. **Include Meta-cognition**: Add thoughts that observe the model itself
+5. **Create Integration**: Add concepts that tie everything together
+
+### Naming Conventions
+
+- **Thoughts**: Use PascalCase for concept names (`CodeAsGesture`, `MetaCognition`)
+- **Values**: Use kebab-case for properties (`stability`, `growth-rate`, `meta-level`)
+- **Sessions**: Use descriptive IDs with timestamps (`exploration-20250915`, `meta-analysis-session`)
+
+### Value Guidelines
+
+- **0.0 - 0.3**: Low/weak/uncertain
+- **0.4 - 0.6**: Moderate/developing
+- **0.7 - 0.9**: High/strong/confident
+- **1.0+**: Exceptional/breakthrough/transcendent
+
+### Relationship Strengths
+
+- **0.1 - 0.3**: Weak connection
+- **0.4 - 0.6**: Moderate relationship
+- **0.7 - 0.9**: Strong connection
+- **1.0+**: Fundamental/essential relationship
+
+## Advanced Patterns
+
+### Self-Referential Modeling
+Create thoughts that observe the modeling process itself:
+
+```typescript
+session.thought('SelfReference')
+  .means('This session modeling its own construction')
+  .relatesTo('PrimaryThought', 'observes', 1.0);
+```
+
+### Multi-Metaphor Competition
+Let different interpretations compete:
+
+```typescript
+session.thought('AmbiguousConcept')
+  .forkMetaphor('interpretation1', 'First way of seeing it', 0.9)
+  .forkMetaphor('interpretation2', 'Competing perspective', 1.1)
+  .forkMetaphor('synthesis', 'Higher-order integration', 1.3);
+```
+
+### Network Dynamics
+Create concepts that emerge from relationships:
+
+```typescript
+session.thought('EmergentProperty')
+  .means('Something that arises from the network itself')
+  .relatesTo('Node1', 'emerges-from', 0.8)
+  .relatesTo('Node2', 'emerges-from', 0.8)
+  .relatesTo('Node3', 'emerges-from', 0.8);
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Module Import Errors**: Ensure you're using the correct relative path to `src/lib/thought-system`
+2. **Missing Serialization**: Always end your file with the `if (require.main === module)` block
+3. **Relationship Errors**: Make sure target thoughts exist before referencing them
+4. **TypeScript Errors**: Check that all method calls are properly chained
+
+### Debugging Sessions
+
+```bash
+# Test TypeScript compilation
+npx tsc --noEmit docs/examples/session.ts
+
+# Run directly to see output
+npx tsx docs/examples/session.ts
+
+# Check session execution
+npx tsx execute-session.ts session-id --verbose
+```
+
+## Contributing Examples
+
+When adding new examples:
+
+1. **Document the purpose**: Clear comment about what pattern is demonstrated
+2. **Follow naming conventions**: Consistent with existing examples
+3. **Include variety**: Show different relationship types and value patterns
+4. **Add to this README**: Update the examples list and any new patterns
+5. **Test thoroughly**: Ensure the example executes and produces valid JSON
