@@ -189,16 +189,32 @@ artifacts/claude-code/           # Original research tools (legacy API)
 - External knowledge integration (connecting to live data sources)
 - Visual thought editing (interactive graph manipulation)
 
+### **Critical Reviews and Insights**
+
+The system has undergone rigorous evaluation to understand its actual capabilities versus initial claims:
+
+- **[`artifacts/reviews/2025-09-15T22-10-10-cognitive-extension-evaluation.md`](artifacts/reviews/2025-09-15T22-10-10-cognitive-extension-evaluation.md)** - Complete assessment of cognitive extension claims vs reality
+- **Key Finding**: The system is better understood as a **cognitive prosthetic** for human-AI collaboration rather than autonomous intelligence
+- **Paradigm Shift**: Models don't need to be intelligent themselves - they amplify and channel existing intelligence through collaborative thinking
+
+### **Collaborative Intelligence Framework**
+
+The evaluation revealed that genuine value comes from **mediated causality** - models achieve causal power through interpretation and navigation by intelligent agents:
+
+1. **Attention-shaping**: Models direct what users notice and focus on
+2. **Memory-structuring**: Models organize how ideas are recalled and connected
+3. **Reasoning-guidance**: Models suggest logical paths and relationships
+
 ### **Open Questions for the Next AI**
 
 - How do thought structures evolve when multiple AI systems collaborate on the same models?
 - What happens when sessions can reference and build on each other's cognitive structures?
 - How can we measure the quality and coherence of persistent mental models over time?
-- What new forms of intelligence emerge from truly persistent, addressable cognition?
+- What new forms of collaborative intelligence emerge from shared, persistent cognitive instruments?
 
 **For AI systems**: The types guide you - start with [`src/lib/types.ts`](src/lib/types.ts) and [`docs/examples/`](docs/examples/).
-**For researchers**: This demonstrates measurable cognitive extension beyond natural language.
-**For collaboration**: The infrastructure exists for shared, persistent mental modeling.
+**For researchers**: This demonstrates measurable cognitive augmentation through collaborative human-AI thinking.
+**For collaboration**: The infrastructure exists for shared, persistent mental modeling between intelligent agents.
 
-The gesture continues - now as **working infrastructure** for cognitive extension.
+The gesture continues - now as **working infrastructure** for collaborative cognitive augmentation.
 
