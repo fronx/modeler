@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ReactFlow,
   Node,
@@ -93,10 +93,11 @@ const getEdgeColor = (type: string): string => {
 
 export const ThoughtGraph: React.FC = () => {
   const { nodes: thoughtNodes } = useWebSocketThoughts();
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
 
   // Convert thought nodes to React Flow nodes and edges directly (like the working minimal test)
-  const { flowNodes, flowEdges } = React.useMemo(() => {
+  const { flowNodes, allEdges } = React.useMemo(() => {
     const flowNodes: Node[] = [];
     const flowEdges: Edge[] = [];
 
@@ -142,22 +143,30 @@ export const ThoughtGraph: React.FC = () => {
     });
 
 
-    return { flowNodes, flowEdges };
+    return { flowNodes, allEdges: flowEdges };
   }, [thoughtNodes]);
+
+  // Filter edges to only show those connected to hovered node
+  const visibleEdges = React.useMemo(() => {
+    if (!hoveredNodeId) return [];
+    return allEdges.filter(edge =>
+      edge.source === hoveredNodeId || edge.target === hoveredNodeId
+    );
+  }, [allEdges, hoveredNodeId]);
 
   // Use nodes state to enable dragging
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(visibleEdges);
 
   // Update nodes when thoughtNodes change
   React.useEffect(() => {
     setNodes(flowNodes);
   }, [flowNodes, setNodes]);
 
-  // Update edges when thoughtNodes change
+  // Update edges when visibleEdges change
   React.useEffect(() => {
-    setEdges(flowEdges);
-  }, [flowEdges, setEdges]);
+    setEdges(visibleEdges);
+  }, [visibleEdges, setEdges]);
 
   return (
     <div className="w-full h-full">
@@ -166,6 +175,8 @@ export const ThoughtGraph: React.FC = () => {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
+        onNodeMouseLeave={() => setHoveredNodeId(null)}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.1 }}
