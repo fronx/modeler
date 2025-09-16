@@ -79,6 +79,7 @@ export const useThoughtGraphState = (
           color: nodeColors.get(thoughtNode.id) || '#6b7280'
         },
         draggable: true,
+        selectable: true,
       });
 
       // Create edges from relationships

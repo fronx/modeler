@@ -8,13 +8,15 @@ import {
   MiniMap,
   Position,
   Handle,
+  SelectionMode,
+  NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useWebSocketThoughts } from '../lib/websocket-thought-client';
 import { useThoughtGraphState } from '../hooks/useThoughtGraphState';
 
 // Custom node component for thoughts with semantic zooming
-const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
+const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ data, selected }) => {
   const { node, color } = data;
   const [isExpanded, setIsExpanded] = React.useState(false);
 
@@ -33,18 +35,26 @@ const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
   const showPartialDetail = isExpanded || naturalShowPartialDetail;
 
   const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsExpanded(!isExpanded);
+    // Don't stop propagation if Meta/Cmd key is held (for multi-selection)
+    if (!e.metaKey && !e.ctrlKey) {
+      e.stopPropagation();
+      setIsExpanded(!isExpanded);
+    }
+    // If Meta/Cmd is held, let React Flow handle the selection
   };
 
   return (
     <div
       className={`relative px-4 py-3 bg-white dark:bg-gray-800 border-2 rounded-lg shadow-lg min-w-[200px] max-w-[300px] cursor-pointer transition-all duration-300 hover:opacity-80 ${
-        isDiscarded ? 'opacity-40 saturate-50' : isHighlighted ? 'ring-2 ring-blue-400 shadow-xl' : ''
+        isDiscarded ? 'opacity-40 saturate-50' :
+        selected ? 'ring-4 ring-offset-2 ring-offset-white dark:ring-offset-gray-800 shadow-2xl bg-purple-50 dark:bg-purple-900/30 scale-105' :
+        isHighlighted ? 'ring-2 ring-blue-400 shadow-xl' : ''
       }`}
       style={{
-        borderColor: color
-      }}
+        borderColor: color,
+        borderWidth: selected ? '3px' : '2px',
+        '--tw-ring-color': selected ? color : undefined
+      } as React.CSSProperties & { '--tw-ring-color'?: string }}
       onClick={handleClick}
     >
       {/* Handles for edge connections on all sides */}
@@ -95,9 +105,9 @@ const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
           {/* Values */}
           {node.values.size > 0 && (
             <div className="text-xs text-green-600 dark:text-green-400 mt-1">
-              {Array.from(node.values.entries()).map(([key, value]) => (
-                <div key={key}>
-                  {key}: {JSON.stringify(value)}
+              {Array.from(node.values.entries()).map((entry: [string, any]) => (
+                <div key={entry[0]}>
+                  {entry[0]}: {JSON.stringify(entry[1])}
                 </div>
               ))}
             </div>
@@ -135,6 +145,37 @@ export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
     setHoveredNodeId,
   } = useThoughtGraphState(thoughtNodes, backgroundEdgeOpacity, showArrows, showLabels);
 
+  // Handle clearing selection when clicking on background or pressing escape
+  const handlePaneClick = React.useCallback(() => {
+    // Clear all selections
+    const selectChanges: NodeChange[] = nodes.map(node => ({
+      id: node.id,
+      type: 'select' as const,
+      selected: false,
+    }));
+    onNodesChange(selectChanges);
+  }, [nodes, onNodesChange]);
+
+  // Handle escape key to clear selection
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Clear all selections
+        const selectChanges: NodeChange[] = nodes.map(node => ({
+          id: node.id,
+          type: 'select' as const,
+          selected: false,
+        }));
+        onNodesChange(selectChanges);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [nodes, onNodesChange]);
+
   return (
     <div className="w-full h-full">
       <ReactFlow
@@ -144,14 +185,19 @@ export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
         onEdgesChange={onEdgesChange}
         onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
         onNodeMouseLeave={() => setHoveredNodeId(null)}
+        onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.1 }}
+        selectionOnDrag={false}
+        selectionKeyCode="Shift"
+        selectionMode={SelectionMode.Partial}
+        multiSelectionKeyCode={["Meta", "Control"]}
       >
         <Background />
         <Controls />
         <MiniMap
-          nodeColor={(node) => node.data?.color || '#6b7280'}
+          nodeColor={(node) => (node.data?.color as string) || '#6b7280'}
           nodeStrokeWidth={3}
           zoomable
           pannable
