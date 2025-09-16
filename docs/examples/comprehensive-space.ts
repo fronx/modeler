@@ -1,4 +1,4 @@
-import { Session } from '../../src/lib/thought-system';
+import { Space } from '../../src/lib/thought-system';
 
 /**
  * Comprehensive Space Example
@@ -17,14 +17,14 @@ import { Session } from '../../src/lib/thought-system';
  * - System reflection
  */
 
-const session = new Session(
+const space = new Space(
   'comprehensive-example-20250915',
   'Complete Cognitive Modeling Showcase',
   'Demonstrates every feature of the thought system for advanced cognitive modeling'
 );
 
 // 1. FOUNDATIONAL THOUGHT with multiple meanings
-session.thought('Consciousness')
+space.thought('Consciousness')
   .means('The state of being aware of one\'s existence', 0.9)
   .means('The subjective experience of being', 0.8)
   .means('Information integration in a global workspace', 0.7)
@@ -32,14 +32,14 @@ session.thought('Consciousness')
   .hasValue('importance', 1.0);
 
 // 2. TRANSFORMATION - thought that evolves
-session.thought('Learning')
+space.thought('Learning')
   .means('Acquiring new information')
   .becomes('Restructuring mental models based on experience')  // Evolution of meaning
   .hasValue('rate', [0.1, 0.8])
   .hasValue('retention', 0.6);
 
 // 3. METAPHOR FORKING - multiple interpretations in superposition
-session.thought('Mind')
+space.thought('Mind')
   .means('The cognitive system that processes information and generates experience')
   .hasValue('complexity', [0.8, 1.0])
   .forkMetaphor('computer', 'Mind as information processing machine', 1.0)
@@ -49,14 +49,14 @@ session.thought('Mind')
   .forkMetaphor('stage', 'Mind as theater where thoughts perform', 0.8);
 
 // 4. COMPREHENSIVE RELATIONSHIP TYPES
-session.thought('Attention')
+space.thought('Attention')
   .means('The spotlight of consciousness selecting what to process')
   .hasValue('selectivity', 0.8)
   .hasValue('focus-duration', [0.3, 0.7])
   .relatesTo('Consciousness', 'enables', 0.9)
   .relatesTo('Learning', 'supports', 0.8);
 
-session.thought('Memory')
+space.thought('Memory')
   .means('The persistence of experience across time')
   .hasValue('capacity', [0.6, 0.9])
   .hasValue('accuracy', [0.4, 0.8])
@@ -64,7 +64,7 @@ session.thought('Memory')
   .relatesTo('Consciousness', 'builds-on', 0.6)
   .relatesTo('Mind', 'implements', 0.8);
 
-session.thought('Intuition')
+space.thought('Intuition')
   .means('Rapid, non-conscious processing that emerges as felt sense')
   .hasValue('speed', 0.9)
   .hasValue('verifiability', [0.3, 0.7])
@@ -73,7 +73,7 @@ session.thought('Intuition')
   .relatesTo('Memory', 'challenges', 0.5)
   .holdsTension('Between knowing without knowing how we know');
 
-session.thought('Reason')
+space.thought('Reason')
   .means('Systematic, step-by-step logical processing')
   .hasValue('reliability', 0.8)
   .hasValue('speed', 0.4)
@@ -82,7 +82,7 @@ session.thought('Reason')
   .relatesTo('Learning', 'validates', 0.8);
 
 // 5. SELF-REFERENCE AND META-COGNITION
-session.thought('SelfAwareness')
+space.thought('SelfAwareness')
   .means('The mind observing its own processes')
   .hasValue('recursion-depth', [0.6, 1.0])
   .relatesTo('Consciousness', 'observes', 1.0)
@@ -91,7 +91,7 @@ session.thought('SelfAwareness')
   .holdsTension('Between being the observer and the observed');
 
 // 6. EMERGENT PROPERTIES
-session.thought('Creativity')
+space.thought('Creativity')
   .means('The emergence of novel, valuable combinations from existing elements')
   .hasValue('unpredictability', [0.7, 0.9])
   .hasValue('value-potential', [0.4, 1.0])
@@ -103,7 +103,7 @@ session.thought('Creativity')
   .forkMetaphor('evolution', 'Creativity as variation and selection', 0.9);
 
 // 7. COMPLEX TENSIONS AND PARADOXES
-session.thought('Understanding')
+space.thought('Understanding')
   .means('The integration of knowledge into coherent patterns')
   .hasValue('coherence', [0.5, 0.9])
   .hasValue('completeness', [0.3, 0.7])
@@ -114,7 +114,7 @@ session.thought('Understanding')
   .holdsTension('Between certainty and openness to revision');
 
 // 8. HISTORY-AWARE TRANSFORMS
-session.thought('Wisdom')
+space.thought('Wisdom')
   .means('Understanding refined through experience and reflection')
   .hasValue('hard-won', 1.0)
   .relatesTo('Understanding', 'transcends', 0.9)
@@ -124,7 +124,7 @@ session.thought('Wisdom')
   .applyHistoryAwareTransform('refinement', 0.6); // Diminished impact on repeat
 
 // 9. SYSTEM-LEVEL INTEGRATION
-session.thought('Intelligence')
+space.thought('Intelligence')
   .means('The capacity for learning, reasoning, and adapting to achieve goals')
   .hasValue('adaptability', [0.7, 0.9])
   .hasValue('goal-alignment', [0.5, 0.8])
@@ -139,8 +139,8 @@ session.thought('Intelligence')
   .forkMetaphor('dance', 'Intelligence as responsive movement with environment', 1.2);
 
 // 10. FINAL META-REFLECTION
-session.thought('ModelingProcess')
-  .means('This very session creating an explicit model of mind through code')
+space.thought('ModelingProcess')
+  .means('This very space creating an explicit model of mind through code')
   .hasValue('meta-level', 1.0)
   .hasValue('self-reference', 0.95)
   .relatesTo('SelfAwareness', 'implements', 1.0)
@@ -152,30 +152,30 @@ session.thought('ModelingProcess')
 // DEMONSTRATE ADVANCED OPERATIONS
 
 // Propagate values through causal relationships
-session.propagate('Learning', 'rate');
+space.propagate('Learning', 'rate');
 
 // Collapse metaphors in different contexts
-const mindAsComputer = session.collapseMetaphor('Mind', 'processing information');
-const mindAsOcean = session.collapseMetaphor('Mind', 'depth and mystery');
-const creativityInProblemSolving = session.collapseMetaphor('Creativity', 'systematic innovation');
+const mindAsComputer = space.collapseMetaphor('Mind', 'processing information');
+const mindAsOcean = space.collapseMetaphor('Mind', 'depth and mystery');
+const creativityInProblemSolving = space.collapseMetaphor('Creativity', 'systematic innovation');
 
 // System reflection
-const systemState = session.reflect();
+const systemState = space.reflect();
 
 // Add the collapsed metaphors and reflection as thoughts
-session.thought('MetaphorCollapse')
+space.thought('MetaphorCollapse')
   .means('Demonstrating context-sensitive metaphor selection')
   .hasValue('context-sensitivity', 0.9)
   .relatesTo('Mind', 'observes', 1.0);
 
-session.thought('SystemReflection')
+space.thought('SystemReflection')
   .means(systemState)
   .hasValue('self-monitoring', 1.0)
   .relatesTo('ModelingProcess', 'validates', 0.9);
 
 // Required serialization
 if (require.main === module) {
-  console.log(JSON.stringify(session.serialize(), null, 2));
+  console.log(JSON.stringify(space.serialize(), null, 2));
 }
 
-export { session };
+export { space };

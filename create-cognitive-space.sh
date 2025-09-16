@@ -1,42 +1,49 @@
 #!/bin/bash
 
 # create-cognitive-space.sh
-# Creates a new cognitive modeling session with optional name
+# Creates a new cognitive modeling space with optional name
 # Usage: ./create-cognitive-space.sh [optional-name]
-# Returns: Path to the created session.ts file
+# Returns: Path to the created space.ts file
 
 set -e
 
 # Generate timestamp in the expected format
 TIMESTAMP=$(date +%Y-%m-%dT%H-%M-%S-3NZ)
 
-# Determine session ID
+# Determine space ID
 if [ -n "$1" ]; then
-    SESSION_ID="$1-$TIMESTAMP"
+    SPACE_ID="$1-$TIMESTAMP"
 else
-    SESSION_ID="$TIMESTAMP"
+    SPACE_ID="$TIMESTAMP"
 fi
 
 # Create space directory
-SPACE_DIR="data/spaces/$SESSION_ID"
+SPACE_DIR="data/spaces/$SPACE_ID"
 mkdir -p "$SPACE_DIR"
 
 # Generate space.ts with proper boilerplate
 cat > "$SPACE_DIR/space.ts" << 'EOF'
-import { Session } from '../../../src/lib/thought-system';
+import { Space } from '../../../src/lib/thought-system';
 
-const space = new Session(
-  'SESSION_ID_PLACEHOLDER',
+const space = new Space(
+  'SPACE_ID_PLACEHOLDER',
   'Cognitive Space',
   'A space for persistent thought modeling'
 );
 
 // Add your thoughts here using the fluent API
+// IMPORTANT: Use only valid RelationType values:
+// 'causes' | 'supports' | 'contradicts' | 'means' | 'becomes'
+// 'observes' | 'enables' | 'builds-on' | 'transcends' | 'challenges'
+// 'implements' | 'fulfills' | 'validates' | 'based-on'
+//
 // Example:
 // space.thought('ConceptName')
 //   .means('What this concept represents')
 //   .hasValue('property', 0.8)
 //   .relatesTo('OtherConcept', 'supports', 0.9);
+//
+// TIP: Run `npx tsc --noEmit space.ts` to check syntax before saving
 
 // Always end with serialization for execution
 if (require.main === module) {
@@ -44,8 +51,8 @@ if (require.main === module) {
 }
 EOF
 
-# Replace placeholder with actual session ID
-sed -i '' "s/SESSION_ID_PLACEHOLDER/$SESSION_ID/g" "$SPACE_DIR/space.ts"
+# Replace placeholder with actual space ID
+sed -i '' "s/SPACE_ID_PLACEHOLDER/$SPACE_ID/g" "$SPACE_DIR/space.ts"
 
 # Return the path to the created file
 echo "$PWD/$SPACE_DIR/space.ts"

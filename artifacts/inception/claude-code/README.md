@@ -82,6 +82,6 @@ This system demonstrates that intelligence can be understood as "the negotiation
 
 - Enhanced propagation algorithms
 - Visual network representation
-- Cross-session persistence
+- Cross-space persistence
 - Collaborative multi-AI spaces
 - Integration with external knowledge sources

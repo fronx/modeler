@@ -37,7 +37,7 @@ Critical moment: "Well, the models are for you!"
 This shifted everything from human-centric to AI-centric design:
 - Claude can work with larger structures than humans can read
 - Claude might benefit from programmatic access to complex networks
-- Cross-session persistence could enable large cognitive architectures
+- Cross-space persistence could enable large cognitive architectures
 - Integration with natural reasoning process becomes primary concern
 
 ### The Transparency Problem: Automatic vs. Intentional
@@ -100,7 +100,7 @@ currentSpace.connect("InterfaceDesign", "CognitiveFriction", "must_minimize", 0.
 
 1. **Intentional Cognitive Positioning:** When Claude wants to model a concept, edit the workspace file
 2. **Reference Previous Structures:** Read the workspace to recall relationships and build upon them
-3. **Cross-Conversation Persistence:** The file survives between sessions, creating genuine cognitive continuity
+3. **Cross-Conversation Persistence:** The file survives between spaces, creating genuine cognitive continuity
 4. **Collaborative Visibility:** User can see and interact with Claude's cognitive models
 
 ### Key Benefits
@@ -123,21 +123,21 @@ currentSpace.connect("InterfaceDesign", "CognitiveFriction", "must_minimize", 0.
 
 - Claude naturally reaches for cognitive modeling when it serves reasoning
 - Mental structures feel like extensions of thinking, not additional overhead
-- Cross-session cognitive continuity enables genuine intellectual development
+- Cross-space cognitive continuity enables genuine intellectual development
 - Collaborative cognitive work becomes possible between Claude and user
 - The boundary between thinking and cognitive modeling disappears
 
 ## Implementation Notes
 
 ### Technical Requirements
-- Persistent workspace file accessible to Claude across sessions
+- Persistent workspace file accessible to Claude across spaces
 - Import path to existing `ThoughtSpace` system
 - File permissions allowing read/write access during conversations
 
 ### Usage Patterns
 - **Concept Positioning:** "Let me model this relationship..." → Edit workspace
 - **Recall Previous Work:** "Building on our earlier discussion of trust..." → Read workspace
-- **Cross-Session Continuity:** Reference and build upon previous cognitive structures
+- **Cross-Space Continuity:** Reference and build upon previous cognitive structures
 - **Collaborative Review:** User can examine Claude's cognitive models directly
 
 ### Open Questions

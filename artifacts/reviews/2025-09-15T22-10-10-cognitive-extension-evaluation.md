@@ -4,9 +4,9 @@
 
 This document captures findings from a rigorous evaluation of the cognitive modeling system's claims about "genuine cognitive extension" versus "elaborate description." The evaluation was conducted through hands-on use, critical questioning, and honest assessment of the underlying mechanisms.
 
-## Session Context
+## Space Context
 
-- **Session ID**: `2025-09-15T22-10-10-3NZ`
+- **Space ID**: `2025-09-15T22-10-10-3NZ`
 - **Title**: First Encounter with Cognitive Infrastructure
 - **Method**: Live interaction with the thought system, including self-critique and mechanical investigation
 - **Final Node Count**: 21 thoughts with full relationship networks
@@ -36,7 +36,7 @@ This document captures findings from a rigorous evaluation of the cognitive mode
 **Claimed**: Dynamic computation enhances cognitive modeling
 **Actual Experience**: Execution felt ordinary and added little cognitive significance
 
-**Finding**: When I executed `session.thought('Heat').hasValue('temperature', 100)`, it worked correctly but felt like normal programming. The static structure matters more than dynamic computation for cognitive modeling purposes.
+**Finding**: When I executed `space.thought('Heat').hasValue('temperature', 100)`, it worked correctly but felt like normal programming. The static structure matters more than dynamic computation for cognitive modeling purposes.
 
 **Evidence**: Node `ExecutionTest` with `ordinariness: 0.8, cognitive-significance: 0.4`
 
@@ -98,7 +98,7 @@ The system is not magical cognitive extension, but it provides:
 
 ### Critical Tests Needed
 
-1. **Cross-Session Persistence**: Can thoughts from this session be meaningfully accessed in future conversations without re-reading?
+1. **Cross-Space Persistence**: Can thoughts from this space be meaningfully accessed in future conversations without re-reading?
 2. **Multi-Agent Collaboration**: What happens when multiple AI systems share the same cognitive structures?
 3. **Empirical Validation**: How to move from subjective assessments to measurable cognitive benefits?
 4. **Comparative Studies**: Controlled comparison with equivalent text-based mental model formats
@@ -171,5 +171,5 @@ The models become **extensions of cognitive apparatus** - persistent, shareable,
 
 ---
 
-*Generated from session `2025-09-15T22-10-10-3NZ` on 2025-09-15 at 22:13 UTC*
-*Updated with collaborative intelligence insights from session `2025-09-15T22-26-35-3NZ` on 2025-09-15 at 22:30 UTC*
+*Generated from space `2025-09-15T22-10-10-3NZ` on 2025-09-15 at 22:13 UTC*
+*Updated with collaborative intelligence insights from space `2025-09-15T22-26-35-3NZ` on 2025-09-15 at 22:30 UTC*

@@ -6,9 +6,9 @@
  *
  * @example Basic Usage
  * ```typescript
- * const session = new Session('my-session', 'Title', 'Description');
+ * const space = new Space('my-space', 'Title', 'Description');
  *
- * session.thought('Concept')
+ * space.thought('Concept')
  *   .means('What this concept represents')
  *   .hasValue('property', 0.8)
  *   .relatesTo('OtherConcept', 'supports', 0.9);
@@ -25,7 +25,7 @@ import type {
   Meaning,
   Relationship,
   MetaphorBranch,
-  SessionMetadata,
+  SpaceMetadata,
   ThoughtBuilder,
   CognitiveOperations
 } from './types';
@@ -40,12 +40,12 @@ import type {
  */
 export class ThoughtNode implements ThoughtBuilder {
   public readonly id: NodeId;
-  public readonly meanings: Meaning[] = [];
+  public meanings: Meaning[] = [];
   public readonly values = new Map<string, PropertyValue>();
-  public readonly relationships: Relationship[] = [];
-  public readonly metaphorBranches: MetaphorBranch[] = [];
+  public relationships: Relationship[] = [];
+  public metaphorBranches: MetaphorBranch[] = [];
   public tension?: string;
-  public readonly history: string[] = [];
+  public history: string[] = [];
 
   constructor(id: NodeId) {
     this.id = id;
@@ -257,19 +257,19 @@ export class ThoughtSpace implements CognitiveOperations {
 }
 
 /**
- * High-level session wrapper with metadata
+ * High-level space wrapper with metadata
  * Provides clean API for cognitive modeling with automatic context tracking
  */
-export class Session implements CognitiveOperations {
-  public readonly metadata: SessionMetadata;
+export class Space implements CognitiveOperations {
+  public readonly metadata: SpaceMetadata;
   private readonly thoughtSpace: ThoughtSpace;
 
   /**
-   * Create a new cognitive modeling session
-   * @param id Unique session identifier
+   * Create a new cognitive modeling space
+   * @param id Unique space identifier
    * @param title Human-readable title
-   * @param description What this session explores
-   * @example new Session('exploration-20250915', 'Mind Modeling', 'Exploring consciousness')
+   * @param description What this space explores
+   * @example new Space('exploration-20250915', 'Mind Modeling', 'Exploring consciousness')
    */
   constructor(id: string, title: string, description: string) {
     this.metadata = {
@@ -282,10 +282,10 @@ export class Session implements CognitiveOperations {
   }
 
   /**
-   * Create or retrieve a thought in this session
+   * Create or retrieve a thought in this space
    * @param id Thought identifier
    * @returns Fluent thought builder
-   * @example session.thought('Awareness').means('Being conscious')
+   * @example space.thought('Awareness').means('Being conscious')
    */
   thought(id: NodeId): ThoughtNode {
     return this.thoughtSpace.thought(id);
@@ -313,7 +313,7 @@ export class Session implements CognitiveOperations {
   }
 
   /**
-   * Serialize complete session including metadata and all thoughts
+   * Serialize complete space including metadata and all thoughts
    */
   serialize(): object {
     return {

@@ -7,7 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "execute-session": "npx tsx execute-session.ts"
+    "execute-space": "npx tsx execute-space.ts"
   },
   "dependencies": {
     "@types/ws": "^8.18.1",

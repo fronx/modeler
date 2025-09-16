@@ -73,14 +73,14 @@ npx tsx execute-space.ts example-space
 
 #### 1. Creating Thoughts
 ```typescript
-session.thought('ConceptName')
+space.thought('ConceptName')
   .means('What this concept represents')
   .hasValue('property', 0.8);
 ```
 
 #### 2. Building Relationships
 ```typescript
-session.thought('SecondConcept')
+space.thought('SecondConcept')
   .relatesTo('ConceptName', 'supports', 0.9);
 ```
 
@@ -97,20 +97,20 @@ session.thought('SecondConcept')
 
 #### 3. Metaphorical Interpretations
 ```typescript
-session.thought('GrowthConcept')
+space.thought('GrowthConcept')
   .forkMetaphor('organic', 'Like biological growth', 1.2)
   .forkMetaphor('construction', 'Like building', 0.9);
 ```
 
 #### 4. Holding Tensions
 ```typescript
-session.thought('Paradox')
+space.thought('Paradox')
   .holdsTension('Between stability and change');
 ```
 
 #### 5. Value Intervals
 ```typescript
-session.thought('Variable')
+space.thought('Variable')
   .hasValue('uncertainty', [0.3, 0.8]);  // Range of possible values
 ```
 
@@ -150,7 +150,7 @@ session.thought('Variable')
 Add layered meanings with different confidence levels:
 
 ```typescript
-session.thought('Consciousness')
+space.thought('Consciousness')
   .means('Subjective experience of being', 0.9)
   .means('Information integration in global workspace', 0.7)
   .means('Emergent property of neural complexity', 0.6);
@@ -160,7 +160,7 @@ session.thought('Consciousness')
 Let thoughts evolve their meaning:
 
 ```typescript
-session.thought('Learning')
+space.thought('Learning')
   .means('Acquiring new information')
   .becomes('Restructuring mental models based on experience');
 ```
@@ -169,7 +169,7 @@ session.thought('Learning')
 Thoughts that can observe themselves:
 
 ```typescript
-session.thought('SelfAware')
+space.thought('SelfAware')
   .means('A thought that knows it thinks')
   .observesSelf('This thought observes its own recursive nature');
 ```
@@ -178,7 +178,7 @@ session.thought('SelfAware')
 Transformations that weaken with repetition:
 
 ```typescript
-session.thought('Concept')
+space.thought('Concept')
   .applyHistoryAwareTransform('refinement', 0.8)
   .applyHistoryAwareTransform('refinement', 0.6); // Diminished effect
 ```
@@ -187,22 +187,22 @@ session.thought('Concept')
 Spread values through causal relationships:
 
 ```typescript
-session.thought('Cause')
+space.thought('Cause')
   .hasValue('strength', 0.8)
   .relatesTo('Effect', 'causes', 0.9);
 
-session.propagate('Cause', 'strength'); // Effect gets value 0.72
+space.propagate('Cause', 'strength'); // Effect gets value 0.72
 ```
 
 ### Metaphor Collapse
 Choose best metaphor based on context:
 
 ```typescript
-session.thought('Mind')
+space.thought('Mind')
   .forkMetaphor('computer', 'Processing machine', 1.0)
   .forkMetaphor('ocean', 'Deep and mysterious', 1.2);
 
-const interpretation = session.collapseMetaphor('Mind', 'processing data');
+const interpretation = space.collapseMetaphor('Mind', 'processing data');
 // Returns computer metaphor in computational context
 ```
 
@@ -210,7 +210,7 @@ const interpretation = session.collapseMetaphor('Mind', 'processing data');
 Get insights about the thought space:
 
 ```typescript
-const reflection = session.reflect();
+const reflection = space.reflect();
 // "ThoughtSpace contains 5 nodes, 12 meanings, 8 relationships"
 ```
 
@@ -218,7 +218,7 @@ const reflection = session.reflect();
 Let different interpretations compete:
 
 ```typescript
-session.thought('AmbiguousConcept')
+space.thought('AmbiguousConcept')
   .forkMetaphor('interpretation1', 'First way of seeing it', 0.9)
   .forkMetaphor('interpretation2', 'Competing perspective', 1.1)
   .forkMetaphor('synthesis', 'Higher-order integration', 1.3);
@@ -228,7 +228,7 @@ session.thought('AmbiguousConcept')
 Create concepts that emerge from relationships:
 
 ```typescript
-session.thought('EmergentProperty')
+space.thought('EmergentProperty')
   .means('Something that arises from the network itself')
   .relatesTo('Node1', 'emerges-from', 0.8)
   .relatesTo('Node2', 'emerges-from', 0.8)

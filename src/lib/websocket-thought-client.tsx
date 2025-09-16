@@ -145,7 +145,7 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
 
   // Shared function to parse space data (works with both API and WebSocket formats)
   const parseSpaceData = (data: any, spaceId: string, timestamp?: string) => {
-    // Handle both new Session structure and old format
+    // Handle both new Space structure and old format
     const thoughtSpaceData = data.thoughtSpace || data; // New format has thoughtSpace, old format is flat
     const nodesData = thoughtSpaceData.nodes || data.nodes || {}; // Support both structures
 

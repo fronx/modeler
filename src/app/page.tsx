@@ -36,11 +36,10 @@ export default function CognitiveDashboard() {
 
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  connectionStatus === 'connected' ? 'bg-green-500' :
-                  connectionStatus === 'connecting' ? 'bg-yellow-500' :
-                  connectionStatus === 'error' ? 'bg-red-500' : 'bg-gray-500'
-                }`}></div>
+                <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' :
+                    connectionStatus === 'connecting' ? 'bg-yellow-500' :
+                      connectionStatus === 'error' ? 'bg-red-500' : 'bg-gray-500'
+                  }`}></div>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   {connectionStatus}
                 </span>
@@ -54,7 +53,7 @@ export default function CognitiveDashboard() {
 
         {/* Main visualization area */}
         <main className="flex-1 relative">
-          {/* Content based on session state */}
+          {/* Content based on space state */}
           {!currentSpaceId ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">

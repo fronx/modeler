@@ -62,8 +62,8 @@ export interface MetaphorBranch {
   predictiveSuccess: number;
 }
 
-/** Session metadata */
-export interface SessionMetadata {
+/** Space metadata */
+export interface SpaceMetadata {
   id: string;
   title: string;
   description: string;

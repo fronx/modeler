@@ -1,4 +1,4 @@
-import { Session } from '../../src/lib/thought-system';
+import { Space } from '../../src/lib/thought-system';
 
 /**
  * Simple Space Example
@@ -7,25 +7,25 @@ import { Session } from '../../src/lib/thought-system';
  * Perfect for getting started or quick prototyping.
  */
 
-const session = new Session(
+const space = new Space(
   'simple-example-20250915',
   'Simple Cognitive Model',
   'Basic thoughts, values, and relationships'
 );
 
 // 1. Create a thought with meaning and value
-session.thought('Idea')
+space.thought('Idea')
   .means('A new concept forming in the mind')
   .hasValue('clarity', 0.7);
 
 // 2. Create a related thought
-session.thought('Understanding')
+space.thought('Understanding')
   .means('Grasping the essence of the idea')
   .hasValue('depth', 0.8)
   .relatesTo('Idea', 'builds-on', 0.9);
 
 // 3. Add a thought with tension
-session.thought('Uncertainty')
+space.thought('Uncertainty')
   .means('The space between knowing and not knowing')
   .hasValue('comfort-level', 0.3)
   .relatesTo('Understanding', 'challenges', 0.6)
@@ -33,7 +33,7 @@ session.thought('Uncertainty')
 
 // Required serialization
 if (require.main === module) {
-  console.log(JSON.stringify(session.serialize(), null, 2));
+  console.log(JSON.stringify(space.serialize(), null, 2));
 }
 
-export { session };
+export { space };

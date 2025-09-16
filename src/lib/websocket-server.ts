@@ -105,6 +105,15 @@ export class ThoughtWebSocketServer {
     const spaceId = pathParts[0];
     const fileName = pathParts[pathParts.length - 1];
 
+    console.log(`📁 File changed: ${fileName} in ${spaceId} (full path: ${filePath})`);
+
+    // Handle TypeScript space files - auto-execute when changed
+    if (fileName === 'space.ts') {
+      console.log(`🚀 Triggering auto-execution for ${spaceId}`);
+      await this.autoExecuteSpace(spaceId, filePath);
+      return; // The resulting JSON change will trigger another event
+    }
+
     // Handle different file types
     if (fileName.endsWith('.json') && fileName !== '_space.json') {
       // Thought file changed
@@ -112,6 +121,56 @@ export class ThoughtWebSocketServer {
     } else if (fileName === '_space.json') {
       // Space metadata changed
       await this.broadcastSpaceList();
+    }
+  }
+
+  private async autoExecuteSpace(spaceId: string, tsFilePath: string): Promise<void> {
+    try {
+      console.log(`🔄 Auto-executing space: ${spaceId}`);
+
+      // First validate TypeScript syntax
+      const { exec } = require('child_process');
+
+      await new Promise<void>((resolve, reject) => {
+        exec(`npx tsc --noEmit "${tsFilePath}"`, (error) => {
+          if (error) {
+            console.log(`⚠️  Syntax error in ${spaceId}/space.ts - skipping execution`);
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
+      });
+
+      // If syntax is valid, execute to generate JSON
+      await new Promise<void>((resolve, reject) => {
+        exec(`npx tsx "${tsFilePath}"`, {
+          cwd: process.cwd(),
+          maxBuffer: 1024 * 1024 // 1MB buffer for large outputs
+        }, async (error, stdout, stderr) => {
+          if (error) {
+            console.error(`❌ Execution failed for ${spaceId}:`, error.message);
+            reject(error);
+          } else {
+            try {
+              // Validate JSON output
+              JSON.parse(stdout);
+
+              // Write to space.json
+              const jsonPath = path.join(path.dirname(tsFilePath), 'space.json');
+              await fs.writeFile(jsonPath, stdout, 'utf8');
+              console.log(`✅ Auto-executed ${spaceId} → space.json updated`);
+              resolve();
+            } catch (parseError) {
+              console.error(`❌ Invalid JSON output from ${spaceId}:`, parseError);
+              reject(parseError);
+            }
+          }
+        });
+      });
+
+    } catch (error) {
+      console.error(`Auto-execution failed for ${spaceId}:`, error.message || error);
     }
   }
 
