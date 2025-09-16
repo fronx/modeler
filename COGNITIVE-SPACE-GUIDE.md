@@ -16,6 +16,17 @@ These spaces serve multiple minds working together. Humans need clean interfaces
 
 When multiple cognitive architectures share persistent thought structures, new forms of collective intelligence emerge. Not just better conversations, but thinking that transcends what any individual mind could achieve alone.
 
+## Core Principles
+
+1. **Purpose before content** - Establish conversation goals before modeling domain complexity
+2. **Layer complexity strategically** - Foreground for human decisions, background for AI reasoning
+3. **Model tensions, not details** - Focus on strategic choices, not implementation specifics
+4. **Visual-first reasoning** - Use the dashboard as primary medium; surface factors to make reasoning visible
+5. **Ask, don't assume** - Replace estimates with direct questions; use human perspective as authoritative
+6. **Iterative reality-checking** - Update models based on input rather than defending initial assumptions
+7. **Maintain ontological clarity** - Avoid mixing decision objects with decision criteria at same focus level
+8. **Trust the process** - The medium shapes the message; executable models change how you think
+
 ## Essential Workflow
 
 ### 1. Establish Conversation Purpose First
@@ -85,29 +96,6 @@ space.thought('IncrementalApproach').conflictsWith('DisruptiveApproach', 0.8);
 
 Supporting concepts find their natural positions through relationships. Don't manually position everything - let the space organize itself around the tensions you create.
 
-## Key Principles
-
-1. **Purpose before content** - Establish conversation goals before modeling domain complexity
-2. **Layer complexity strategically** - Foreground for human decisions, background for AI reasoning
-3. **Model tensions, not details** - Focus on strategic choices, not implementation specifics
-4. **Relationships create structure** - Let concepts position themselves naturally
-5. **Ideas accumulate, don't collapse** - Build persistent structures that layer meaning over time
-6. **Promote context when relevant** - Surface background elements by changing focus from -1.0 to 1.0
-7. **Maintain ontological clarity** - Avoid mixing decision objects with decision criteria at the same level
-8. **Trust the process** - The medium shapes the message; executable models change how you think
-
-## Collaborative Decision Support Patterns
-
-**Visual-First Reasoning**: Use the dashboard as the primary medium for shared thinking. Surface factors by promoting them to focus=1.0 to make reasoning visible, not just deliver conclusions.
-
-**Iterative Reality-Checking**: When humans correct assumptions, immediately update the space rather than defending initial models. Let the space become more accurate through collaborative input.
-
-**Ask, Don't Assume**: Replace fabricated estimates with direct questions about actual project characteristics, timeline, and constraints. Use human perspective as authoritative source.
-
-**Natural Language Interface**: Describe insights in human terms while using numerical relationships only for internal space structure. Avoid treating estimates as verified facts.
-
-**Collaborative Model Building**: The space should capture insights from both human and AI, becoming a shared artifact for thinking rather than an AI analysis imposed on human situation.
-
 ## Technical Essentials
 
 ```typescript
@@ -132,13 +120,12 @@ npx tsx execute-space.ts <space-id>
 ## Common Traps
 
 - **Starting with content before purpose** - You'll get lost in details that don't serve decisions
-- **Single-layer thinking** - Either too complex for humans or too simple for AI reasoning
+- **Conclusion-first reasoning** - Delivering pre-computed insights instead of making reasoning process visible
+- **Bypassing the visual medium** - Talking about insights instead of surfacing them in the dashboard
+- **Fabricated data reliance** - Using AI estimates as facts instead of asking humans for actual constraints
+- **Ontological confusion** - Mixing decision objects with decision criteria at the same focus level
 - **Implementation obsession** - Modeling technical specifics instead of strategic choices
 - **Over-engineering relationships** - Let structure emerge rather than forcing connections
-- **Ontological confusion** - Mixing decision objects with decision criteria at the same focus level
-- **Conclusion-first reasoning** - Delivering pre-computed insights instead of making reasoning process visible
-- **Fabricated data reliance** - Using AI estimates as facts instead of asking humans for actual constraints
-- **Bypassing the visual medium** - Talking about insights instead of surfacing them in the dashboard
 
 ## What Success Feels Like
 
