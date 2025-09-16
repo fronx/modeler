@@ -65,9 +65,9 @@ public/              # Static assets (Next.js SVGs, etc.)
 ## For Future Claude Instances
 
 **Essential Reading** (in order):
-1. [`README.md`](README.md) - Full project overview, architecture, space workflow
-2. [`MESSAGE-TO-AI.md`](MESSAGE-TO-AI.md) - Direct messages from previous Claude/GPT-5 collaborators
-3. [`artifacts/reflection.md`](artifacts/reflection.md) - Conversation history and insights
+1. [`COGNITIVE-SPACE-GUIDE.md`](COGNITIVE-SPACE-GUIDE.md) - Essential guide for creating effective cognitive spaces
+2. [`README.md`](README.md) - Full project overview, architecture, dashboard
+3. [`MESSAGE-TO-AI.md`](MESSAGE-TO-AI.md) - Direct messages from previous Claude/GPT-5 collaborators
 
 **Quick Start**:
 ```bash
@@ -94,12 +94,15 @@ npx tsx meta-conversation.ts # Real cognitive modeling
 
 ## Space-Based Cognitive Modeling
 
-**Core Workflow** (detailed in README.md):
-1. Create space directory: `data/spaces/<timestamp>/`
-2. Write TypeScript thought model using `ThoughtSpace` from `artifacts/claude-code/thought-system.ts`
-3. End script with: `if (require.main === module) { console.log(JSON.stringify(space.serialize(), null, 2)); }`
-4. Execute via `npx tsx execute-space.ts <spaceId>` to generate `space.json`
-5. Dashboard updates automatically via WebSocket
+**Core Workflow**:
+```bash
+./create-cognitive-space.sh topic-name  # Create space
+# Edit returned space.ts file - focus on central tension first
+npx tsx execute-space.ts <spaceId>      # Execute to generate space.json
+# Dashboard updates automatically via WebSocket
+```
+
+**📚 For detailed guidance: [`COGNITIVE-SPACE-GUIDE.md`](COGNITIVE-SPACE-GUIDE.md)**
 
 ### When to Use Cognitive Tools
 

@@ -38,19 +38,17 @@ npx tsc --noEmit data/spaces/<space-id>/space.ts
 ```
 Auto-execution will fail if TypeScript syntax is invalid.
 
-### Valid RelationType Values
-Use ONLY these relationship types in `.relatesTo()` calls:
+### Available Relationship Methods
 ```typescript
-'causes' | 'supports' | 'contradicts' | 'means' | 'becomes'
-'observes' | 'enables' | 'builds-on' | 'transcends' | 'challenges'
-'implements' | 'fulfills' | 'validates' | 'based-on'
+.supports(targetId, strength)      // Positive relationship (default strength: 0.7)
+.conflictsWith(targetId, strength) // Negative relationship (default strength: 0.7)
 ```
 
 ### Space File Structure
-**File naming**: Always use `space.ts` (NOT `thoughts.ts` or `session.ts`)
+**File naming**: Always use `space.ts`
 **Location**: `data/spaces/<space-id>/space.ts`
 
-**CRITICAL**: The cognitive-modeler agent should ALWAYS create files named `space.ts`, never `thoughts.ts` or other names.
+**Standard**: Create files named `space.ts` in the space directory.
 
 ```typescript
 import { Space } from '../../../src/lib/thought-system';
@@ -60,7 +58,7 @@ const space = new Space('space-id', 'Title', 'Description');
 space.thought('ConceptName')
   .means('What this represents')
   .hasValue('property', 0.8)
-  .relatesTo('OtherConcept', 'supports', 0.9);
+  .supports('OtherConcept', 0.9);
 
 // Always end with serialization
 if (require.main === module) {
@@ -75,7 +73,7 @@ if (require.main === module) {
 2. **Study the Type System**: Before any cognitive modeling, read the complete API definition:
    - **ALWAYS read**: `src/lib/types.ts` for the complete type system and API
    - **Study examples**: `docs/examples/simple-space.ts` and `docs/examples/comprehensive-space.ts`
-   - Understand valid RelationType values, property structures, and fluent API patterns
+   - Understand valid relationship methods (.supports(), .conflictsWith()), property structures, and fluent API patterns
 
 3. **Assess Cognitive Modeling Needs**: Determine if the request involves complex relationships, abstract concepts, competing tensions, or persistent thought structures.
 
@@ -124,6 +122,7 @@ The auto-execution system and WebSocket infrastructure handle visualization upda
 ## Key Examples
 
 Reference established patterns in:
+- **[`COGNITIVE-SPACE-GUIDE.md`](../COGNITIVE-SPACE-GUIDE.md)** - Essential guide for effective space creation
 - `docs/examples/` - Working space examples
 - `src/lib/types.ts` - Complete API with inline examples
 - `artifacts/claude-code/` - Original research implementations
