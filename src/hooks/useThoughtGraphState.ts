@@ -9,9 +9,47 @@ import {
   calculateOptimalHandles
 } from '../lib/thought-graph-utils';
 import { calculateNodeColors } from '../lib/thought-colors';
+import { createAnimatedForceLayout } from '../lib/d3-force-layout';
 
 export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => {
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
+  const [layoutPositions, setLayoutPositions] = React.useState<Map<string, { x: number; y: number }>>(new Map());
+  const [isAnimating, setIsAnimating] = React.useState(false);
+
+  // Calculate D3 force layout when nodes change - use animated version
+  React.useEffect(() => {
+    const nodeArray = Array.from(thoughtNodes.values());
+    if (nodeArray.length === 0) return;
+
+    setIsAnimating(true);
+
+    const simulation = createAnimatedForceLayout(
+      nodeArray,
+      // onTick - update positions in real-time
+      (positions) => {
+        setLayoutPositions(positions);
+      },
+      // onComplete - animation finished
+      (finalPositions) => {
+        setLayoutPositions(finalPositions);
+        setIsAnimating(false);
+      },
+      {
+        width: 1200,
+        height: 800,
+        iterations: 200,
+        linkStrength: 0.3,
+        repulsionStrength: -50,
+        anchoringStrength: 0.3
+      }
+    );
+
+    // Clean up simulation on unmount
+    return () => {
+      simulation.stop();
+      setIsAnimating(false);
+    };
+  }, [thoughtNodes]);
 
   // Convert thought nodes to React Flow nodes and edges
   const { flowNodes, allEdges } = React.useMemo(() => {
@@ -23,16 +61,9 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
     // Calculate node colors based on positions and relationships
     const nodeColors = calculateNodeColors(nodeArray);
 
-    nodeArray.forEach((thoughtNode: ThoughtNode, index: number) => {
-      const { x, y } = calculateSemanticFocusLayout(
-        nodeArray.length,
-        index,
-        thoughtNode.focus,
-        thoughtNode.semanticPosition,
-        300, // baseRadius
-        thoughtNode,
-        nodeArray
-      );
+    nodeArray.forEach((thoughtNode: ThoughtNode) => {
+      const position = layoutPositions.get(thoughtNode.id) || { x: 0, y: 0 };
+      const { x, y } = position;
 
       flowNodes.push({
         id: thoughtNode.id,
@@ -49,16 +80,8 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
       thoughtNode.relationships.forEach((rel, relIndex) => {
         const targetNode = nodeArray.find(n => n.id === rel.target);
         if (targetNode) {
-          const targetIndex = nodeArray.indexOf(targetNode);
-          const { x: targetX, y: targetY } = calculateSemanticFocusLayout(
-            nodeArray.length,
-            targetIndex,
-            targetNode.focus,
-            targetNode.semanticPosition,
-            300, // baseRadius
-            targetNode,
-            nodeArray
-          );
+          const targetPosition = layoutPositions.get(targetNode.id) || { x: 0, y: 0 };
+          const { x: targetX, y: targetY } = targetPosition;
 
           // Calculate direction and create edge with optimal handles
           const sourceNodeData = { position: { x, y } } as Node;
@@ -79,7 +102,7 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
     });
 
     return { flowNodes, allEdges: flowEdges };
-  }, [thoughtNodes]);
+  }, [thoughtNodes, layoutPositions]);
 
   // Use nodes state to enable dragging
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
@@ -143,5 +166,6 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
     onEdgesChange,
     hoveredNodeId,
     setHoveredNodeId,
+    isAnimating,
   };
 };

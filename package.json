@@ -10,9 +10,11 @@
     "execute-space": "npx tsx execute-space.ts"
   },
   "dependencies": {
+    "@types/d3-force": "^3.0.10",
     "@types/ws": "^8.18.1",
     "@xyflow/react": "^12.8.4",
     "chokidar": "^4.0.3",
+    "d3-force": "^3.0.0",
     "next": "15.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
