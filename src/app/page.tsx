@@ -97,20 +97,12 @@ export default function CognitiveDashboard() {
           <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded"></div>
-                <span>causes</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded"></div>
+                <div className="w-3 h-3 bg-blue-500 rounded"></div>
                 <span>supports</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                <span>means</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-violet-500 rounded"></div>
-                <span>becomes</span>
+                <div className="w-3 h-3 bg-red-500 rounded"></div>
+                <span>conflicts-with</span>
               </div>
             </div>
             <div className="text-right">

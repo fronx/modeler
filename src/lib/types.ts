@@ -25,18 +25,15 @@ export type PropertyValue = number | Interval;
 /** Focus level (0-1): 1.0 = fully focused | 0.7 = prominent | 0.3 = peripheral | 0.0 = background */
 export type FocusLevel = number;
 
+/** Semantic position (-1 to +1): -1 = left pole | 0 = neutral/center | +1 = right pole */
+export type SemanticPosition = number;
+
 /**
- * How thoughts relate to each other - semantic relationship types
- * @example 'causes' - A directly produces B
- * @example 'supports' - A reinforces B
- * @example 'contradicts' - A conflicts with B
- * @example 'builds-on' - A extends B
- * @example 'transcends' - A goes beyond B
+ * Simplified semantic relationships between thoughts
+ * @example 'supports' - A reinforces or validates B (positive relationship)
+ * @example 'conflicts-with' - A contradicts or opposes B (negative relationship)
  */
-export type RelationType =
-  | 'causes' | 'supports' | 'contradicts' | 'means' | 'becomes'
-  | 'observes' | 'enables' | 'builds-on' | 'transcends' | 'challenges'
-  | 'implements' | 'fulfills' | 'validates' | 'based-on';
+export type RelationType = 'supports' | 'conflicts-with';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // STRUCTURED DATA
@@ -91,8 +88,11 @@ export interface ThoughtBuilder {
   /** Add property: .hasValue('complexity', 0.8) | .hasValue('range', [0.3, 0.7]) */
   hasValue(key: string, value: PropertyValue): this;
 
-  /** Create relationship: .relatesTo('Other', 'supports', 0.9) */
-  relatesTo(target: NodeId, type: RelationType, strength?: RelationshipStrength, gloss?: string): this;
+  /** Support relationship: .supports('OtherThought', 0.8) */
+  supports(target: NodeId, strength?: RelationshipStrength): this;
+
+  /** Conflict relationship: .conflictsWith('OpposingThought', 0.7) */
+  conflictsWith(target: NodeId, strength?: RelationshipStrength): this;
 
   /** Add metaphor: .forkMetaphor('ocean', 'Deep and mysterious', 1.2) */
   forkMetaphor(name: string, interpretation: string, initialWeight?: number): this;
@@ -108,6 +108,9 @@ export interface ThoughtBuilder {
 
   /** Set focus level: .setFocus(1.0) | .setFocus(0.3) - 1.0 = full focus, 0.0 = background */
   setFocus(level: FocusLevel): this;
+
+  /** Set semantic position: .setPosition(-1.0) | .setPosition(0.5) - left pole, center, right pole */
+  setPosition(position: SemanticPosition): this;
 }
 
 /**

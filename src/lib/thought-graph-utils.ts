@@ -3,20 +3,8 @@ import { Node, Edge, MarkerType } from '@xyflow/react';
 // Helper function to get edge color based on relationship type
 export const getEdgeColor = (type: string): string => {
   const colors: Record<string, string> = {
-    causes: '#ef4444', // red
-    supports: '#22c55e', // green
-    contradicts: '#f59e0b', // amber
-    means: '#3b82f6', // blue
-    becomes: '#8b5cf6', // violet
-    observes: '#06b6d4', // cyan
-    enables: '#10b981', // emerald
-    'builds-on': '#6366f1', // indigo
-    transcends: '#ec4899', // pink
-    challenges: '#f97316', // orange
-    implements: '#84cc16', // lime
-    fulfills: '#14b8a6', // teal
-    validates: '#a855f7', // purple
-    'based-on': '#64748b', // slate
+    supports: '#3b82f6', // blue
+    'conflicts-with': '#ef4444', // red
   };
   return colors[type] || '#6b7280';
 };
@@ -130,6 +118,103 @@ export const calculateFocusLayout = (
   return { x, y };
 };
 
+// Calculate semantic positioning with transitive influence
+export const calculateSemanticPosition = (
+  currentNode: any,
+  allNodes: any[],
+  basePosition: number
+): number => {
+  let totalInfluence = 0;
+  let weightSum = 0;
+
+  // Inherit semantic position from connected nodes
+  currentNode.relationships.forEach((rel: any) => {
+    const connectedNode = allNodes.find(n => n.id === rel.target);
+    if (connectedNode) {
+      const weight = Math.abs(rel.strength || 0.5);
+      const influence = connectedNode.semanticPosition * weight;
+
+      // Opposing relationships (negative strength) push away semantically
+      if ((rel.strength || 0.5) < 0) {
+        totalInfluence -= influence;
+      } else {
+        totalInfluence += influence;
+      }
+      weightSum += weight;
+    }
+  });
+
+  // Also check incoming relationships
+  allNodes.forEach(otherNode => {
+    otherNode.relationships.forEach((rel: any) => {
+      if (rel.target === currentNode.id) {
+        const weight = Math.abs(rel.strength || 0.5);
+        const influence = otherNode.semanticPosition * weight;
+
+        if ((rel.strength || 0.5) < 0) {
+          totalInfluence -= influence;
+        } else {
+          totalInfluence += influence;
+        }
+        weightSum += weight;
+      }
+    });
+  });
+
+  // Blend base position with transitive influence
+  if (weightSum > 0) {
+    const transitivePosition = totalInfluence / weightSum;
+    // Weight the transitive influence more heavily for neutral nodes
+    const blendFactor = Math.abs(basePosition) < 0.1 ? 0.8 : 0.3;
+    return Math.max(-1, Math.min(1, basePosition * (1 - blendFactor) + transitivePosition * blendFactor));
+  }
+
+  return basePosition;
+};
+
+// Force-directed layout with semantic alignment
+export const calculateSemanticFocusLayout = (
+  nodeCount: number,
+  index: number,
+  focusLevel: number,
+  semanticPosition: number,
+  baseRadius: number = 300,
+  currentNode?: any,
+  allNodes?: any[]
+) => {
+  // Calculate base circular position
+  const adjustedRadius = Math.max(baseRadius, nodeCount * 50);
+  const angle = (index / nodeCount) * 2 * Math.PI;
+
+  // Calculate effective focus including transitive effects
+  let effectiveFocus = focusLevel;
+  if (currentNode && allNodes) {
+    effectiveFocus = calculateTransitiveFocus(currentNode, allNodes, focusLevel);
+  }
+
+  // Calculate effective semantic position including transitive effects
+  let effectivePosition = semanticPosition;
+  if (currentNode && allNodes) {
+    effectivePosition = calculateSemanticPosition(currentNode, allNodes, semanticPosition);
+  }
+
+  // Focus affects distance from center (radial)
+  const focusRadius = adjustedRadius * (1 - Math.pow(effectiveFocus, 2));
+
+  // Semantic position affects horizontal displacement (left-right axis)
+  const semanticOffset = effectivePosition * (adjustedRadius * 0.6); // Max 60% of radius horizontal displacement
+
+  // Calculate final position: circular base + semantic horizontal offset
+  const baseX = Math.cos(angle) * focusRadius;
+  const baseY = Math.sin(angle) * focusRadius;
+
+  // Apply semantic positioning as horizontal force
+  const x = baseX + semanticOffset;
+  const y = baseY;
+
+  return { x, y };
+};
+
 // Create edge with optimal styling and handles
 export const createStyledEdge = (
   sourceId: string,
@@ -143,7 +228,7 @@ export const createStyledEdge = (
     id: `${sourceId}-${targetId}-${index}`,
     source: sourceId,
     target: targetId,
-    animated: relationship.type === 'causes',
+    animated: relationship.type === 'conflicts-with',
     label: `${relationship.type} (${relationship.strength})`,
     labelStyle: { fontSize: 12, fill: '#000', fontWeight: 'bold' },
     markerEnd: {
@@ -153,7 +238,7 @@ export const createStyledEdge = (
     style: {
       stroke: getEdgeColor(relationship.type),
       strokeWidth: 3,
-      strokeDasharray: relationship.type === 'causes' ? '5,5' : undefined,
+      strokeDasharray: relationship.type === 'conflicts-with' ? '5,5' : undefined,
     },
     data: { relationship },
   };

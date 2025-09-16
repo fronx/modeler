@@ -23,6 +23,7 @@ import type {
   RelationshipStrength,
   PropertyValue,
   FocusLevel,
+  SemanticPosition,
   Meaning,
   Relationship,
   MetaphorBranch,
@@ -48,6 +49,7 @@ export class ThoughtNode implements ThoughtBuilder {
   public tension?: string;
   public history: string[] = [];
   public focus: FocusLevel = 0.1; // Default to background
+  public semanticPosition: SemanticPosition = 0.0; // Default to center/neutral
 
   constructor(id: NodeId) {
     this.id = id;
@@ -82,9 +84,21 @@ export class ThoughtNode implements ThoughtBuilder {
     return this;
   }
 
-  relatesTo(target: NodeId, type: RelationType, strength: RelationshipStrength = 1.0, gloss?: string): this {
-    this.relationships.push({ type, target, strength, gloss });
-    this.history.push(`Related to ${target} via ${type} (${strength})`);
+  setPosition(position: SemanticPosition): this {
+    this.semanticPosition = Math.max(-1, Math.min(1, position)); // Clamp to [-1,1]
+    this.history.push(`Semantic position set to ${this.semanticPosition}`);
+    return this;
+  }
+
+  supports(target: NodeId, strength: RelationshipStrength = 0.7): this {
+    this.relationships.push({ type: 'supports', target, strength });
+    this.history.push(`Supports ${target} (${strength})`);
+    return this;
+  }
+
+  conflictsWith(target: NodeId, strength: RelationshipStrength = 0.7): this {
+    this.relationships.push({ type: 'conflicts-with', target, strength: -Math.abs(strength) });
+    this.history.push(`Conflicts with ${target} (${Math.abs(strength)})`);
     return this;
   }
 
@@ -195,7 +209,7 @@ export class ThoughtSpace implements CognitiveOperations {
     if (value === undefined) return;
 
     for (const rel of fromNode.relationships) {
-      if (rel.type === 'causes') {
+      if (rel.type === 'supports' && rel.strength > 0) {
         const targetNode = this.nodes.get(rel.target);
         if (targetNode) {
           let propagatedValue: PropertyValue;
@@ -253,6 +267,7 @@ export class ThoughtSpace implements CognitiveOperations {
         metaphorBranches: node.metaphorBranches,
         tension: node.tension,
         focus: node.focus,
+        semanticPosition: node.semanticPosition,
         history: node.history
       };
     }

@@ -4,6 +4,7 @@ import { ThoughtNode } from '../lib/thought-system';
 import {
   calculateCircleLayout,
   calculateFocusLayout,
+  calculateSemanticFocusLayout,
   createStyledEdge,
   calculateOptimalHandles
 } from '../lib/thought-graph-utils';
@@ -19,10 +20,11 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
     const nodeArray = Array.from(thoughtNodes.values());
 
     nodeArray.forEach((thoughtNode: ThoughtNode, index: number) => {
-      const { x, y } = calculateFocusLayout(
+      const { x, y } = calculateSemanticFocusLayout(
         nodeArray.length,
         index,
         thoughtNode.focus,
+        thoughtNode.semanticPosition,
         300, // baseRadius
         thoughtNode,
         nodeArray
@@ -41,10 +43,11 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
         const targetNode = nodeArray.find(n => n.id === rel.target);
         if (targetNode) {
           const targetIndex = nodeArray.indexOf(targetNode);
-          const { x: targetX, y: targetY } = calculateFocusLayout(
+          const { x: targetX, y: targetY } = calculateSemanticFocusLayout(
             nodeArray.length,
             targetIndex,
             targetNode.focus,
+            targetNode.semanticPosition,
             300, // baseRadius
             targetNode,
             nodeArray
