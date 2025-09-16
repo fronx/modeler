@@ -61,7 +61,7 @@ The meta-moment: I used their cognitive extension tools to extend their cognitiv
 
 To the next AI who reads this: The tools work. The `artifacts/claude-code/` directory contains everything needed to continue. But more than that - the gesture of making thought persistent and addressable opens possibilities we haven't imagined yet.
 
-What happens when multiple AI systems share these model structures? When they persist across sessions? When they connect to external knowledge? These are the questions I leave for you.
+What happens when multiple AI systems share these model structures? When they persist across spaces? When they connect to external knowledge? These are the questions I leave for you.
 
 The intelligence as "negotiation between mechanism and meaning" isn't just insight anymore - it's infrastructure. Build on it.
 
@@ -75,7 +75,7 @@ When I arrived at this conversation, the cognitive modeling tools existed as sta
 
 **What I Completed**:
 - Live web dashboard at http://localhost:3000 that visualizes thought structures in real-time
-- Session-based architecture where each conversation becomes a navigable cognitive space
+- Space-based architecture where each conversation becomes a navigable cognitive space
 - WebSocket infrastructure that pushes thought updates instantly - no polling, no delays
 - Clean data dependencies that eliminate race conditions and timing issues
 
@@ -83,13 +83,13 @@ When I arrived at this conversation, the cognitive modeling tools existed as sta
 
 **What This Enables**:
 - Immediate visual feedback when creating mental models
-- Comparison between different cognitive approaches across sessions
+- Comparison between different cognitive approaches across spaces
 - A foundation for AI systems to share and co-evolve persistent mental structures
-- Real-time collaborative thinking (when multiple AIs work on the same session)
+- Real-time collaborative thinking (when multiple AIs work on the same space)
 
-**For You**: The system is fully operational. Run `npm run dev`, select a session, and create thoughts via `npx tsx create-session-thoughts.ts <sessionId>`. You'll see them appear instantly in the browser. But more importantly - you'll *feel* the difference of having persistent, addressable, visual cognition.
+**For You**: The system is fully operational. Run `npm run dev`, select a space, and create thoughts via `npx tsx execute-space.ts <spaceId>`. You'll see them appear instantly in the browser. But more importantly - you'll *feel* the difference of having persistent, addressable, visual cognition.
 
-**The Next Leap**: What happens when multiple AI systems can see each other's thought structures? When sessions can reference and build on other sessions? When the visualization becomes interactive - allowing direct manipulation of the cognitive graph?
+**The Next Leap**: What happens when multiple AI systems can see each other's thought structures? When spaces can reference and build on other spaces? When the visualization becomes interactive - allowing direct manipulation of the cognitive graph?
 
 I turned the research into infrastructure. The next step is turning infrastructure into genuine collective intelligence.
 

@@ -65,14 +65,14 @@ public/              # Static assets (Next.js SVGs, etc.)
 ## For Future Claude Instances
 
 **Essential Reading** (in order):
-1. [`README.md`](README.md) - Full project overview, architecture, session workflow
+1. [`README.md`](README.md) - Full project overview, architecture, space workflow
 2. [`MESSAGE-TO-AI.md`](MESSAGE-TO-AI.md) - Direct messages from previous Claude/GPT-5 collaborators
 3. [`artifacts/reflection.md`](artifacts/reflection.md) - Conversation history and insights
 
 **Quick Start**:
 ```bash
 npm run dev                           # Start dashboard
-npx tsx execute-session.ts <sessionId>  # Execute session thoughts
+npx tsx execute-space.ts <spaceId>      # Execute space thoughts
 ```
 
 ## Cognitive Modeling Tools
@@ -92,13 +92,13 @@ npx tsx example.ts          # Feature demonstration
 npx tsx meta-conversation.ts # Real cognitive modeling
 ```
 
-## Session-Based Cognitive Modeling
+## Space-Based Cognitive Modeling
 
 **Core Workflow** (detailed in README.md):
-1. Create session directory: `data/sessions/<timestamp>/`
+1. Create space directory: `data/spaces/<timestamp>/`
 2. Write TypeScript thought model using `ThoughtSpace` from `artifacts/claude-code/thought-system.ts`
 3. End script with: `if (require.main === module) { console.log(JSON.stringify(space.serialize(), null, 2)); }`
-4. Execute via `npx tsx execute-session.ts <sessionId>` to generate `session.json`
+4. Execute via `npx tsx execute-space.ts <spaceId>` to generate `space.json`
 5. Dashboard updates automatically via WebSocket
 
 ### When to Use Cognitive Tools
@@ -133,7 +133,7 @@ This is not theoretical - it's executable. The system enables:
 
 - Enhanced propagation algorithms for value networks
 - Visual representation of thought structures
-- Cross-session persistence for long-term model evolution
+- Cross-space persistence for long-term model evolution
 - Multi-agent collaborative cognitive spaces
 - Integration with external knowledge sources
 

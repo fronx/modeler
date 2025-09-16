@@ -1,21 +1,21 @@
 /**
- * Session-based persistent thought system
- * Thoughts are stored in session-specific directories
+ * Space-based persistent thought system
+ * Thoughts are stored in space-specific directories
  */
 
 import fs from 'fs/promises';
 import path from 'path';
 import { ThoughtSpace, ThoughtNode, type NodeId } from './thought-system';
 
-export class SessionPersistentThoughtSpace extends ThoughtSpace {
-  private sessionId: string;
+export class SpacePersistentThoughtSpace extends ThoughtSpace {
+  private spaceId: string;
   private dataDir: string;
   private writeQueue = new Map<NodeId, Promise<void>>();
 
-  constructor(sessionId: string) {
+  constructor(spaceId: string) {
     super();
-    this.sessionId = sessionId;
-    this.dataDir = path.join('data/sessions', sessionId);
+    this.spaceId = spaceId;
+    this.dataDir = path.join('data/spaces', spaceId);
     this.ensureDataDir();
   }
 
@@ -106,8 +106,8 @@ export class SessionPersistentThoughtSpace extends ThoughtSpace {
 
     try {
       await writePromise;
-      // Update session metadata
-      await this.updateSessionMetadata();
+      // Update space metadata
+      await this.updateSpaceMetadata();
     } finally {
       this.writeQueue.delete(nodeId);
     }
@@ -133,41 +133,41 @@ export class SessionPersistentThoughtSpace extends ThoughtSpace {
     }
   }
 
-  private async updateSessionMetadata(): Promise<void> {
+  private async updateSpaceMetadata(): Promise<void> {
     try {
-      const metaPath = path.join(this.dataDir, '_session.json');
-      let sessionMeta;
+      const metaPath = path.join(this.dataDir, '_space.json');
+      let spaceMeta;
 
       try {
         const content = await fs.readFile(metaPath, 'utf-8');
-        sessionMeta = JSON.parse(content);
+        spaceMeta = JSON.parse(content);
       } catch {
         // Create new metadata if it doesn't exist
-        sessionMeta = {
-          id: this.sessionId,
-          title: `Session ${this.sessionId}`,
-          description: 'Cognitive modeling session',
+        spaceMeta = {
+          id: this.spaceId,
+          title: `Space ${this.spaceId}`,
+          description: 'Cognitive modeling space',
           created: new Date().toISOString()
         };
       }
 
       // Update metadata
-      sessionMeta.lastModified = new Date().toISOString();
-      sessionMeta.thoughtCount = this.getAllNodes().size;
+      spaceMeta.lastModified = new Date().toISOString();
+      spaceMeta.thoughtCount = this.getAllNodes().size;
 
-      await fs.writeFile(metaPath, JSON.stringify(sessionMeta, null, 2));
+      await fs.writeFile(metaPath, JSON.stringify(spaceMeta, null, 2));
     } catch (error) {
-      console.error('Failed to update session metadata:', error);
+      console.error('Failed to update space metadata:', error);
     }
   }
 }
 
-// Factory function to create session-aware thought spaces
-export function createSessionThoughtSpace(sessionId: string): {
-  space: SessionPersistentThoughtSpace;
+// Factory function to create space-aware thought spaces
+export function createSpaceThoughtSpace(spaceId: string): {
+  space: SpacePersistentThoughtSpace;
   thought: (id: NodeId) => ThoughtNode;
 } {
-  const space = new SessionPersistentThoughtSpace(sessionId);
+  const space = new SpacePersistentThoughtSpace(spaceId);
   const thought = (id: NodeId) => space.thought(id);
   return { space, thought };
 }

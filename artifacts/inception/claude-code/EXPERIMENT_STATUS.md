@@ -53,7 +53,7 @@ An executable implementation of the "code-as-gesture" concept developed through 
 
 ### Performance Characteristics
 
-- **Memory**: Fully persistent within session, serializable for cross-session storage
+- **Memory**: Fully persistent within space, serializable for cross-space storage
 - **Speed**: Real-time for networks up to ~50 nodes (not yet tested at scale)
 - **Expressiveness**: Can model both abstract concepts and concrete relationships
 - **Reflexivity**: System successfully models its own operation
@@ -79,7 +79,7 @@ An executable implementation of the "code-as-gesture" concept developed through 
 - Contextual collapse heuristics are still simple
 - Propagation algorithms could be more sophisticated
 - No visual representation for complex networks
-- Limited cross-session persistence
+- Limited cross-space persistence
 
 ### Philosophical Implications
 - If AI can construct persistent mental models, what does this mean for consciousness?
@@ -99,7 +99,7 @@ An executable implementation of the "code-as-gesture" concept developed through 
 
 1. **Enhanced Algorithms**: Better metaphor selection, smarter propagation
 2. **Visualization**: Graph representation of thought networks
-3. **Persistence**: Save/load models across sessions
+3. **Persistence**: Save/load models across spaces
 4. **Collaboration**: Multi-agent shared spaces
 5. **Integration**: Connect to external knowledge sources
 

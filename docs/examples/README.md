@@ -1,6 +1,6 @@
 # Cognitive Modeling Examples
 
-This directory contains canonical examples demonstrating different patterns and capabilities of the Session-based cognitive modeling system.
+This directory contains canonical examples demonstrating different patterns and capabilities of the Space-based cognitive modeling system.
 
 ## Quick Start
 
@@ -8,34 +8,34 @@ This directory contains canonical examples demonstrating different patterns and 
 
 ```bash
 # From the project root directory
-npx tsx docs/examples/session.ts
+npx tsx docs/examples/space.ts
 
-# Or use the session execution system
-cp docs/examples/session.ts data/sessions/example-session/session.ts
-npx tsx execute-session.ts example-session
+# Or use the space execution system
+cp docs/examples/space.ts data/spaces/example-space/space.ts
+npx tsx execute-space.ts example-space
 ```
 
-### Creating Your Own Session
+### Creating Your Own Space
 
 1. **Copy the basic pattern**:
    ```bash
-   cp docs/examples/session.ts data/sessions/my-session/session.ts
+   cp docs/examples/space.ts data/spaces/my-space/space.ts
    ```
 
 2. **Modify for your exploration**:
-   - Change session metadata (id, title, description)
+   - Change space metadata (id, title, description)
    - Replace example thoughts with your concepts
    - Adjust relationships and values
 
 3. **Execute and visualize**:
    ```bash
-   npx tsx execute-session.ts my-session
+   npx tsx execute-space.ts my-space
    npm run dev  # View in dashboard
    ```
 
 ## Available Examples
 
-### [`simple-session.ts`](simple-session.ts)
+### [`simple-space.ts`](simple-space.ts)
 **Purpose**: Quick introduction to basic cognitive modeling
 **Patterns Covered**:
 - Creating thoughts with meanings and values
@@ -43,7 +43,7 @@ npx tsx execute-session.ts example-session
 - Tension holding
 - Perfect for first-time users
 
-### [`session.ts`](session.ts)
+### [`space.ts`](space.ts)
 **Purpose**: Demonstrates fundamental patterns for cognitive modeling
 **Patterns Covered**:
 - Simple thoughts with meanings and values
@@ -54,7 +54,7 @@ npx tsx execute-session.ts example-session
 - Network integration effects
 - Good balance of features without overwhelming complexity
 
-### [`comprehensive-session.ts`](comprehensive-session.ts)
+### [`comprehensive-space.ts`](comprehensive-space.ts)
 **Purpose**: Complete showcase of ALL cognitive modeling capabilities
 **Advanced Features Demonstrated**:
 - Multiple meanings with confidence levels
@@ -128,7 +128,7 @@ session.thought('Variable')
 
 - **Thoughts**: Use PascalCase for concept names (`CodeAsGesture`, `MetaCognition`)
 - **Values**: Use kebab-case for properties (`stability`, `growth-rate`, `meta-level`)
-- **Sessions**: Use descriptive IDs with timestamps (`exploration-20250915`, `meta-analysis-session`)
+- **Spaces**: Use descriptive IDs with timestamps (`exploration-20250915`, `meta-analysis-space`)
 
 ### Value Guidelines
 
@@ -244,17 +244,17 @@ session.thought('EmergentProperty')
 3. **Relationship Errors**: Make sure target thoughts exist before referencing them
 4. **TypeScript Errors**: Check that all method calls are properly chained
 
-### Debugging Sessions
+### Debugging Spaces
 
 ```bash
 # Test TypeScript compilation
-npx tsc --noEmit docs/examples/session.ts
+npx tsc --noEmit docs/examples/space.ts
 
 # Run directly to see output
-npx tsx docs/examples/session.ts
+npx tsx docs/examples/space.ts
 
-# Check session execution
-npx tsx execute-session.ts session-id --verbose
+# Check space execution
+npx tsx execute-space.ts space-id --verbose
 ```
 
 ## Contributing Examples

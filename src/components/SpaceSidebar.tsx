@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 
-interface Session {
+interface Space {
   id: string;
   title: string;
   description: string;
@@ -12,43 +12,21 @@ interface Session {
   path: string;
 }
 
-interface SessionSidebarProps {
-  sessions: Session[];
-  currentSessionId: string | null;
-  onSessionSelect: (sessionId: string) => void;
-  onNewSession: () => void;
+interface SpaceSidebarProps {
+  spaces: Space[];
+  currentSpaceId: string | null;
+  onSpaceSelect: (spaceId: string) => void;
+  onNewSpace: () => void;
 }
 
-export const SessionSidebar: React.FC<SessionSidebarProps> = ({
-  sessions,
-  currentSessionId,
-  onSessionSelect
+export const SpaceSidebar: React.FC<SpaceSidebarProps> = ({
+  spaces,
+  currentSpaceId,
+  onSpaceSelect,
+  onNewSpace
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const isLoading = sessions.length === 0;
-
-  const handleNewSession = async () => {
-    const title = prompt('Enter session title:');
-    if (!title) return;
-
-    const description = prompt('Enter session description (optional):') || '';
-
-    try {
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        onSessionSelect(data.session.path);
-      }
-    } catch (error) {
-      console.error('Failed to create session:', error);
-      alert('Failed to create session');
-    }
-  };
+  const isLoading = spaces.length === 0;
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -75,7 +53,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
         <div className="flex items-center justify-between">
           {!isCollapsed && (
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Sessions
+              Spaces
             </h2>
           )}
           <button
@@ -88,32 +66,32 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
 
         {!isCollapsed && (
           <button
-            onClick={handleNewSession}
+            onClick={onNewSpace}
             className="mt-3 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
           >
-            + New Session
+            + New Space
           </button>
         )}
       </div>
 
-      {/* Sessions List */}
+      {/* Spaces List */}
       <div className="overflow-y-auto h-full">
         {isLoading ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            {isCollapsed ? '...' : 'Loading sessions...'}
+            {isCollapsed ? '...' : 'Loading spaces...'}
           </div>
-        ) : sessions.length === 0 ? (
+        ) : spaces.length === 0 ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            {isCollapsed ? '∅' : 'No sessions yet'}
+            {isCollapsed ? '∅' : 'No spaces yet'}
           </div>
         ) : (
           <div className="p-2">
-            {sessions.map((session) => (
+            {spaces.map((space) => (
               <div
-                key={session.id}
-                onClick={() => onSessionSelect(session.path)}
+                key={space.id}
+                onClick={() => onSpaceSelect(space.path)}
                 className={`p-3 rounded-lg cursor-pointer transition-colors mb-2 ${
-                  currentSessionId === session.path
+                  currentSpaceId === space.path
                     ? 'bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-500'
                     : 'hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
@@ -122,22 +100,22 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
                   <div className="text-center">
                     <div className="text-2xl mb-1">🧠</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {session.thoughtCount}
+                      {space.thoughtCount}
                     </div>
                   </div>
                 ) : (
                   <>
                     <div className="font-medium text-gray-900 dark:text-white text-sm mb-1">
-                      {session.title}
+                      {space.title}
                     </div>
 
                     <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                      {session.description}
+                      {space.description}
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                      <span>{session.thoughtCount} thoughts</span>
-                      <span>{formatTimeAgo(session.lastModified)}</span>
+                      <span>{space.thoughtCount} thoughts</span>
+                      <span>{formatTimeAgo(space.lastModified)}</span>
                     </div>
                   </>
                 )}
@@ -151,7 +129,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
       {!isCollapsed && (
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+            {spaces.length} space{spaces.length !== 1 ? 's' : ''}
           </div>
         </div>
       )}

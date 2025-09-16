@@ -2,29 +2,29 @@ import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
-const SESSIONS_DIR = path.join(process.cwd(), 'data/sessions');
+const SPACES_DIR = path.join(process.cwd(), 'data/spaces');
 
 export async function GET(
   request: Request,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: { spaceId: string } }
 ) {
   try {
-    const sessionDir = path.join(SESSIONS_DIR, params.sessionId);
+    const spaceDir = path.join(SPACES_DIR, params.spaceId);
 
-    // Check if session exists
+    // Check if space exists
     try {
-      await fs.access(sessionDir);
+      await fs.access(spaceDir);
     } catch {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Space not found' }, { status: 404 });
     }
 
-    const files = await fs.readdir(sessionDir);
+    const files = await fs.readdir(spaceDir);
     const nodes: Record<string, any> = {};
 
     for (const file of files) {
-      if (file.endsWith('.json') && file !== '_session.json') {
+      if (file.endsWith('.json') && file !== '_space.json') {
         try {
-          const filePath = path.join(sessionDir, file);
+          const filePath = path.join(spaceDir, file);
           const content = await fs.readFile(filePath, 'utf-8');
           const nodeData = JSON.parse(content);
           nodes[nodeData.id] = nodeData;
@@ -36,13 +36,13 @@ export async function GET(
 
     return NextResponse.json({
       nodes,
-      sessionId: params.sessionId,
+      spaceId: params.spaceId,
       loadedAt: new Date().toISOString(),
       count: Object.keys(nodes).length
     });
 
   } catch (error) {
-    console.error('Failed to load session thoughts:', error);
-    return NextResponse.json({ error: 'Failed to load session thoughts' }, { status: 500 });
+    console.error('Failed to load space thoughts:', error);
+    return NextResponse.json({ error: 'Failed to load space thoughts' }, { status: 500 });
   }
 }

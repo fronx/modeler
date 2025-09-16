@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
 import { ThoughtNode } from './thought-system';
 
-interface Session {
+interface Space {
   id: string;
   title: string;
   description: string;
@@ -15,12 +15,12 @@ interface Session {
 
 interface ThoughtContextType {
   nodes: Map<string, ThoughtNode>;
-  sessions: Session[];
-  currentSessionId: string | null;
-  setCurrentSessionId: (sessionId: string | null) => void;
+  spaces: Space[];
+  currentSpaceId: string | null;
+  setCurrentSpaceId: (spaceId: string | null) => void;
   lastUpdate: Date | null;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
-  hasLoadedCurrentSession: boolean;
+  hasLoadedCurrentSpace: boolean;
 }
 
 const ThoughtContext = createContext<ThoughtContextType | undefined>(undefined);
@@ -31,11 +31,11 @@ interface ThoughtProviderProps {
 
 export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ children }) => {
   const [nodes, setNodes] = useState<Map<string, ThoughtNode>>(new Map());
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [currentSpaceId, setCurrentSpaceId] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
-  const [loadedSessionIds, setLoadedSessionIds] = useState<Set<string>>(new Set());
+  const [loadedSpaceIds, setLoadedSpaceIds] = useState<Set<string>>(new Set());
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -55,13 +55,13 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
         setConnectionStatus('connected');
 
         // Request initial data
-        wsRef.current?.send(JSON.stringify({ type: 'get_sessions' }));
+        wsRef.current?.send(JSON.stringify({ type: 'get_spaces' }));
 
-        // If we already have a session selected, request its data
-        if (currentSessionId) {
+        // If we already have a space selected, request its data
+        if (currentSpaceId) {
           wsRef.current?.send(JSON.stringify({
-            type: 'subscribe_session',
-            sessionId: currentSessionId
+            type: 'subscribe_space',
+            spaceId: currentSpaceId
           }));
         }
       };
@@ -99,21 +99,21 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
 
   const handleWebSocketMessage = (data: any) => {
     switch (data.type) {
-      case 'sessions_update':
-        setSessions(data.sessions);
+      case 'spaces_update':
+        setSpaces(data.spaces);
         setLastUpdate(new Date(data.timestamp));
 
-        // If no session is selected, select the most recent one
-        if (!currentSessionId && data.sessions.length > 0) {
-          const mostRecentSession = data.sessions[0].path;
+        // If no space is selected, select the most recent one
+        if (!currentSpaceId && data.spaces.length > 0) {
+          const mostRecentSpace = data.spaces[0].path;
           // Use the same logic as manual selection (will try API first, then WebSocket)
-          handleSetCurrentSessionId(mostRecentSession);
+          handleSetCurrentSpaceId(mostRecentSpace);
         }
         break;
 
-      case 'session_thoughts_update':
+      case 'space_thoughts_update':
         // Use the same parsing logic as the API
-        parseSessionData(data, data.sessionId, data.timestamp);
+        parseSpaceData(data, data.spaceId, data.timestamp);
         break;
 
       default:
@@ -121,30 +121,30 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     }
   };
 
-  // Handle session changes
-  const handleSetCurrentSessionId = (sessionId: string | null) => {
-    setCurrentSessionId(sessionId);
+  // Handle space changes
+  const handleSetCurrentSpaceId = (spaceId: string | null) => {
+    setCurrentSpaceId(spaceId);
 
-    if (!sessionId) {
+    if (!spaceId) {
       setNodes(new Map());
       return;
     }
 
-    // Clear current nodes and load session data
+    // Clear current nodes and load space data
     setNodes(new Map());
 
     // Try loading from TypeScript-based API first
-    loadSessionFromAPI(sessionId).catch(() => {
+    loadSpaceFromAPI(spaceId).catch(() => {
       // Fallback to WebSocket if API fails
       wsRef.current?.send(JSON.stringify({
-        type: 'subscribe_session',
-        sessionId
+        type: 'subscribe_space',
+        spaceId
       }));
     });
   };
 
-  // Shared function to parse session data (works with both API and WebSocket formats)
-  const parseSessionData = (data: any, sessionId: string, timestamp?: string) => {
+  // Shared function to parse space data (works with both API and WebSocket formats)
+  const parseSpaceData = (data: any, spaceId: string, timestamp?: string) => {
     // Handle both new Session structure and old format
     const thoughtSpaceData = data.thoughtSpace || data; // New format has thoughtSpace, old format is flat
     const nodesData = thoughtSpaceData.nodes || data.nodes || {}; // Support both structures
@@ -166,22 +166,22 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     }
 
     setNodes(nodeMap);
-    setLoadedSessionIds(prev => new Set(prev).add(sessionId));
+    setLoadedSpaceIds(prev => new Set(prev).add(spaceId));
     setLastUpdate(timestamp ? new Date(timestamp) : new Date());
 
-    console.log(`✅ Loaded session data: ${nodeMap.size} thoughts`);
+    console.log(`✅ Loaded space data: ${nodeMap.size} thoughts`);
   };
 
-  // Load session data from the new TypeScript-based API
-  const loadSessionFromAPI = async (sessionId: string) => {
+  // Load space data from the new TypeScript-based API
+  const loadSpaceFromAPI = async (spaceId: string) => {
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/thoughts-direct`);
+      const response = await fetch(`/api/spaces/${spaceId}/thoughts-direct`);
       if (!response.ok) {
-        throw new Error(`Failed to load session: ${response.status}`);
+        throw new Error(`Failed to load space: ${response.status}`);
       }
 
       const data = await response.json();
-      parseSessionData(data, sessionId);
+      parseSpaceData(data, spaceId);
 
     } catch (error) {
       console.warn('Failed to load from TypeScript API, will try WebSocket:', error);
@@ -212,24 +212,24 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     };
   }, []);
 
-  // Subscribe to session changes
+  // Subscribe to space changes
   useEffect(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN && currentSessionId) {
+    if (wsRef.current?.readyState === WebSocket.OPEN && currentSpaceId) {
       wsRef.current.send(JSON.stringify({
-        type: 'subscribe_session',
-        sessionId: currentSessionId
+        type: 'subscribe_space',
+        spaceId: currentSpaceId
       }));
     }
-  }, [currentSessionId]);
+  }, [currentSpaceId]);
 
   const value: ThoughtContextType = {
     nodes,
-    sessions,
-    currentSessionId,
-    setCurrentSessionId: handleSetCurrentSessionId,
+    spaces,
+    currentSpaceId,
+    setCurrentSpaceId: handleSetCurrentSpaceId,
     lastUpdate,
     connectionStatus,
-    hasLoadedCurrentSession: currentSessionId ? loadedSessionIds.has(currentSessionId) : false
+    hasLoadedCurrentSpace: currentSpaceId ? loadedSpaceIds.has(currentSpaceId) : false
   };
 
   return (

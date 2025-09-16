@@ -9,7 +9,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createServer } from 'http';
 
-const SESSIONS_DIR = path.join(process.cwd(), 'data/sessions');
+const SPACES_DIR = path.join(process.cwd(), 'data/spaces');
 
 export class ThoughtWebSocketServer {
   private wss: WebSocketServer;
@@ -35,8 +35,8 @@ export class ThoughtWebSocketServer {
       console.log('🔌 Client connected to ThoughtWebSocket');
       this.clients.add(ws);
 
-      // Send initial session list
-      this.sendSessionList(ws);
+      // Send initial space list
+      this.sendSpaceList(ws);
 
       ws.on('message', async (message) => {
         try {
@@ -61,14 +61,14 @@ export class ThoughtWebSocketServer {
 
   private async handleClientMessage(ws: WebSocket, data: any): Promise<void> {
     switch (data.type) {
-      case 'subscribe_session':
-        // Client wants to subscribe to updates for a specific session
-        await this.sendSessionThoughts(ws, data.sessionId);
+      case 'subscribe_space':
+        // Client wants to subscribe to updates for a specific space
+        await this.sendSpaceThoughts(ws, data.spaceId);
         break;
 
-      case 'get_sessions':
-        // Client wants current session list
-        await this.sendSessionList(ws);
+      case 'get_spaces':
+        // Client wants current space list
+        await this.sendSpaceList(ws);
         break;
 
       default:
@@ -77,11 +77,11 @@ export class ThoughtWebSocketServer {
   }
 
   private setupFileWatcher(): void {
-    // Ensure sessions directory exists
-    fs.mkdir(SESSIONS_DIR, { recursive: true }).catch(() => {});
+    // Ensure spaces directory exists
+    fs.mkdir(SPACES_DIR, { recursive: true }).catch(() => {});
 
-    // Watch the entire sessions directory tree
-    this.watcher = chokidar.watch(SESSIONS_DIR, {
+    // Watch the entire spaces directory tree
+    this.watcher = chokidar.watch(SPACES_DIR, {
       ignored: /^\./,
       persistent: true,
       ignoreInitial: true
@@ -90,80 +90,80 @@ export class ThoughtWebSocketServer {
     this.watcher.on('add', this.handleFileChange.bind(this));
     this.watcher.on('change', this.handleFileChange.bind(this));
     this.watcher.on('unlink', this.handleFileChange.bind(this));
-    this.watcher.on('addDir', this.handleSessionChange.bind(this));
-    this.watcher.on('unlinkDir', this.handleSessionChange.bind(this));
+    this.watcher.on('addDir', this.handleSpaceChange.bind(this));
+    this.watcher.on('unlinkDir', this.handleSpaceChange.bind(this));
 
-    console.log('👁️  File system watcher started for:', SESSIONS_DIR);
+    console.log('👁️  File system watcher started for:', SPACES_DIR);
   }
 
   private async handleFileChange(filePath: string): Promise<void> {
-    const relativePath = path.relative(SESSIONS_DIR, filePath);
+    const relativePath = path.relative(SPACES_DIR, filePath);
     const pathParts = relativePath.split(path.sep);
 
-    if (pathParts.length < 2) return; // Must be in a session directory
+    if (pathParts.length < 2) return; // Must be in a space directory
 
-    const sessionId = pathParts[0];
+    const spaceId = pathParts[0];
     const fileName = pathParts[pathParts.length - 1];
 
     // Handle different file types
-    if (fileName.endsWith('.json') && fileName !== '_session.json') {
+    if (fileName.endsWith('.json') && fileName !== '_space.json') {
       // Thought file changed
-      await this.broadcastSessionUpdate(sessionId);
-    } else if (fileName === '_session.json') {
-      // Session metadata changed
-      await this.broadcastSessionList();
+      await this.broadcastSpaceUpdate(spaceId);
+    } else if (fileName === '_space.json') {
+      // Space metadata changed
+      await this.broadcastSpaceList();
     }
   }
 
-  private async handleSessionChange(): Promise<void> {
-    // Session directory added/removed
-    await this.broadcastSessionList();
+  private async handleSpaceChange(): Promise<void> {
+    // Space directory added/removed
+    await this.broadcastSpaceList();
   }
 
-  private async sendSessionList(ws: WebSocket): Promise<void> {
+  private async sendSpaceList(ws: WebSocket): Promise<void> {
     try {
-      const sessions = await this.loadSessions();
+      const spaces = await this.loadSpaces();
 
       ws.send(JSON.stringify({
-        type: 'sessions_update',
-        sessions,
+        type: 'spaces_update',
+        spaces,
         timestamp: new Date().toISOString()
       }));
     } catch (error) {
-      console.error('Failed to send session list:', error);
+      console.error('Failed to send space list:', error);
     }
   }
 
-  private async sendSessionThoughts(ws: WebSocket, sessionId: string): Promise<void> {
+  private async sendSpaceThoughts(ws: WebSocket, spaceId: string): Promise<void> {
     try {
-      const thoughts = await this.loadSessionThoughts(sessionId);
+      const thoughts = await this.loadSpaceThoughts(spaceId);
       ws.send(JSON.stringify({
-        type: 'session_thoughts_update',
-        sessionId,
+        type: 'space_thoughts_update',
+        spaceId,
         nodes: thoughts,
         timestamp: new Date().toISOString()
       }));
     } catch (error) {
-      console.error(`Failed to send thoughts for session ${sessionId}:`, error);
+      console.error(`Failed to send thoughts for space ${spaceId}:`, error);
     }
   }
 
-  private async broadcastSessionList(): Promise<void> {
-    const sessions = await this.loadSessions();
+  private async broadcastSpaceList(): Promise<void> {
+    const spaces = await this.loadSpaces();
     const message = JSON.stringify({
-      type: 'sessions_update',
-      sessions,
+      type: 'spaces_update',
+      spaces,
       timestamp: new Date().toISOString()
     });
 
     this.broadcast(message);
   }
 
-  private async broadcastSessionUpdate(sessionId: string): Promise<void> {
-    const thoughts = await this.loadSessionThoughts(sessionId);
+  private async broadcastSpaceUpdate(spaceId: string): Promise<void> {
+    const thoughts = await this.loadSpaceThoughts(spaceId);
     const message = JSON.stringify({
-      type: 'session_thoughts_update',
-      sessionId,
+      type: 'space_thoughts_update',
+      spaceId,
       nodes: thoughts,
       timestamp: new Date().toISOString()
     });
@@ -179,72 +179,72 @@ export class ThoughtWebSocketServer {
     });
   }
 
-  private async loadSessions(): Promise<any[]> {
+  private async loadSpaces(): Promise<any[]> {
     try {
-      await fs.mkdir(SESSIONS_DIR, { recursive: true });
+      await fs.mkdir(SPACES_DIR, { recursive: true });
 
-      const sessions = [];
-      const sessionDirs = await fs.readdir(SESSIONS_DIR);
+      const spaces = [];
+      const spaceDirs = await fs.readdir(SPACES_DIR);
 
-      for (const sessionDir of sessionDirs) {
-        const sessionPath = path.join(SESSIONS_DIR, sessionDir);
-        const stat = await fs.stat(sessionPath);
+      for (const spaceDir of spaceDirs) {
+        const spacePath = path.join(SPACES_DIR, spaceDir);
+        const stat = await fs.stat(spacePath);
 
         if (stat.isDirectory()) {
           try {
-            // Read session metadata
-            const metaPath = path.join(sessionPath, '_session.json');
+            // Read space metadata
+            const metaPath = path.join(spacePath, '_space.json');
             const metaContent = await fs.readFile(metaPath, 'utf-8');
-            const sessionMeta = JSON.parse(metaContent);
+            const spaceMeta = JSON.parse(metaContent);
 
             // Count thought files
-            const files = await fs.readdir(sessionPath);
-            const thoughtCount = files.filter(f => f.endsWith('.json') && f !== '_session.json').length;
+            const files = await fs.readdir(spacePath);
+            const thoughtCount = files.filter(f => f.endsWith('.json') && f !== '_space.json').length;
 
-            sessions.push({
-              ...sessionMeta,
+            spaces.push({
+              ...spaceMeta,
               thoughtCount,
-              path: sessionDir
+              path: spaceDir
             });
 
           } catch (error) {
-            // If no metadata file, create basic session info
-            const files = await fs.readdir(sessionPath);
+            // If no metadata file, create basic space info
+            const files = await fs.readdir(spacePath);
             const thoughtCount = files.filter(f => f.endsWith('.json')).length;
 
-            sessions.push({
-              id: sessionDir,
-              title: `Session ${sessionDir}`,
-              description: `Session with ${thoughtCount} thoughts`,
+            spaces.push({
+              id: spaceDir,
+              title: `Space ${spaceDir}`,
+              description: `Space with ${thoughtCount} thoughts`,
               created: stat.birthtime.toISOString(),
               lastModified: stat.mtime.toISOString(),
               thoughtCount,
-              path: sessionDir
+              path: spaceDir
             });
           }
         }
       }
 
       // Sort by creation time (newest first)
-      sessions.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
-      return sessions;
+      spaces.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+      return spaces;
 
     } catch (error) {
-      console.error('Failed to load sessions:', error);
+      console.error('Failed to load spaces:', error);
       return [];
     }
   }
 
-  private async loadSessionThoughts(sessionId: string): Promise<Record<string, any>> {
+  private async loadSpaceThoughts(spaceId: string): Promise<Record<string, any>> {
     try {
-      const sessionDir = path.join(SESSIONS_DIR, sessionId);
-      const files = await fs.readdir(sessionDir);
+      const spaceDir = path.join(SPACES_DIR, spaceId);
+      const files = await fs.readdir(spaceDir);
       const nodes: Record<string, any> = {};
 
       for (const file of files) {
-        if (file.endsWith('.json') && file !== '_session.json') {
+        if (file.endsWith('.json') && file !== '_space.json') {
           try {
-            const filePath = path.join(sessionDir, file);
+            const filePath = path.join(spaceDir, file);
             const content = await fs.readFile(filePath, 'utf-8');
             const nodeData = JSON.parse(content);
             nodes[nodeData.id] = nodeData;
@@ -257,7 +257,7 @@ export class ThoughtWebSocketServer {
       return nodes;
 
     } catch (error) {
-      console.error(`Failed to load session thoughts for ${sessionId}:`, error);
+      console.error(`Failed to load space thoughts for ${spaceId}:`, error);
       return {};
     }
   }

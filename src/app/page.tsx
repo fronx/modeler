@@ -1,22 +1,22 @@
 'use client';
 
 import { ThoughtGraph } from '@/components/ThoughtGraph';
-import { SessionSidebar } from '@/components/SessionSidebar';
+import { SpaceSidebar } from '@/components/SpaceSidebar';
 import { useWebSocketThoughts } from '@/lib/websocket-thought-client';
 
 export default function CognitiveDashboard() {
-  const { nodes, sessions, lastUpdate, currentSessionId, setCurrentSessionId, connectionStatus, hasLoadedCurrentSession } = useWebSocketThoughts();
+  const { nodes, spaces, lastUpdate, currentSpaceId, setCurrentSpaceId, connectionStatus, hasLoadedCurrentSpace } = useWebSocketThoughts();
 
 
   return (
     <div className="w-screen h-screen flex bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
-      <SessionSidebar
-        sessions={sessions}
-        currentSessionId={currentSessionId}
-        onSessionSelect={setCurrentSessionId}
-        onNewSession={() => {
-          // The sidebar handles session creation
+      <SpaceSidebar
+        spaces={spaces}
+        currentSpaceId={currentSpaceId}
+        onSpaceSelect={setCurrentSpaceId}
+        onNewSpace={() => {
+          // The sidebar handles space creation
         }}
       />
 
@@ -30,7 +30,7 @@ export default function CognitiveDashboard() {
                 Cognitive Dashboard
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {currentSessionId ? `Session: ${currentSessionId}` : 'No session selected'}
+                {currentSpaceId ? `Space: ${currentSpaceId}` : 'No space selected'}
               </p>
             </div>
 
@@ -55,25 +55,25 @@ export default function CognitiveDashboard() {
         {/* Main visualization area */}
         <main className="flex-1 relative">
           {/* Content based on session state */}
-          {!currentSessionId ? (
+          {!currentSpaceId ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  No session selected
+                  No space selected
                 </h2>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Select an existing session or create a new one to begin
+                  Select an existing space or create a new one to begin
                 </p>
               </div>
             </div>
-          ) : !hasLoadedCurrentSession ? (
+          ) : !hasLoadedCurrentSpace ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Loading session...
+                  Loading space...
                 </h2>
                 <p className="text-gray-500 dark:text-gray-400">
-                  Please wait while we load the thoughts for this session.
+                  Please wait while we load the thoughts for this space.
                 </p>
               </div>
             </div>
@@ -81,10 +81,10 @@ export default function CognitiveDashboard() {
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  No thoughts in this session
+                  No thoughts in this space
                 </h2>
                 <p className="text-gray-500 dark:text-gray-400">
-                  This session is empty. Create thoughts using Claude Code to see them appear here in real-time.
+                  This space is empty. Create thoughts using Claude Code to see them appear here in real-time.
                 </p>
               </div>
             </div>

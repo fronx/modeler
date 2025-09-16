@@ -1,7 +1,7 @@
 import { Session } from '../../src/lib/thought-system';
 
 /**
- * Comprehensive Session Example
+ * Comprehensive Space Example
  *
  * This demonstrates ALL capabilities of the cognitive modeling system:
  * - Multiple meanings with confidence levels

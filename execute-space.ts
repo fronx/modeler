@@ -4,44 +4,44 @@ import { exec } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-async function executeSession(sessionId: string) {
-  if (!sessionId) {
-    console.error('Usage: npx tsx execute-session.ts <sessionId>');
+async function executeSpace(spaceId: string) {
+  if (!spaceId) {
+    console.error('Usage: npx tsx execute-space.ts <spaceId>');
     process.exit(1);
   }
 
-  const sessionDir = path.join('data', 'sessions', sessionId);
+  const spaceDir = path.join('data', 'spaces', spaceId);
 
-  // Check if session directory exists
+  // Check if space directory exists
   try {
-    await fs.access(sessionDir);
+    await fs.access(spaceDir);
   } catch {
-    console.error(`Error: Session directory not found: ${sessionDir}`);
+    console.error(`Error: Space directory not found: ${spaceDir}`);
     process.exit(1);
   }
 
-  // Find TypeScript files (excluding ones starting with _), prioritizing session.ts
+  // Find TypeScript files (excluding ones starting with _), prioritizing space.ts
   try {
-    const files = await fs.readdir(sessionDir);
+    const files = await fs.readdir(spaceDir);
     const tsFiles = files.filter(file =>
       file.endsWith('.ts') && !file.startsWith('_')
     );
 
     if (tsFiles.length === 0) {
-      console.error(`Error: No TypeScript files found in ${sessionDir}`);
+      console.error(`Error: No TypeScript files found in ${spaceDir}`);
       process.exit(1);
     }
 
-    // Prioritize session.ts if it exists, otherwise use first file found
-    let tsFile = tsFiles.find(file => file === 'session.ts') || tsFiles[0];
+    // Prioritize space.ts if it exists, otherwise use first file found
+    let tsFile = tsFiles.find(file => file === 'space.ts') || tsFiles[0];
 
-    if (tsFiles.length > 1 && tsFile !== 'session.ts') {
-      console.warn(`Warning: Multiple TypeScript files found, using: ${tsFile} (consider renaming to session.ts)`);
+    if (tsFiles.length > 1 && tsFile !== 'space.ts') {
+      console.warn(`Warning: Multiple TypeScript files found, using: ${tsFile} (consider renaming to space.ts)`);
     }
-    const tsFilePath = path.join(sessionDir, tsFile);
-    const outputPath = path.join(sessionDir, 'session.json');
+    const tsFilePath = path.join(spaceDir, tsFile);
+    const outputPath = path.join(spaceDir, 'space.json');
 
-    console.log(`Executing session script: ${tsFilePath}`);
+    console.log(`Executing space script: ${tsFilePath}`);
 
     // Execute the TypeScript file and capture output
     return new Promise<void>((resolve, reject) => {
@@ -70,10 +70,10 @@ async function executeSession(sessionId: string) {
           return;
         }
 
-        // Write output to session.json
+        // Write output to space.json
         try {
           await fs.writeFile(outputPath, stdout, 'utf8');
-          console.log(`✅ Session output written to: ${outputPath}`);
+          console.log(`✅ Space output written to: ${outputPath}`);
           resolve();
         } catch (writeError) {
           console.error(`Error writing output: ${writeError}`);
@@ -83,15 +83,15 @@ async function executeSession(sessionId: string) {
     });
 
   } catch (error) {
-    console.error(`Error reading session directory: ${error}`);
+    console.error(`Error reading space directory: ${error}`);
     process.exit(1);
   }
 }
 
-// Get sessionId from command line arguments
-const sessionId = process.argv[2];
+// Get spaceId from command line arguments
+const spaceId = process.argv[2];
 
-executeSession(sessionId).catch((error) => {
+executeSpace(spaceId).catch((error) => {
   console.error('Execution failed:', error);
   process.exit(1);
 });

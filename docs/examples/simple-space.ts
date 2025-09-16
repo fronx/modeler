@@ -1,7 +1,7 @@
 import { Session } from '../../src/lib/thought-system';
 
 /**
- * Simple Session Example
+ * Simple Space Example
  *
  * This demonstrates the basic building blocks of cognitive modeling.
  * Perfect for getting started or quick prototyping.

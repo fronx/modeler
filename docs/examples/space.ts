@@ -1,7 +1,7 @@
 import { Session } from '../../src/lib/thought-system';
 
 /**
- * Basic Session Example
+ * Basic Space Example
  *
  * This demonstrates the fundamental patterns for creating cognitive models
  * using the Session-based API. Copy this structure for new explorations.
