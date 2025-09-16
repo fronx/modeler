@@ -80,7 +80,22 @@ Promote background elements to focus=1.0 when they become decision-relevant, but
 
 **Critical**: Never discuss or reference nodes with focus=-1.0 in conversation. If a hidden element becomes relevant to the discussion, first promote it to visible focus (either remove .setFocus() or set focus=1.0), then execute the space to update the dashboard before mentioning it.
 
-### 3. Model Tensions, Not Details
+### 3. Maintain Focus Hygiene
+
+After adding new focus=1.0 nodes, always clean up by removing focus from nodes that are no longer central to the current decision. Limit focus=1.0 to the essential elements - too many focused nodes defeats the visual hierarchy.
+
+```typescript
+// When you add new focused elements like this:
+space.thought('NewCentralDecision').setFocus(1.0);
+
+// Always review and clean up previous focus:
+space.thought('PreviousDecision'); // Remove .setFocus(1.0)
+space.thought('ResolvedTension'); // Remove .setFocus(1.0)
+```
+
+Execute the space to update the dashboard, ensuring only current decision elements remain highlighted.
+
+### 4. Model Tensions, Not Details
 
 Focus on strategic decisions and conceptual tensions. Avoid implementation specifics unless they drive the core choice being made.
 
@@ -94,7 +109,7 @@ space.thought('IncrementalApproach').conflictsWith('DisruptiveApproach', 0.8);
 // space.thought('DatabaseSchema') <- unless the schema choice drives the strategic decision
 ```
 
-### 4. Let Relationships Create Structure
+### 5. Let Relationships Create Structure
 
 Supporting concepts find their natural positions through relationships. Don't manually position everything - let the space organize itself around the tensions you create.
 
