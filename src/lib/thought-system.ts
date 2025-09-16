@@ -258,7 +258,7 @@ export class ThoughtSpace implements CognitiveOperations {
       globalHistory: this.globalHistory
     };
 
-    for (const [id, node] of this.nodes) {
+    this.nodes.forEach((node, id) => {
       serialized.nodes[id] = {
         id: node.id,
         meanings: node.meanings,
@@ -270,7 +270,7 @@ export class ThoughtSpace implements CognitiveOperations {
         semanticPosition: node.semanticPosition,
         history: node.history
       };
-    }
+    });
 
     return serialized;
   }
