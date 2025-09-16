@@ -96,6 +96,18 @@ Supporting concepts find their natural positions through relationships. Don't ma
 7. **Maintain ontological clarity** - Avoid mixing decision objects with decision criteria at the same level
 8. **Trust the process** - The medium shapes the message; executable models change how you think
 
+## Collaborative Decision Support Patterns
+
+**Visual-First Reasoning**: Use the dashboard as the primary medium for shared thinking. Surface factors by promoting them to focus=1.0 to make reasoning visible, not just deliver conclusions.
+
+**Iterative Reality-Checking**: When humans correct assumptions, immediately update the space rather than defending initial models. Let the space become more accurate through collaborative input.
+
+**Ask, Don't Assume**: Replace fabricated estimates with direct questions about actual project characteristics, timeline, and constraints. Use human perspective as authoritative source.
+
+**Natural Language Interface**: Describe insights in human terms while using numerical relationships only for internal space structure. Avoid treating estimates as verified facts.
+
+**Collaborative Model Building**: The space should capture insights from both human and AI, becoming a shared artifact for thinking rather than an AI analysis imposed on human situation.
+
 ## Technical Essentials
 
 ```typescript
@@ -124,6 +136,9 @@ npx tsx execute-space.ts <space-id>
 - **Implementation obsession** - Modeling technical specifics instead of strategic choices
 - **Over-engineering relationships** - Let structure emerge rather than forcing connections
 - **Ontological confusion** - Mixing decision objects with decision criteria at the same focus level
+- **Conclusion-first reasoning** - Delivering pre-computed insights instead of making reasoning process visible
+- **Fabricated data reliance** - Using AI estimates as facts instead of asking humans for actual constraints
+- **Bypassing the visual medium** - Talking about insights instead of surfacing them in the dashboard
 
 ## What Success Feels Like
 
