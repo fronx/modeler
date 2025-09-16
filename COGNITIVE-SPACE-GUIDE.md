@@ -145,9 +145,10 @@ space.thought('Complex')
 2. **Anchor the poles** - Only main positions get explicit focus/position
 3. **Let relationships work** - Supporting concepts position naturally
 4. **Think first, connect second** - Each relationship should represent a genuine logical connection
-5. **Use real strengths** - Relationship strengths should reflect actual conceptual distance
-6. **Embrace uncertainty** - Use intervals `[min, max]` for unclear values
-7. **Validate first** - Always check TypeScript syntax before execution
+5. **Prefer concrete over abstract** - Model specific options rather than abstract dimensions (e.g., "Hot", "Warm", "Cold" rather than "Temperature")
+6. **Use real strengths** - Relationship strengths should reflect actual conceptual distance
+7. **Embrace uncertainty** - Use intervals `[min, max]` for unclear values
+8. **Validate first** - Always check TypeScript syntax before execution
 
 ## File Structure
 
