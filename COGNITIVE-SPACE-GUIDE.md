@@ -44,35 +44,41 @@ Let participants choose visually from the dashboard. Only after purpose is clear
 
 ```typescript
 // FOREGROUND: Clean strategic choices
-space.thought('ProjectA').setPosition(-0.5).hasValue('urgency', 0.8);
-space.thought('ProjectB').setPosition(0.5).hasValue('urgency', 0.6);
+space.thought('LocationA_Downtown').setPosition(-0.5).hasValue('cost', 2200);
+space.thought('LocationB_Suburbs').setPosition(0.5).hasValue('cost', 1800);
+space.thought('LocationC_Remote').setPosition(0.0).hasValue('cost', 1200);
 
 // BACKGROUND: Rich context (hidden from humans, available for AI)
-space.thought('AttentionConstraints')
+space.thought('CommutePreference')
   .setFocus(-1.0)  // Hidden but available
-  .supports('ProjectA', 0.9)
-  .hasValue('cognitive_load', [0.7, 0.9]);
+  .conflictsWith('LocationC_Remote', 0.8)
+  .supports('LocationA_Downtown', 0.9);
 
-space.thought('RevenueUrgency')
+space.thought('BudgetConstraint')
   .setFocus(-1.0)  // AI reasoning context
-  .conflictsWith('PassionAlignment', 0.6)
-  .supports('ProjectB', 0.8);
+  .hasValue('max_monthly', 2000)
+  .conflictsWith('LocationA_Downtown', 0.7);
+
+space.thought('QualityOfLife')
+  .setFocus(-1.0)  // Complex evaluation context
+  .supports('LocationB_Suburbs', 0.8)
+  .hasValue('importance', 0.9);
 ```
 
-Promote background elements to focus=1.0 when they become decision-relevant.
+Promote background elements to focus=1.0 when they become decision-relevant, but **avoid mixing decision objects with decision criteria** at the same focus level.
 
 ### 3. Model Tensions, Not Details
 
 Focus on strategic decisions and conceptual tensions. Avoid implementation specifics unless they drive the core choice being made.
 
 ```typescript
-// Model the strategic tension
-space.thought('ExplorationMode').setPosition(-1.0);
-space.thought('ExecutionMode').setPosition(1.0);
-space.thought('ExplorationMode').conflictsWith('ExecutionMode', 0.8);
+// Model the strategic tension between approaches
+space.thought('IncrementalApproach').setPosition(-1.0);
+space.thought('DisruptiveApproach').setPosition(1.0);
+space.thought('IncrementalApproach').conflictsWith('DisruptiveApproach', 0.8);
 
-// NOT the technical details
-// space.thought('AudioMLVectors') <- unless this drives the decision
+// NOT the technical implementation details
+// space.thought('DatabaseSchema') <- unless the schema choice drives the strategic decision
 ```
 
 ### 4. Let Relationships Create Structure
@@ -87,7 +93,8 @@ Supporting concepts find their natural positions through relationships. Don't ma
 4. **Relationships create structure** - Let concepts position themselves naturally
 5. **Ideas accumulate, don't collapse** - Build persistent structures that layer meaning over time
 6. **Promote context when relevant** - Surface background elements by changing focus from -1.0 to 1.0
-7. **Trust the process** - The medium shapes the message; executable models change how you think
+7. **Maintain ontological clarity** - Avoid mixing decision objects with decision criteria at the same level
+8. **Trust the process** - The medium shapes the message; executable models change how you think
 
 ## Technical Essentials
 
@@ -116,6 +123,7 @@ npx tsx execute-space.ts <space-id>
 - **Single-layer thinking** - Either too complex for humans or too simple for AI reasoning
 - **Implementation obsession** - Modeling technical specifics instead of strategic choices
 - **Over-engineering relationships** - Let structure emerge rather than forcing connections
+- **Ontological confusion** - Mixing decision objects with decision criteria at the same focus level
 
 ## What Success Feels Like
 
