@@ -133,6 +133,22 @@ space.thought('Speed').setFocus(-1.0); // Explicitly decided against speed as pr
 space.thought('SportsCar').setFocus(1.0); // Still considering (has comfort aspects too)
 ```
 
+### Detecting Conceptual Evolution
+```typescript
+// INITIAL SPACE: Speed vs Comfort (organizing tension)
+space.thought('Speed').setPosition(-1.0);
+space.thought('Comfort').setPosition(1.0);
+
+// CONVERSATION REVEALS: Electric vs Gas is what actually matters
+// PROACTIVE SUGGESTION: "I notice Speed vs Comfort is no longer driving decisions.
+// Should we reorganize around Electric vs Gas instead?"
+
+// EVOLVED SPACE: Remove irrelevant concepts, establish new organizing axis
+space.thought('Electric').setPosition(-1.0);  // New left pole
+space.thought('Gas').setPosition(1.0);       // New right pole
+// Remove Speed/Comfort concepts entirely
+```
+
 ### Bridging Concepts
 ```typescript
 space.thought('Bridge')
@@ -161,7 +177,8 @@ space.thought('Complex')
 6. **Focus on decisions** - Use focus=1.0 for options under consideration, focus=-1.0 for explicitly discarded options, omit focus for neutral concepts. Focus decisions are independent - discarding one concept doesn't automatically discard related concepts
 7. **Use real strengths** - Relationship strengths should reflect actual conceptual distance
 8. **Embrace uncertainty** - Use intervals `[min, max]` for unclear values
-9. **Validate first** - Always check TypeScript syntax before execution
+9. **Watch for conceptual evolution** - Proactively suggest space reorganization when original organizing concepts become irrelevant
+10. **Validate first** - Always check TypeScript syntax before execution
 
 ## File Structure
 
@@ -183,6 +200,7 @@ data/spaces/your-space-id/
 - **Agent complexity**: Use direct editing, not the cognitive-modeler agent
 - **Weak or illogical relationships**: Each connection should represent a genuine conceptual relationship
 - **Cascading focus assumptions**: Don't automatically discard concepts based on relationships - each focus decision must be explicit and independent
+- **Missing conceptual evolution**: When conversation reveals new organizing tensions, proactively suggest space reorganization rather than maintaining outdated axes
 
 ## Validation Checklist
 
@@ -190,6 +208,7 @@ data/spaces/your-space-id/
 ✓ Strong conflict relationship between main poles (≥0.7)?
 ✓ Supporting concepts with default focus/position?
 ✓ Relationship strengths reflect conceptual distance?
+✓ Organizing axes still relevant to current decision-making?
 ✓ Space executes without TypeScript errors?
 
 ---
