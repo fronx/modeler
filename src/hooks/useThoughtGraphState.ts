@@ -3,6 +3,7 @@ import { Node, Edge, useNodesState, useEdgesState } from '@xyflow/react';
 import { ThoughtNode } from '../lib/thought-system';
 import {
   calculateCircleLayout,
+  calculateFocusLayout,
   createStyledEdge,
   calculateOptimalHandles
 } from '../lib/thought-graph-utils';
@@ -18,7 +19,7 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
     const nodeArray = Array.from(thoughtNodes.values());
 
     nodeArray.forEach((thoughtNode: ThoughtNode, index: number) => {
-      const { x, y } = calculateCircleLayout(nodeArray.length, index);
+      const { x, y } = calculateFocusLayout(nodeArray.length, index, thoughtNode.focus);
 
       flowNodes.push({
         id: thoughtNode.id,
@@ -33,7 +34,7 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
         const targetNode = nodeArray.find(n => n.id === rel.target);
         if (targetNode) {
           const targetIndex = nodeArray.indexOf(targetNode);
-          const { x: targetX, y: targetY } = calculateCircleLayout(nodeArray.length, targetIndex);
+          const { x: targetX, y: targetY } = calculateFocusLayout(nodeArray.length, targetIndex, targetNode.focus);
 
           // Calculate direction and create edge with optimal handles
           const sourceNodeData = { position: { x, y } } as Node;
@@ -64,13 +65,23 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
     return calculateOptimalHandles(sourceNode, targetNode);
   }, []);
 
-  // Filter and update edges based on hover state and current node positions
+  // Filter and update edges based on hover state, focus levels, and current node positions
   const visibleEdges = React.useMemo(() => {
-    if (!hoveredNodeId) return [];
+    let filteredEdges = allEdges;
 
-    const filteredEdges = allEdges.filter(edge =>
-      edge.source === hoveredNodeId || edge.target === hoveredNodeId
-    );
+    // If no node is hovered, show edges for focused nodes (focus >= 0.7)
+    if (!hoveredNodeId) {
+      filteredEdges = allEdges.filter(edge => {
+        const sourceNode = Array.from(thoughtNodes.values()).find(n => n.id === edge.source);
+        const targetNode = Array.from(thoughtNodes.values()).find(n => n.id === edge.target);
+        return (sourceNode && sourceNode.focus >= 0.7) || (targetNode && targetNode.focus >= 0.7);
+      });
+    } else {
+      // When hovering, show edges for the hovered node
+      filteredEdges = allEdges.filter(edge =>
+        edge.source === hoveredNodeId || edge.target === hoveredNodeId
+      );
+    }
 
     // Update handles based on current node positions
     return filteredEdges.map(edge => {
@@ -87,7 +98,7 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
       }
       return edge;
     });
-  }, [allEdges, hoveredNodeId, nodes, calculateHandles]);
+  }, [allEdges, hoveredNodeId, nodes, thoughtNodes, calculateHandles]);
 
   const [edges, setEdges, onEdgesChange] = useEdgesState(visibleEdges);
 

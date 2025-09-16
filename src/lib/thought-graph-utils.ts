@@ -61,6 +61,21 @@ export const calculateCircleLayout = (nodeCount: number, index: number, radius: 
   return { x, y };
 };
 
+// Position nodes with focus-aware layout (focused nodes gravitate toward center)
+export const calculateFocusLayout = (nodeCount: number, index: number, focusLevel: number, baseRadius: number = 300) => {
+  // Calculate base circular position
+  const adjustedRadius = Math.max(baseRadius, nodeCount * 50);
+  const angle = (index / nodeCount) * 2 * Math.PI;
+
+  // Focus affects distance from center: higher focus = closer to center
+  // Use exponential curve for more dramatic effect at high focus levels
+  const focusRadius = adjustedRadius * (1 - Math.pow(focusLevel, 2));
+
+  const x = Math.cos(angle) * focusRadius;
+  const y = Math.sin(angle) * focusRadius;
+  return { x, y };
+};
+
 // Create edge with optimal styling and handles
 export const createStyledEdge = (
   sourceId: string,

@@ -50,6 +50,8 @@ Use ONLY these relationship types in `.relatesTo()` calls:
 **File naming**: Always use `space.ts` (NOT `thoughts.ts` or `session.ts`)
 **Location**: `data/spaces/<space-id>/space.ts`
 
+**CRITICAL**: The cognitive-modeler agent should ALWAYS create files named `space.ts`, never `thoughts.ts` or other names.
+
 ```typescript
 import { Space } from '../../../src/lib/thought-system';
 
@@ -108,6 +110,16 @@ if (require.main === module) {
 - **JSON generation**: Execute spaces to create persistent `.json` files for visualization
 - **Cross-conversation persistence**: Spaces survive context windows
 - **Collaborative modeling**: Multiple participants can reference same cognitive structures
+
+## CRITICAL: No Web Interface Access
+
+**NEVER** attempt to access the web dashboard or any HTTP endpoints. Work exclusively at the filesystem level:
+
+- **NO** opening localhost:3000 or any web URLs
+- **NO** using WebFetch, curl, or HTTP requests to verify success
+- **NO** accessing the browser interface
+
+The auto-execution system and WebSocket infrastructure handle visualization updates automatically when you save valid TypeScript files. Trust the filesystem-based workflow - your job is to create and validate the cognitive models, not to verify their web display.
 
 ## Key Examples
 

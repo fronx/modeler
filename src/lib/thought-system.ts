@@ -22,6 +22,7 @@ import type {
   ConfidenceLevel,
   RelationshipStrength,
   PropertyValue,
+  FocusLevel,
   Meaning,
   Relationship,
   MetaphorBranch,
@@ -46,6 +47,7 @@ export class ThoughtNode implements ThoughtBuilder {
   public metaphorBranches: MetaphorBranch[] = [];
   public tension?: string;
   public history: string[] = [];
+  public focus: FocusLevel = 0.1; // Default to background
 
   constructor(id: NodeId) {
     this.id = id;
@@ -71,6 +73,12 @@ export class ThoughtNode implements ThoughtBuilder {
   hasValue(key: string, value: PropertyValue): this {
     this.values.set(key, value);
     this.history.push(`Set ${key} = ${JSON.stringify(value)}`);
+    return this;
+  }
+
+  setFocus(level: FocusLevel): this {
+    this.focus = Math.max(0, Math.min(1, level)); // Clamp to [0,1]
+    this.history.push(`Focus set to ${this.focus}`);
     return this;
   }
 
@@ -244,6 +252,7 @@ export class ThoughtSpace implements CognitiveOperations {
         relationships: node.relationships,
         metaphorBranches: node.metaphorBranches,
         tension: node.tension,
+        focus: node.focus,
         history: node.history
       };
     }

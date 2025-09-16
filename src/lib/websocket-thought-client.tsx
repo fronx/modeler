@@ -160,6 +160,7 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
       node.relationships = typedNodeData.relationships || [];
       node.metaphorBranches = typedNodeData.metaphorBranches || [];
       node.tension = typedNodeData.tension;
+      node.focus = typedNodeData.focus || 0.1; // Default to background if not specified
       node.history = typedNodeData.history || [];
 
       nodeMap.set(id, node);

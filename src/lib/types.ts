@@ -22,6 +22,9 @@ export type RelationshipStrength = number;
 /** Property values: number | [min, max] interval */
 export type PropertyValue = number | Interval;
 
+/** Focus level (0-1): 1.0 = fully focused | 0.7 = prominent | 0.3 = peripheral | 0.0 = background */
+export type FocusLevel = number;
+
 /**
  * How thoughts relate to each other - semantic relationship types
  * @example 'causes' - A directly produces B
@@ -102,6 +105,9 @@ export interface ThoughtBuilder {
 
   /** History-aware transform: .applyHistoryAwareTransform('refinement', 0.8) */
   applyHistoryAwareTransform(transformType: string, magnitude: number): this;
+
+  /** Set focus level: .setFocus(1.0) | .setFocus(0.3) - 1.0 = full focus, 0.0 = background */
+  setFocus(level: FocusLevel): this;
 }
 
 /**
