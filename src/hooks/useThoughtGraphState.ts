@@ -8,6 +8,7 @@ import {
   createStyledEdge,
   calculateOptimalHandles
 } from '../lib/thought-graph-utils';
+import { calculateNodeColors } from '../lib/thought-colors';
 
 export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => {
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
@@ -18,6 +19,9 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
     const flowEdges: Edge[] = [];
 
     const nodeArray = Array.from(thoughtNodes.values());
+
+    // Calculate node colors based on positions and relationships
+    const nodeColors = calculateNodeColors(nodeArray);
 
     nodeArray.forEach((thoughtNode: ThoughtNode, index: number) => {
       const { x, y } = calculateSemanticFocusLayout(
@@ -34,7 +38,10 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
         id: thoughtNode.id,
         type: 'thoughtNode',
         position: { x, y },
-        data: { node: thoughtNode },
+        data: {
+          node: thoughtNode,
+          color: nodeColors.get(thoughtNode.id) || '#6b7280'
+        },
         draggable: true,
       });
 

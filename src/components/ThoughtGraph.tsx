@@ -15,7 +15,7 @@ import { useThoughtGraphState } from '../hooks/useThoughtGraphState';
 
 // Custom node component for thoughts with semantic zooming
 const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
-  const { node } = data;
+  const { node, color } = data;
   const [isExpanded, setIsExpanded] = React.useState(false);
 
   // Calculate detail level based on focus (0.0 to 1.0)
@@ -34,7 +34,10 @@ const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
 
   return (
     <div
-      className="relative px-4 py-3 bg-white dark:bg-gray-800 border-2 border-blue-500 rounded-lg shadow-lg min-w-[200px] max-w-[300px] cursor-pointer hover:border-blue-400 transition-colors"
+      className="relative px-4 py-3 bg-white dark:bg-gray-800 border-2 rounded-lg shadow-lg min-w-[200px] max-w-[300px] cursor-pointer transition-colors hover:opacity-80"
+      style={{
+        borderColor: color
+      }}
       onClick={handleClick}
     >
       {/* Handles for edge connections on all sides */}
@@ -48,7 +51,7 @@ const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
       <Handle type="source" position={Position.Left} id="source-left" />
 
       {/* Title - always visible */}
-      <div className="font-bold text-lg text-blue-600 dark:text-blue-400 mb-2 flex items-center justify-between">
+      <div className="font-bold text-lg mb-2 flex items-center justify-between" style={{ color }}>
         <span>{node.id}</span>
         {!naturalShowFullDetail && (
           <span className="text-xs text-gray-400">
@@ -131,7 +134,7 @@ export const ThoughtGraph: React.FC = () => {
         <Background />
         <Controls />
         <MiniMap
-          nodeColor="#3b82f6"
+          nodeColor={(node) => node.data?.color || '#6b7280'}
           nodeStrokeWidth={3}
           zoomable
           pannable
