@@ -3,9 +3,10 @@ import { getThoughtWebSocketServer } from '@/lib/websocket-server';
 
 export async function POST(
   request: Request,
-  { params }: { params: { spaceId: string } }
+  { params }: { params: Promise<{ spaceId: string }> }
 ) {
   try {
+    const { spaceId } = await params;
     const wsServer = getThoughtWebSocketServer();
 
     if (!wsServer) {
@@ -14,15 +15,16 @@ export async function POST(
       }, { status: 503 });
     }
 
-    await wsServer.broadcastSpaceUpdate(params.spaceId);
+    await wsServer.broadcastSpaceUpdate(spaceId);
 
     return NextResponse.json({
       success: true,
-      message: `WebSocket update broadcast for space: ${params.spaceId}`
+      message: `WebSocket update broadcast for space: ${spaceId}`
     });
 
   } catch (error) {
-    console.error(`Failed to broadcast update for space ${params.spaceId}:`, error);
+    const { spaceId } = await params;
+    console.error(`Failed to broadcast update for space ${spaceId}:`, error);
     return NextResponse.json({
       error: 'Failed to broadcast update'
     }, { status: 500 });

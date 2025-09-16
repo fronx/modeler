@@ -6,10 +6,11 @@ const SPACES_DIR = path.join(process.cwd(), 'data/spaces');
 
 export async function GET(
   request: Request,
-  { params }: { params: { spaceId: string } }
+  { params }: { params: Promise<{ spaceId: string }> }
 ) {
   try {
-    const spaceDir = path.join(SPACES_DIR, params.spaceId);
+    const { spaceId } = await params;
+    const spaceDir = path.join(SPACES_DIR, spaceId);
     const spaceFilePath = path.join(spaceDir, 'space.json');
 
     // Check if space.json exists
@@ -17,7 +18,7 @@ export async function GET(
       await fs.access(spaceFilePath);
     } catch {
       return NextResponse.json({
-        error: 'Space not found or not yet executed. Run: npx tsx execute-space.ts ' + params.spaceId
+        error: 'Space not found or not yet executed. Run: npx tsx execute-space.ts ' + spaceId
       }, { status: 404 });
     }
 

@@ -6,10 +6,11 @@ const SPACES_DIR = path.join(process.cwd(), 'data/spaces');
 
 export async function GET(
   request: Request,
-  { params }: { params: { spaceId: string } }
+  { params }: { params: Promise<{ spaceId: string }> }
 ) {
   try {
-    const spaceDir = path.join(SPACES_DIR, params.spaceId);
+    const { spaceId } = await params;
+    const spaceDir = path.join(SPACES_DIR, spaceId);
 
     // Check if space exists
     try {
@@ -30,7 +31,7 @@ export async function GET(
         nodes = spaceData.thoughtSpace.nodes;
       }
     } catch (spaceJsonError) {
-      console.log(`No space.json found for ${params.spaceId}, trying legacy format`);
+      console.log(`No space.json found for ${spaceId}, trying legacy format`);
 
       // Fallback to legacy format (individual JSON files)
       try {
@@ -54,7 +55,7 @@ export async function GET(
 
     return NextResponse.json({
       nodes,
-      spaceId: params.spaceId,
+      spaceId: spaceId,
       loadedAt: new Date().toISOString(),
       count: Object.keys(nodes).length
     });
