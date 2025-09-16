@@ -70,9 +70,12 @@ async function executeSpace(spaceId: string) {
           return;
         }
 
-        // Write output to space.json
+        // Write output to space.json atomically to avoid race conditions
         try {
-          await fs.writeFile(outputPath, stdout, 'utf8');
+          // Write to temporary file first, then rename (atomic operation)
+          const tempPath = outputPath + '.tmp';
+          await fs.writeFile(tempPath, stdout, 'utf8');
+          await fs.rename(tempPath, outputPath);
           console.log(`✅ Space output written to: ${outputPath}`);
           resolve();
         } catch (writeError) {

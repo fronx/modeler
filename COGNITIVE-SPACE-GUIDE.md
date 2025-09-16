@@ -74,6 +74,8 @@ space.thought('SupportingConcept')
   .conflictsWith('SomeOtherConcept', 0.5);
 ```
 
+**Critical Principle**: Only the main theoretical positions should have explicit focus. Supporting concepts, methodological tools, and sub-problems should not use `.setFocus()` - they will naturally appear collapsed in the dashboard, maintaining clean visual hierarchy.
+
 **Explore**: Try adding concepts that don't clearly belong to either pole. Bridge concepts, contradictory concepts, concepts that support both sides weakly. These often generate the most interesting insights.
 
 ### 5. Validate and Execute
@@ -97,7 +99,7 @@ npx tsx execute-space.ts your-space-id
 .hasValue(key, value)           // Add numerical property
 .supports(target, strength?)     // Positive relationship (default: 0.7)
 .conflictsWith(target, strength?) // Negative relationship (default: 0.7)
-.setFocus(level)                // Centrality (0-1) - USE ONLY FOR MAIN POLES
+.setFocus(level)                // Centrality (0-1) - RESERVE FOR MAIN THEORETICAL POSITIONS ONLY
 .setPosition(position)          // Semantic position (-1 to 1) - USE ONLY FOR MAIN POLES
 .forkMetaphor(name, interpretation, weight?) // Multiple interpretations
 .holdsTension(description)      // Unresolved contradiction

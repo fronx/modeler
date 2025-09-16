@@ -65,7 +65,7 @@ export const createAnimatedForceLayout = (
   const {
     width = 1200,
     height = 800,
-    iterations = 300,
+    iterations = 500,
     linkStrength = 0.3,
     repulsionStrength = -10,
     anchoringStrength = 10,

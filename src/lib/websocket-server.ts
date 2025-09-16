@@ -156,9 +156,11 @@ export class ThoughtWebSocketServer {
               // Validate JSON output
               JSON.parse(stdout);
 
-              // Write to space.json
+              // Write to space.json atomically to avoid race conditions
               const jsonPath = path.join(path.dirname(tsFilePath), 'space.json');
-              await fs.writeFile(jsonPath, stdout, 'utf8');
+              const tempPath = jsonPath + '.tmp';
+              await fs.writeFile(tempPath, stdout, 'utf8');
+              await fs.rename(tempPath, jsonPath);
               console.log(`✅ Auto-executed ${spaceId} → space.json updated`);
               resolve();
             } catch (parseError) {

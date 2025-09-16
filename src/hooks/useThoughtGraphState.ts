@@ -11,7 +11,11 @@ import {
 import { calculateNodeColors } from '../lib/thought-colors';
 import { createAnimatedForceLayout } from '../lib/d3-force-layout';
 
-export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => {
+export const useThoughtGraphState = (
+  thoughtNodes: Map<string, ThoughtNode>,
+  backgroundEdgeOpacity: number = 0.2,
+  showArrows: boolean = false
+) => {
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
   const [layoutPositions, setLayoutPositions] = React.useState<Map<string, { x: number; y: number }>>(new Map());
   const [isAnimating, setIsAnimating] = React.useState(false);
@@ -93,7 +97,8 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
             rel,
             relIndex,
             sourceNodeData,
-            targetNodeData
+            targetNodeData,
+            showArrows
           );
 
           flowEdges.push(edge);
@@ -112,26 +117,51 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
     return calculateOptimalHandles(sourceNode, targetNode);
   }, []);
 
-  // Filter and update edges based on hover state, focus levels, and current node positions
+  // Calculate edge styling based on connected node centrality and hover state
   const visibleEdges = React.useMemo(() => {
-    let filteredEdges = allEdges;
+    const styledEdges = allEdges.map(edge => {
+      const sourceNode = Array.from(thoughtNodes.values()).find(n => n.id === edge.source);
+      const targetNode = Array.from(thoughtNodes.values()).find(n => n.id === edge.target);
 
-    // If no node is hovered, show edges for focused nodes (focus >= 0.7)
-    if (!hoveredNodeId) {
-      filteredEdges = allEdges.filter(edge => {
-        const sourceNode = Array.from(thoughtNodes.values()).find(n => n.id === edge.source);
-        const targetNode = Array.from(thoughtNodes.values()).find(n => n.id === edge.target);
-        return (sourceNode && sourceNode.focus >= 0.7) || (targetNode && targetNode.focus >= 0.7);
-      });
-    } else {
-      // When hovering, show edges for the hovered node
-      filteredEdges = allEdges.filter(edge =>
-        edge.source === hoveredNodeId || edge.target === hoveredNodeId
-      );
-    }
+      if (!sourceNode || !targetNode) return edge;
+
+      // Calculate edge centrality based on connected nodes
+      const sourceFocus = sourceNode.focus || 0.1;
+      const targetFocus = targetNode.focus || 0.1;
+
+      // Use the higher focus level to determine edge prominence
+      const maxFocus = Math.max(sourceFocus, targetFocus);
+
+      // Boost focus if either node is hovered
+      const isHoveredEdge = edge.source === hoveredNodeId || edge.target === hoveredNodeId;
+      const effectiveFocus = isHoveredEdge ? Math.max(maxFocus, 0.8) : maxFocus;
+
+      // Calculate thickness based on centrality
+      const baseStrokeWidth = edge.style?.strokeWidth || 3;
+      const relationship = edge.data?.relationship;
+      const typeMultiplier = relationship?.type === 'conflicts-with' ? 1.5 : 1.0; // Conflicts slightly thicker
+
+      // Scale thickness: 0.5x to 2.5x based on focus level
+      const focusMultiplier = 0.5 + (effectiveFocus * 2.0);
+      const finalStrokeWidth = baseStrokeWidth * focusMultiplier * typeMultiplier;
+
+      // Calculate opacity: high focus = full opacity, low focus = background opacity
+      const opacity = effectiveFocus >= 0.7 ? 1.0 :
+                     effectiveFocus >= 0.4 ? 0.6 :
+                     backgroundEdgeOpacity;
+
+      return {
+        ...edge,
+        style: {
+          ...edge.style,
+          strokeWidth: finalStrokeWidth,
+          opacity: opacity
+        }
+      };
+    });
 
     // Update handles based on current node positions
-    return filteredEdges.map(edge => {
+    return styledEdges.map(edge => {
       const sourceNode = nodes.find(n => n.id === edge.source);
       const targetNode = nodes.find(n => n.id === edge.target);
 
@@ -145,7 +175,7 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
       }
       return edge;
     });
-  }, [allEdges, hoveredNodeId, nodes, thoughtNodes, calculateHandles]);
+  }, [allEdges, hoveredNodeId, nodes, thoughtNodes, calculateHandles, backgroundEdgeOpacity]);
 
   const [edges, setEdges, onEdgesChange] = useEdgesState(visibleEdges);
 

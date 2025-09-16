@@ -106,7 +106,15 @@ const nodeTypes = {
   thoughtNode: ThoughtNodeComponent,
 };
 
-export const ThoughtGraph: React.FC = () => {
+interface ThoughtGraphProps {
+  backgroundEdgeOpacity?: number;
+  showArrows?: boolean;
+}
+
+export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
+  backgroundEdgeOpacity = 0.2,
+  showArrows = false
+}) => {
   const { nodes: thoughtNodes } = useWebSocketThoughts();
 
   const {
@@ -116,7 +124,7 @@ export const ThoughtGraph: React.FC = () => {
     onEdgesChange,
     hoveredNodeId,
     setHoveredNodeId,
-  } = useThoughtGraphState(thoughtNodes);
+  } = useThoughtGraphState(thoughtNodes, backgroundEdgeOpacity, showArrows);
 
   return (
     <div className="w-full h-full">
