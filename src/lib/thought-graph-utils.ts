@@ -61,15 +61,69 @@ export const calculateCircleLayout = (nodeCount: number, index: number, radius: 
   return { x, y };
 };
 
+// Calculate transitive focus based on connections to other nodes
+export const calculateTransitiveFocus = (
+  currentNode: any,
+  allNodes: any[],
+  baseFocus: number
+): number => {
+  let maxTransitiveFocus = 0;
+
+  // Check all relationships this node has
+  currentNode.relationships.forEach((rel: any) => {
+    const connectedNode = allNodes.find(n => n.id === rel.target);
+    if (connectedNode && connectedNode.focus > 0.5) { // Only inherit from meaningfully focused nodes
+      // Inherit focus based on relationship strength, independent of base focus
+      const inheritedFocus = connectedNode.focus * Math.abs(rel.strength || 0.7) * 0.8;
+      maxTransitiveFocus = Math.max(maxTransitiveFocus, inheritedFocus);
+    }
+  });
+
+  // Also check for incoming relationships (this node as target)
+  allNodes.forEach(otherNode => {
+    if (otherNode.focus > 0.5) { // Only inherit from meaningfully focused nodes
+      otherNode.relationships.forEach((rel: any) => {
+        if (rel.target === currentNode.id) {
+          const inheritedFocus = otherNode.focus * Math.abs(rel.strength || 0.7) * 0.8;
+          maxTransitiveFocus = Math.max(maxTransitiveFocus, inheritedFocus);
+        }
+      });
+    }
+  });
+
+  // Use the higher of base focus or transitive focus, but give transitive focus a minimum boost
+  const effectiveFocus = Math.max(baseFocus, maxTransitiveFocus);
+
+  // If we have transitive focus, ensure minimum level of 0.6 for connected nodes
+  if (maxTransitiveFocus > 0) {
+    return Math.max(effectiveFocus, 0.6);
+  }
+
+  return Math.min(effectiveFocus, 1.0); // Cap at 1.0
+};
+
 // Position nodes with focus-aware layout (focused nodes gravitate toward center)
-export const calculateFocusLayout = (nodeCount: number, index: number, focusLevel: number, baseRadius: number = 300) => {
+export const calculateFocusLayout = (
+  nodeCount: number,
+  index: number,
+  focusLevel: number,
+  baseRadius: number = 300,
+  currentNode?: any,
+  allNodes?: any[]
+) => {
   // Calculate base circular position
   const adjustedRadius = Math.max(baseRadius, nodeCount * 50);
   const angle = (index / nodeCount) * 2 * Math.PI;
 
+  // Calculate effective focus including transitive effects
+  let effectiveFocus = focusLevel;
+  if (currentNode && allNodes) {
+    effectiveFocus = calculateTransitiveFocus(currentNode, allNodes, focusLevel);
+  }
+
   // Focus affects distance from center: higher focus = closer to center
   // Use exponential curve for more dramatic effect at high focus levels
-  const focusRadius = adjustedRadius * (1 - Math.pow(focusLevel, 2));
+  const focusRadius = adjustedRadius * (1 - Math.pow(effectiveFocus, 2));
 
   const x = Math.cos(angle) * focusRadius;
   const y = Math.sin(angle) * focusRadius;

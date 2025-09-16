@@ -19,7 +19,14 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
     const nodeArray = Array.from(thoughtNodes.values());
 
     nodeArray.forEach((thoughtNode: ThoughtNode, index: number) => {
-      const { x, y } = calculateFocusLayout(nodeArray.length, index, thoughtNode.focus);
+      const { x, y } = calculateFocusLayout(
+        nodeArray.length,
+        index,
+        thoughtNode.focus,
+        300, // baseRadius
+        thoughtNode,
+        nodeArray
+      );
 
       flowNodes.push({
         id: thoughtNode.id,
@@ -34,7 +41,14 @@ export const useThoughtGraphState = (thoughtNodes: Map<string, ThoughtNode>) => 
         const targetNode = nodeArray.find(n => n.id === rel.target);
         if (targetNode) {
           const targetIndex = nodeArray.indexOf(targetNode);
-          const { x: targetX, y: targetY } = calculateFocusLayout(nodeArray.length, targetIndex, targetNode.focus);
+          const { x: targetX, y: targetY } = calculateFocusLayout(
+            nodeArray.length,
+            targetIndex,
+            targetNode.focus,
+            300, // baseRadius
+            targetNode,
+            nodeArray
+          );
 
           // Calculate direction and create edge with optimal handles
           const sourceNodeData = { position: { x, y } } as Node;
