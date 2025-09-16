@@ -144,9 +144,10 @@ space.thought('Complex')
 1. **Start with tension** - Identify the core debate first
 2. **Anchor the poles** - Only main positions get explicit focus/position
 3. **Let relationships work** - Supporting concepts position naturally
-4. **Use real strengths** - Relationship strengths should reflect actual conceptual distance
-5. **Embrace uncertainty** - Use intervals `[min, max]` for unclear values
-6. **Validate first** - Always check TypeScript syntax before execution
+4. **Think first, connect second** - Each relationship should represent a genuine logical connection
+5. **Use real strengths** - Relationship strengths should reflect actual conceptual distance
+6. **Embrace uncertainty** - Use intervals `[min, max]` for unclear values
+7. **Validate first** - Always check TypeScript syntax before execution
 
 ## File Structure
 
@@ -166,7 +167,7 @@ data/spaces/your-space-id/
 - **Over-positioning**: Setting focus/position for every concept
 - **Weak tensions**: Central poles should strongly conflict (0.7-0.9 strength)
 - **Agent complexity**: Use direct editing, not the cognitive-modeler agent
-- **Ignoring relationships**: Connections determine the conceptual geography
+- **Weak or illogical relationships**: Each connection should represent a genuine conceptual relationship
 
 ## Validation Checklist
 
