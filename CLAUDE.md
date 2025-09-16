@@ -17,7 +17,7 @@ This is "Modeler" - a Next.js 15 application exploring the concept of giving men
 ## Development Commands
 
 ```bash
-# Start development server with Turbopack
+# Start development server with Turbopack (always run in background)
 npm run dev
 
 # Build for production with Turbopack
@@ -29,6 +29,8 @@ npm run start
 # Run ESLint
 npm run lint
 ```
+
+**Important**: When using Claude Code, always run `npm run dev` in the background using the `run_in_background: true` parameter to avoid blocking other operations.
 
 ## Project Structure
 

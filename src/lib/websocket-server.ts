@@ -16,6 +16,7 @@ export class ThoughtWebSocketServer {
   private server: any;
   private watcher: any | null = null;
   private clients = new Set<WebSocket>();
+  private actualPort: number = 8080;
 
   constructor(port = 8080) {
     // Create HTTP server for WebSocket upgrade
@@ -26,8 +27,22 @@ export class ThoughtWebSocketServer {
     this.setupFileWatcher();
 
     this.server.listen(port, () => {
+      this.actualPort = port;
       console.log(`🔗 ThoughtWebSocket server running on port ${port}`);
     });
+
+    this.server.on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${port} is already in use. Please free up port ${port} and restart the server.`);
+        console.error(`   Try: lsof -ti :${port} | xargs kill`);
+      } else {
+        console.error('WebSocket server error:', err);
+      }
+    });
+  }
+
+  public getPort(): number {
+    return this.actualPort;
   }
 
   private setupWebSocketHandlers(): void {
@@ -341,6 +356,19 @@ let thoughtWSServer: ThoughtWebSocketServer | null = null;
 export function startThoughtWebSocketServer(): void {
   if (!thoughtWSServer) {
     thoughtWSServer = new ThoughtWebSocketServer();
+
+    // Cleanup on process exit
+    const cleanup = () => {
+      if (thoughtWSServer) {
+        console.log('🔌 Shutting down ThoughtWebSocket server...');
+        thoughtWSServer.close();
+        thoughtWSServer = null;
+      }
+    };
+
+    process.on('SIGINT', cleanup);
+    process.on('SIGTERM', cleanup);
+    process.on('exit', cleanup);
   }
 }
 
