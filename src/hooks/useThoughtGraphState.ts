@@ -23,7 +23,7 @@ export const useThoughtGraphState = (
 
   // Calculate D3 force layout when nodes change - use animated version
   React.useEffect(() => {
-    const nodeArray = Array.from(thoughtNodes.values());
+    const nodeArray = Array.from(thoughtNodes.values()).filter(node => node.focus !== -1);
     if (nodeArray.length === 0) return;
 
     setIsAnimating(true);
@@ -61,7 +61,7 @@ export const useThoughtGraphState = (
     const flowNodes: Node[] = [];
     const flowEdges: Edge[] = [];
 
-    const nodeArray = Array.from(thoughtNodes.values());
+    const nodeArray = Array.from(thoughtNodes.values()).filter(node => node.focus !== -1);
 
     // Calculate node colors based on positions and relationships
     const nodeColors = calculateNodeColors(nodeArray);
