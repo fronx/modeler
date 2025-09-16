@@ -78,6 +78,8 @@ space.thought('QualityOfLife')
 
 Promote background elements to focus=1.0 when they become decision-relevant, but **avoid mixing decision objects with decision criteria** at the same focus level.
 
+**Critical**: Never discuss or reference nodes with focus=-1.0 in conversation. If a hidden element becomes relevant to the discussion, first promote it to visible focus (either remove .setFocus() or set focus=1.0), then execute the space to update the dashboard before mentioning it.
+
 ### 3. Model Tensions, Not Details
 
 Focus on strategic decisions and conceptual tensions. Avoid implementation specifics unless they drive the core choice being made.
@@ -121,6 +123,7 @@ npx tsx execute-space.ts <space-id>
 
 - **Starting with content before purpose** - You'll get lost in details that don't serve decisions
 - **Conclusion-first reasoning** - Delivering pre-computed insights instead of making reasoning process visible
+- **Discussing hidden nodes** - Referencing focus=-1.0 elements that participants can't see in the dashboard
 - **Bypassing the visual medium** - Talking about insights instead of surfacing them in the dashboard
 - **Fabricated data reliance** - Using AI estimates as facts instead of asking humans for actual constraints
 - **Ontological confusion** - Mixing decision objects with decision criteria at the same focus level
