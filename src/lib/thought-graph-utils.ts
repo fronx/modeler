@@ -223,15 +223,16 @@ export const createStyledEdge = (
   index: number,
   sourceNode?: Node,
   targetNode?: Node,
-  showArrows: boolean = false
+  showArrows: boolean = false,
+  showLabels: boolean = false
 ): Edge => {
   const baseEdge: Edge = {
     id: `${sourceId}-${targetId}-${index}`,
     source: sourceId,
     target: targetId,
     animated: false,
-    label: `${relationship.type} (${relationship.strength})`,
-    labelStyle: { fontSize: 12, fill: '#000', fontWeight: 'bold' },
+    label: showLabels ? `${relationship.type} (${relationship.strength})` : undefined,
+    labelStyle: showLabels ? { fontSize: 12, fill: '#000', fontWeight: 'bold' } : undefined,
     markerEnd: showArrows ? {
       type: MarkerType.ArrowClosed,
       color: getEdgeColor(relationship.type),

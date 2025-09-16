@@ -14,7 +14,8 @@ import { createAnimatedForceLayout } from '../lib/d3-force-layout';
 export const useThoughtGraphState = (
   thoughtNodes: Map<string, ThoughtNode>,
   backgroundEdgeOpacity: number = 0.2,
-  showArrows: boolean = false
+  showArrows: boolean = false,
+  showLabels: boolean = false
 ) => {
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
   const [layoutPositions, setLayoutPositions] = React.useState<Map<string, { x: number; y: number }>>(new Map());
@@ -98,7 +99,8 @@ export const useThoughtGraphState = (
             relIndex,
             sourceNodeData,
             targetNodeData,
-            showArrows
+            showArrows,
+            showLabels
           );
 
           flowEdges.push(edge);

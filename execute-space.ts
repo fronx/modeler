@@ -2,7 +2,7 @@
 
 import { exec } from 'child_process';
 import { promises as fs } from 'fs';
-import path from 'path';
+import * as path from 'path';
 
 async function executeSpace(spaceId: string) {
   if (!spaceId) {
@@ -77,6 +77,22 @@ async function executeSpace(spaceId: string) {
           await fs.writeFile(tempPath, stdout, 'utf8');
           await fs.rename(tempPath, outputPath);
           console.log(`✅ Space output written to: ${outputPath}`);
+
+          // Notify WebSocket server immediately after successful write via HTTP
+          try {
+            const response = await fetch(`http://localhost:3002/api/spaces/${spaceId}/broadcast`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            if (response.ok) {
+              console.log(`📤 WebSocket update sent for space: ${spaceId}`);
+            } else {
+              console.log(`⚠️  Failed to send WebSocket update: ${response.status}`);
+            }
+          } catch (fetchError) {
+            console.log(`⚠️  Could not reach WebSocket server: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
+          }
+
           resolve();
         } catch (writeError) {
           console.error(`Error writing output: ${writeError}`);

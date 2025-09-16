@@ -18,19 +18,37 @@ export async function GET(
       return NextResponse.json({ error: 'Space not found' }, { status: 404 });
     }
 
-    const files = await fs.readdir(spaceDir);
-    const nodes: Record<string, any> = {};
+    const spaceJsonPath = path.join(spaceDir, 'space.json');
+    let nodes: Record<string, any> = {};
 
-    for (const file of files) {
-      if (file.endsWith('.json') && file !== '_space.json') {
-        try {
-          const filePath = path.join(spaceDir, file);
-          const content = await fs.readFile(filePath, 'utf-8');
-          const nodeData = JSON.parse(content);
-          nodes[nodeData.id] = nodeData;
-        } catch (error) {
-          console.error(`Failed to load thought from ${file}:`, error);
+    // Try to read space.json (new format)
+    try {
+      const content = await fs.readFile(spaceJsonPath, 'utf-8');
+      const spaceData = JSON.parse(content);
+
+      if (spaceData.thoughtSpace && spaceData.thoughtSpace.nodes) {
+        nodes = spaceData.thoughtSpace.nodes;
+      }
+    } catch (spaceJsonError) {
+      console.log(`No space.json found for ${params.spaceId}, trying legacy format`);
+
+      // Fallback to legacy format (individual JSON files)
+      try {
+        const files = await fs.readdir(spaceDir);
+        for (const file of files) {
+          if (file.endsWith('.json') && file !== '_space.json') {
+            try {
+              const filePath = path.join(spaceDir, file);
+              const content = await fs.readFile(filePath, 'utf-8');
+              const nodeData = JSON.parse(content);
+              nodes[nodeData.id] = nodeData;
+            } catch (error) {
+              console.error(`Failed to load thought from ${file}:`, error);
+            }
+          }
         }
+      } catch (legacyError) {
+        console.error('Failed to load legacy format:', legacyError);
       }
     }
 

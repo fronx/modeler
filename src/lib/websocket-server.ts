@@ -115,13 +115,11 @@ export class ThoughtWebSocketServer {
     }
 
     // Handle different file types
-    if (fileName.endsWith('.json') && fileName !== '_space.json') {
-      // Thought file changed
-      await this.broadcastSpaceUpdate(spaceId);
-    } else if (fileName === '_space.json') {
+    if (fileName === '_space.json') {
       // Space metadata changed
       await this.broadcastSpaceList();
     }
+    // Note: space.json updates are now handled directly by execute-space.ts
   }
 
   private async autoExecuteSpace(spaceId: string, tsFilePath: string): Promise<void> {
@@ -176,6 +174,7 @@ export class ThoughtWebSocketServer {
     }
   }
 
+
   private async handleSpaceChange(): Promise<void> {
     // Space directory added/removed
     await this.broadcastSpaceList();
@@ -220,7 +219,7 @@ export class ThoughtWebSocketServer {
     this.broadcast(message);
   }
 
-  private async broadcastSpaceUpdate(spaceId: string): Promise<void> {
+  public async broadcastSpaceUpdate(spaceId: string): Promise<void> {
     const thoughts = await this.loadSpaceThoughts(spaceId);
     const message = JSON.stringify({
       type: 'space_thoughts_update',
@@ -299,23 +298,27 @@ export class ThoughtWebSocketServer {
   private async loadSpaceThoughts(spaceId: string): Promise<Record<string, any>> {
     try {
       const spaceDir = path.join(SPACES_DIR, spaceId);
-      const files = await fs.readdir(spaceDir);
-      const nodes: Record<string, any> = {};
+      const spaceJsonPath = path.join(spaceDir, 'space.json');
 
-      for (const file of files) {
-        if (file.endsWith('.json') && file !== '_space.json') {
-          try {
-            const filePath = path.join(spaceDir, file);
-            const content = await fs.readFile(filePath, 'utf-8');
-            const nodeData = JSON.parse(content);
-            nodes[nodeData.id] = nodeData;
-          } catch (error) {
-            console.error(`Failed to load thought from ${file}:`, error);
-          }
-        }
+      // Check if space.json exists
+      try {
+        await fs.access(spaceJsonPath);
+      } catch {
+        console.log(`No space.json found for ${spaceId}`);
+        return {};
       }
 
-      return nodes;
+      // Read and parse space.json
+      const content = await fs.readFile(spaceJsonPath, 'utf-8');
+      const spaceData = JSON.parse(content);
+
+      // Extract nodes from the thoughtSpace.nodes structure
+      if (spaceData.thoughtSpace && spaceData.thoughtSpace.nodes) {
+        return spaceData.thoughtSpace.nodes;
+      }
+
+      console.log(`No thoughtSpace.nodes found in ${spaceId}/space.json`);
+      return {};
 
     } catch (error) {
       console.error(`Failed to load space thoughts for ${spaceId}:`, error);

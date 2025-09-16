@@ -31,17 +31,11 @@ const space = new Space(
   'A space for persistent thought modeling'
 );
 
-// Add your thoughts here using the fluent API
-// IMPORTANT: Use only valid RelationType values:
-// 'causes' | 'supports' | 'contradicts' | 'means' | 'becomes'
-// 'observes' | 'enables' | 'builds-on' | 'transcends' | 'challenges'
-// 'implements' | 'fulfills' | 'validates' | 'based-on'
-//
 // Example:
 // space.thought('ConceptName')
 //   .means('What this concept represents')
 //   .hasValue('property', 0.8)
-//   .relatesTo('OtherConcept', 'supports', 0.9);
+//   .supports('OtherConcept', 'supports', 0.9);
 //
 // TIP: Run `npx tsc --noEmit space.ts` to check syntax before saving
 
