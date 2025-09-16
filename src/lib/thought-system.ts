@@ -79,7 +79,7 @@ export class ThoughtNode implements ThoughtBuilder {
   }
 
   setFocus(level: FocusLevel): this {
-    this.focus = Math.max(0, Math.min(1, level)); // Clamp to [0,1]
+    this.focus = Math.max(-1, Math.min(1, level)); // Clamp to [-1,1] to support discarded items
     this.history.push(`Focus set to ${this.focus}`);
     return this;
   }

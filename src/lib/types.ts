@@ -22,7 +22,7 @@ export type RelationshipStrength = number;
 /** Property values: number | [min, max] interval */
 export type PropertyValue = number | Interval;
 
-/** Focus level (0-1): 1.0 = fully focused | 0.7 = prominent | 0.3 = peripheral | 0.0 = background */
+/** Focus level (-1 to 1): 1.0 = highlighted | undefined = neutral | -1.0 = discarded/dimmed */
 export type FocusLevel = number;
 
 /** Semantic position (-1 to +1): -1 = left pole | 0 = neutral/center | +1 = right pole */

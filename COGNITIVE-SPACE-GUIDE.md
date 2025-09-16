@@ -108,17 +108,29 @@ npx tsx execute-space.ts your-space-id
 ### Property Values
 - **Numbers**: `0.8` for specific values
 - **Intervals**: `[0.3, 0.7]` for uncertainty ranges
-- **Focus levels**: 1.0 = central, 0.7 = important, 0.3 = peripheral
+- **Focus levels**: Only use 1.0 (highlighted) or -1.0 (discarded). Omit `.setFocus()` for neutral concepts
 - **Positions**: -1.0 = left pole, 0.0 = neutral, 1.0 = right pole
 
 ## Design Patterns
 
 ### Central Tension Pattern
 ```typescript
-// The fundamental pattern - two explicit poles
-MainConcept_A: focus=1.0, position=-1.0, conflicts with B
-MainConcept_B: focus=1.0, position=1.0, conflicts with A
-Supporting concepts: default focus/position, relate to main concepts
+// The fundamental pattern - two explicit poles (organizing axes)
+MainConcept_A: position=-1.0, conflicts with B (no focus = organizing axis)
+MainConcept_B: position=1.0, conflicts with A (no focus = organizing axis)
+Options being considered: focus=1.0 (highlighted for decision-making)
+Explicitly discarded options: focus=-1.0 (dimmed in visualization)
+```
+
+### Focus Management During Decision-Making
+```typescript
+// WRONG: Don't cascade focus decisions automatically
+space.thought('Speed').setFocus(-1.0);
+space.thought('SportsCar').setFocus(-1.0); // Don't assume this!
+
+// RIGHT: Each focus decision is independent and explicit
+space.thought('Speed').setFocus(-1.0); // Explicitly decided against speed as priority
+space.thought('SportsCar').setFocus(1.0); // Still considering (has comfort aspects too)
 ```
 
 ### Bridging Concepts
@@ -142,13 +154,14 @@ space.thought('Complex')
 ## Key Principles
 
 1. **Start with tension** - Identify the core debate first
-2. **Anchor the poles** - Only main positions get explicit focus/position
+2. **Anchor the poles** - Main positions get explicit position (±1.0) but no focus (they're organizing axes)
 3. **Let relationships work** - Supporting concepts position naturally
 4. **Think first, connect second** - Each relationship should represent a genuine logical connection
 5. **Prefer concrete over abstract** - Model specific options rather than abstract dimensions (e.g., "Hot", "Warm", "Cold" rather than "Temperature")
-6. **Use real strengths** - Relationship strengths should reflect actual conceptual distance
-7. **Embrace uncertainty** - Use intervals `[min, max]` for unclear values
-8. **Validate first** - Always check TypeScript syntax before execution
+6. **Focus on decisions** - Use focus=1.0 for options under consideration, focus=-1.0 for explicitly discarded options, omit focus for neutral concepts. Focus decisions are independent - discarding one concept doesn't automatically discard related concepts
+7. **Use real strengths** - Relationship strengths should reflect actual conceptual distance
+8. **Embrace uncertainty** - Use intervals `[min, max]` for unclear values
+9. **Validate first** - Always check TypeScript syntax before execution
 
 ## File Structure
 
@@ -169,10 +182,11 @@ data/spaces/your-space-id/
 - **Weak tensions**: Central poles should strongly conflict (0.7-0.9 strength)
 - **Agent complexity**: Use direct editing, not the cognitive-modeler agent
 - **Weak or illogical relationships**: Each connection should represent a genuine conceptual relationship
+- **Cascading focus assumptions**: Don't automatically discard concepts based on relationships - each focus decision must be explicit and independent
 
 ## Validation Checklist
 
-✓ Two central concepts with focus=1.0 and position=±1.0?
+✓ Two central concepts with position=±1.0 and no focus (organizing axes)?
 ✓ Strong conflict relationship between main poles (≥0.7)?
 ✓ Supporting concepts with default focus/position?
 ✓ Relationship strengths reflect conceptual distance?

@@ -18,10 +18,15 @@ const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
   const { node, color } = data;
   const [isExpanded, setIsExpanded] = React.useState(false);
 
-  // Calculate detail level based on focus (0.0 to 1.0)
-  const focusLevel = node.focus || 0.1;
-  const naturalShowFullDetail = focusLevel >= 0.7;
-  const naturalShowPartialDetail = focusLevel >= 0.4;
+  // Calculate detail level based on focus (three-state system)
+  const focusLevel = node.focus;
+  const isHighlighted = focusLevel === 1.0;
+  const isDiscarded = focusLevel === -1.0;
+  const isNeutral = focusLevel === undefined || focusLevel === null;
+
+  // Highlighted nodes show full detail, neutral nodes show partial, discarded show minimal
+  const naturalShowFullDetail = isHighlighted;
+  const naturalShowPartialDetail = isHighlighted || isNeutral;
 
   // Override natural detail level if manually expanded
   const showFullDetail = isExpanded || naturalShowFullDetail;
@@ -34,7 +39,9 @@ const ThoughtNodeComponent: React.FC<{ data: any }> = ({ data }) => {
 
   return (
     <div
-      className="relative px-4 py-3 bg-white dark:bg-gray-800 border-2 rounded-lg shadow-lg min-w-[200px] max-w-[300px] cursor-pointer transition-colors hover:opacity-80"
+      className={`relative px-4 py-3 bg-white dark:bg-gray-800 border-2 rounded-lg shadow-lg min-w-[200px] max-w-[300px] cursor-pointer transition-all duration-300 hover:opacity-80 ${
+        isDiscarded ? 'opacity-40 saturate-50' : isHighlighted ? 'ring-2 ring-blue-400 shadow-xl' : ''
+      }`}
       style={{
         borderColor: color
       }}
