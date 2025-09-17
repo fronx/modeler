@@ -20,7 +20,16 @@ export const useThoughtGraphState = (
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
   const [layoutPositions, setLayoutPositions] = React.useState<Map<string, { x: number; y: number }>>(new Map());
   const [isAnimating, setIsAnimating] = React.useState(false);
-  const [expandedNodes, setExpandedNodes] = React.useState<Set<string>>(new Set());
+  // Initialize expanded nodes with all nodes that have branches
+  const [expandedNodes, setExpandedNodes] = React.useState<Set<string>>(() => {
+    const initialExpanded = new Set<string>();
+    thoughtNodes.forEach((node, nodeId) => {
+      if (node.branches && node.branches.size > 0) {
+        initialExpanded.add(nodeId);
+      }
+    });
+    return initialExpanded;
+  });
 
   // Toggle expansion state for a node
   const toggleNodeExpansion = React.useCallback((nodeId: string) => {
@@ -34,6 +43,19 @@ export const useThoughtGraphState = (
       return next;
     });
   }, []);
+
+  // Update expanded nodes when thoughtNodes change (auto-expand nodes with branches)
+  React.useEffect(() => {
+    setExpandedNodes(prev => {
+      const newExpanded = new Set(prev);
+      thoughtNodes.forEach((node, nodeId) => {
+        if (node.branches && node.branches.size > 0) {
+          newExpanded.add(nodeId);
+        }
+      });
+      return newExpanded;
+    });
+  }, [thoughtNodes]);
 
   // Calculate D3 force layout when nodes change - use animated version
   React.useEffect(() => {
@@ -164,29 +186,6 @@ export const useThoughtGraphState = (
             selectable: true,
           });
 
-          // Create edges from branch relationships to other thoughts
-          branchData.relationships.forEach((rel: any, relIndex: number) => {
-            const targetNode = nodeArray.find(n => n.id === rel.target);
-            if (targetNode) {
-              const edge = createStyledEdge(
-                branchId,
-                rel.target,
-                rel,
-                relIndex,
-                { position: { x: x + branchX, y: y + branchY } } as Node, // Absolute position for edge calculation
-                { position: layoutPositions.get(targetNode.id) || { x: 0, y: 0 } } as Node,
-                showArrows,
-                showLabels
-              );
-              // Mark edges from branches with special styling
-              edge.style = {
-                ...edge.style,
-                strokeDasharray: '5,5', // Dashed lines for branch relationships
-                opacity: branchData.isActive ? 1 : 0.5
-              };
-              flowEdges.push(edge);
-            }
-          });
         });
       }
 
@@ -215,6 +214,52 @@ export const useThoughtGraphState = (
           flowEdges.push(edge);
         }
       });
+
+      // Create edges from branch relationships - but only when branches are expanded and nodes exist
+      if (isExpanded && thoughtNode.branches.size > 0) {
+        thoughtNode.branches.forEach((branchData: any, branchName: string) => {
+          branchData.relationships.forEach((rel: any, relIndex: number) => {
+            const targetNode = nodeArray.find(n => n.id === rel.target);
+            if (targetNode && layoutPositions.get(targetNode.id)) {
+              const targetPosition = layoutPositions.get(targetNode.id)!;
+              const branchId = `${thoughtNode.id}__branch__${branchName}`;
+
+              // Only create edge if the branch node will actually exist in flowNodes
+              const branchIndex = Array.from(thoughtNode.branches.keys()).indexOf(branchName);
+              const sourcePosition = {
+                x: x + 20 + (branchIndex % 2) * 200,
+                y: y + 120 + Math.floor(branchIndex / 2) * 100
+              };
+
+              const edge = createStyledEdge(
+                branchId,
+                rel.target,
+                rel,
+                relIndex,
+                { position: sourcePosition } as Node,
+                { position: targetPosition } as Node,
+                showArrows,
+                showLabels
+              );
+
+              // Mark edges from branches with special styling
+              edge.style = {
+                ...edge.style,
+                strokeDasharray: '5,5', // Dashed lines for branch relationships
+                opacity: branchData.isActive ? 0.8 : 0.4
+              };
+              edge.zIndex = 1; // Render above parent group
+
+              // Ensure unique edge ID to avoid conflicts
+              edge.id = `${thoughtNode.id}-branch-${branchName}-${rel.target}-${relIndex}`;
+              edge.source = branchId;
+              edge.target = rel.target;
+
+              flowEdges.push(edge);
+            }
+          });
+        });
+      }
     });
 
     return { flowNodes, allEdges: flowEdges };
@@ -258,8 +303,8 @@ export const useThoughtGraphState = (
 
       // Calculate opacity: high focus = full opacity, low focus = background opacity
       const opacity = effectiveFocus >= 0.7 ? 1.0 :
-                     effectiveFocus >= 0.4 ? 0.6 :
-                     backgroundEdgeOpacity;
+        effectiveFocus >= 0.4 ? 0.6 :
+          backgroundEdgeOpacity;
 
       return {
         ...edge,

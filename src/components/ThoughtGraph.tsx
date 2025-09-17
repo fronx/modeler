@@ -25,13 +25,22 @@ const BranchNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ data
         selected ? 'ring-2 ring-blue-500 ring-offset-1 scale-105' : ''
       } ${
         branch.isActive
-          ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
-          : 'bg-gray-50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-600'
+          ? 'bg-green-50 dark:bg-green-900 border-green-400 dark:border-green-500'
+          : 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600'
       }`}
       style={{
         borderColor: color
       }}
     >
+      {/* Handles for edge connections on all sides */}
+      <Handle type="target" position={Position.Top} id="target-top" />
+      <Handle type="target" position={Position.Right} id="target-right" />
+      <Handle type="target" position={Position.Bottom} id="target-bottom" />
+      <Handle type="target" position={Position.Left} id="target-left" />
+      <Handle type="source" position={Position.Top} id="source-top" />
+      <Handle type="source" position={Position.Right} id="source-right" />
+      <Handle type="source" position={Position.Bottom} id="source-bottom" />
+      <Handle type="source" position={Position.Left} id="source-left" />
       {/* Branch name and status */}
       <div className={`text-sm font-medium mb-1 flex items-center justify-between ${
         branch.isActive
@@ -53,21 +62,6 @@ const BranchNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ data
         </div>
       )}
 
-      {/* Branch relationships */}
-      {branch.relationships.length > 0 && (
-        <div className="text-xs space-y-1">
-          {branch.relationships.slice(0, 2).map((rel: any, idx: number) => (
-            <div key={idx} className={`${rel.strength > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} truncate`}>
-              {rel.type === 'supports' ? '→' : '×'} {rel.target}
-            </div>
-          ))}
-          {branch.relationships.length > 2 && (
-            <div className="text-xs text-gray-500">
-              +{branch.relationships.length - 2} more
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Branch values */}
       {branch.values && branch.values.size > 0 && (
@@ -310,6 +304,7 @@ export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
         onNodeMouseLeave={() => setHoveredNodeId(null)}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
+        defaultEdgeOptions={{ zIndex: 1 }}
         fitView
         fitViewOptions={{ padding: 0.1 }}
         selectionOnDrag={false}
