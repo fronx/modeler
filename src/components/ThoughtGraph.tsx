@@ -15,10 +15,75 @@ import '@xyflow/react/dist/style.css';
 import { useWebSocketThoughts } from '../lib/websocket-thought-client';
 import { useThoughtGraphState } from '../hooks/useThoughtGraphState';
 
+// Custom node component for branch interpretations in sub-flows
+const BranchNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ data, selected }) => {
+  const { branch, color } = data;
+
+  return (
+    <div
+      className={`relative px-3 py-2 rounded-lg shadow-sm border-2 min-w-[160px] max-w-[180px] transition-all duration-300 ${
+        selected ? 'ring-2 ring-blue-500 ring-offset-1 scale-105' : ''
+      } ${
+        branch.isActive
+          ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
+          : 'bg-gray-50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-600'
+      }`}
+      style={{
+        borderColor: color
+      }}
+    >
+      {/* Branch name and status */}
+      <div className={`text-sm font-medium mb-1 flex items-center justify-between ${
+        branch.isActive
+          ? 'text-green-800 dark:text-green-200'
+          : 'text-gray-600 dark:text-gray-400'
+      }`}>
+        <span className="flex items-center gap-1">
+          {branch.name}
+        </span>
+        {!branch.isActive && (
+          <span className="text-xs opacity-75">inactive</span>
+        )}
+      </div>
+
+      {/* Branch interpretation */}
+      {branch.interpretation && branch.interpretation !== branch.name && (
+        <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 italic">
+          &ldquo;{branch.interpretation}&rdquo;
+        </div>
+      )}
+
+      {/* Branch relationships */}
+      {branch.relationships.length > 0 && (
+        <div className="text-xs space-y-1">
+          {branch.relationships.slice(0, 2).map((rel: any, idx: number) => (
+            <div key={idx} className={`${rel.strength > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} truncate`}>
+              {rel.type === 'supports' ? '→' : '×'} {rel.target}
+            </div>
+          ))}
+          {branch.relationships.length > 2 && (
+            <div className="text-xs text-gray-500">
+              +{branch.relationships.length - 2} more
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Branch values */}
+      {branch.values && branch.values.size > 0 && (
+        <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+          {branch.values.size} value{branch.values.size !== 1 ? 's' : ''}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Custom node component for thoughts with semantic zooming
 const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ data, selected }) => {
-  const { node, color } = data;
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const { node, color, hasExpandableBranches, isExpanded, onToggleExpansion } = data;
+
+  const [isManuallyExpanded, setIsManuallyExpanded] = React.useState(false);
 
   // Calculate detail level based on focus (three-state system)
   const focusLevel = node.focus;
@@ -31,16 +96,23 @@ const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ dat
   const naturalShowPartialDetail = isHighlighted || isNeutral;
 
   // Override natural detail level if manually expanded
-  const showFullDetail = isExpanded || naturalShowFullDetail;
-  const showPartialDetail = isExpanded || naturalShowPartialDetail;
+  const showFullDetail = isManuallyExpanded || naturalShowFullDetail;
+  const showPartialDetail = isManuallyExpanded || naturalShowPartialDetail;
 
   const handleClick = (e: React.MouseEvent) => {
     // Don't stop propagation if Meta/Cmd key is held (for multi-selection)
     if (!e.metaKey && !e.ctrlKey) {
       e.stopPropagation();
-      setIsExpanded(!isExpanded);
+      setIsManuallyExpanded(!isManuallyExpanded);
     }
     // If Meta/Cmd is held, let React Flow handle the selection
+  };
+
+  const handleExpandToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleExpansion) {
+      onToggleExpansion();
+    }
   };
 
   return (
@@ -70,11 +142,24 @@ const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ dat
       {/* Title - always visible */}
       <div className="font-bold text-lg mb-2 flex items-center justify-between" style={{ color }}>
         <span>{node.id}</span>
-        {!naturalShowFullDetail && (
-          <span className="text-xs text-gray-400">
-            {isExpanded ? '▼' : '▶'}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Branch expand/collapse button */}
+          {hasExpandableBranches && (
+            <button
+              onClick={handleExpandToggle}
+              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 transition-colors px-2 py-1 rounded border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800"
+              title={isExpanded ? 'Collapse branches' : 'Expand branches'}
+            >
+              {isExpanded ? 'Collapse' : 'Expand'}
+            </button>
+          )}
+          {/* Detail expand/collapse indicator */}
+          {!naturalShowFullDetail && (
+            <span className="text-xs text-gray-400">
+              {isManuallyExpanded ? '▼' : '▶'}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Current meaning - only at partial detail and above */}
@@ -85,29 +170,24 @@ const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ dat
         </div>
       )}
 
+
       {/* Full details - only at high focus */}
       {showFullDetail && (
         <>
           {/* Tension indicator */}
           {node.tension && (
             <div className="text-xs text-orange-600 dark:text-orange-400 italic mb-2">
-              ⚡ {node.tension}
+              Tension: {node.tension}
             </div>
           )}
 
-          {/* Metaphor branches */}
-          {node.metaphorBranches.length > 0 && (
-            <div className="text-xs text-purple-600 dark:text-purple-400">
-              🔀 {node.metaphorBranches.map((b: any) => b.name).join(', ')}
-            </div>
-          )}
 
           {/* Values */}
           {node.values.size > 0 && (
             <div className="text-xs text-green-600 dark:text-green-400 mt-1">
-              {Array.from(node.values.entries()).map((entry: [string, any]) => (
-                <div key={entry[0]}>
-                  {entry[0]}: {JSON.stringify(entry[1])}
+              {Array.from(node.values.entries() as [string, any][]).map(([key, value]) => (
+                <div key={key}>
+                  {key}: {JSON.stringify(value)}
                 </div>
               ))}
             </div>
@@ -118,9 +198,53 @@ const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ dat
   );
 };
 
+// Group node component for expanded thoughts containing branches (sub-flows)
+const GroupThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ data }) => {
+  const { node, color, onToggleExpansion } = data;
+
+  return (
+    <div className="relative w-full h-full">
+      {/* Group header with thought info - positioned absolutely within the group */}
+      <div className="absolute top-2 left-2 right-2 bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-200 dark:border-gray-700 z-10">
+        <div className="flex items-center justify-between">
+          <div className="font-bold text-lg" style={{ color }}>
+            {node.id}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onToggleExpansion) {
+                onToggleExpansion();
+              }
+            }}
+            className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 transition-colors px-2 py-1 rounded"
+            title="Collapse branches"
+          >
+            Collapse
+          </button>
+        </div>
+
+        {/* Current meaning */}
+        {node.getCurrentMeaning && node.getCurrentMeaning() && (
+          <div className="text-sm text-gray-600 dark:text-gray-300 mt-1 italic">
+            &ldquo;{node.getCurrentMeaning()}&rdquo;
+          </div>
+        )}
+      </div>
+
+      {/* Sub-flow area label */}
+      <div className="absolute bottom-2 left-2 text-xs text-blue-600 dark:text-blue-400 font-medium z-10">
+        Branch Interpretations
+      </div>
+    </div>
+  );
+};
+
 // Node types
 const nodeTypes = {
   thoughtNode: ThoughtNodeComponent,
+  group: GroupThoughtNodeComponent, // React Flow's built-in group type
+  branchNode: BranchNodeComponent,
 };
 
 interface ThoughtGraphProps {
@@ -141,7 +265,6 @@ export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
     edges,
     onNodesChange,
     onEdgesChange,
-    hoveredNodeId,
     setHoveredNodeId,
   } = useThoughtGraphState(thoughtNodes, backgroundEdgeOpacity, showArrows, showLabels);
 

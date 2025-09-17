@@ -62,6 +62,23 @@ export interface MetaphorBranch {
   predictiveSuccess: number;
 }
 
+/** Branch interpretation for holding multiple meanings in superposition */
+export interface BranchInterpretation {
+  name: string;
+  interpretation: string;
+  relationships: Relationship[];
+  values: Map<string, PropertyValue>;
+  isActive: boolean;
+}
+
+/** Resolution record for collapsed branches */
+export interface BranchResolution {
+  context: string;
+  selections: string[];
+  reason: string;
+  timestamp: number;
+}
+
 /** Space metadata */
 export interface SpaceMetadata {
   id: string;
@@ -111,6 +128,12 @@ export interface ThoughtBuilder {
 
   /** Set semantic position: .setPosition(-1.0) | .setPosition(0.5) - left pole, center, right pole */
   setPosition(position: SemanticPosition): this;
+
+  /** Add branch interpretation or access existing: .branch('interpretation name') */
+  branch(interpretation: string): this;
+
+  /** Resolve branches to specific interpretations: .resolve({context, selections, reason}) */
+  resolve(resolution: { context: string; selections: string[]; reason: string }): this;
 }
 
 /**

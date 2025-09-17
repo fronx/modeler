@@ -99,8 +99,6 @@ export const createAnimatedForceLayout = (
     const initialX = width / 2 + sideOffset + (Math.random() - 0.5) * 250;
     const initialY = height / 2 + (Math.random() - 0.5) * 250;
 
-    // Debug logging for all nodes to see their side classification
-    console.log(`${node.id}: semanticPosition=${node.semanticPosition}, side=${side}`);
 
     return {
       id: node.id,
@@ -122,10 +120,6 @@ export const createAnimatedForceLayout = (
       const targetNode = d3Nodes.find(n => n.id === rel.target);
 
       if (sourceNode && targetNode) {
-        // Debug logging for Natural Energy Ideal connections
-        if (sourceNode.id === 'Natural Energy Ideal' || targetNode.id === 'Natural Energy Ideal') {
-          console.log(`Natural Energy Ideal connection: ${sourceNode.id}(${sourceNode.side}) -> ${targetNode.id}(${targetNode.side}) [${rel.type}]`);
-        }
 
         d3Links.push({
           source: sourceNode,

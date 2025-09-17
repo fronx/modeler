@@ -20,6 +20,20 @@ export const useThoughtGraphState = (
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
   const [layoutPositions, setLayoutPositions] = React.useState<Map<string, { x: number; y: number }>>(new Map());
   const [isAnimating, setIsAnimating] = React.useState(false);
+  const [expandedNodes, setExpandedNodes] = React.useState<Set<string>>(new Set());
+
+  // Toggle expansion state for a node
+  const toggleNodeExpansion = React.useCallback((nodeId: string) => {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  }, []);
 
   // Calculate D3 force layout when nodes change - use animated version
   React.useEffect(() => {
@@ -56,6 +70,26 @@ export const useThoughtGraphState = (
     };
   }, [thoughtNodes]);
 
+  // Helper function to calculate adaptive group size based on branch positions
+  const calculateGroupBounds = (branches: Array<[string, any]>) => {
+    if (branches.length === 0) return { width: 400, height: 200 };
+
+    // Calculate positions for all branches
+    const positions = branches.map((_, index) => ({
+      x: 20 + (index % 2) * 200, // Two columns with more spacing
+      y: 120 + Math.floor(index / 2) * 100 // Rows with more spacing
+    }));
+
+    // Find bounding box with padding
+    const maxX = Math.max(...positions.map(p => p.x)) + 200; // Node width + padding
+    const maxY = Math.max(...positions.map(p => p.y)) + 100; // Node height + padding
+
+    return {
+      width: Math.max(400, maxX + 40), // Extra padding for container
+      height: Math.max(200, maxY + 40)
+    };
+  };
+
   // Convert thought nodes to React Flow nodes and edges
   const { flowNodes, allEdges } = React.useMemo(() => {
     const flowNodes: Node[] = [];
@@ -70,17 +104,90 @@ export const useThoughtGraphState = (
       const position = layoutPositions.get(thoughtNode.id) || { x: 0, y: 0 };
       const { x, y } = position;
 
+      const hasExpandableBranches = thoughtNode.branches.size > 0;
+      const isExpanded = expandedNodes.has(thoughtNode.id);
+
+      // When expanded and has branches, use group type for sub-flow
+      const nodeType = isExpanded && hasExpandableBranches ? 'group' : 'thoughtNode';
+
       flowNodes.push({
         id: thoughtNode.id,
-        type: 'thoughtNode',
+        type: nodeType,
         position: { x, y },
         data: {
           node: thoughtNode,
-          color: nodeColors.get(thoughtNode.id) || '#6b7280'
+          color: nodeColors.get(thoughtNode.id) || '#6b7280',
+          hasExpandableBranches,
+          isExpanded,
+          onToggleExpansion: () => toggleNodeExpansion(thoughtNode.id)
+        },
+        style: isExpanded && hasExpandableBranches ? (() => {
+          const branches = Array.from(thoughtNode.branches.entries());
+          const bounds = calculateGroupBounds(branches);
+          return {
+            width: bounds.width,
+            height: bounds.height,
+            backgroundColor: 'rgba(59, 130, 246, 0.08)',
+            border: '2px dashed #3b82f6',
+            borderRadius: '12px',
+            padding: '20px'
+          };
+        })() : {
+          minWidth: 200,
+          minHeight: 100
         },
         draggable: true,
         selectable: true,
       });
+
+      // Add branch nodes as children in sub-flow if expanded
+      if (isExpanded && thoughtNode.branches.size > 0) {
+        const branches = Array.from(thoughtNode.branches.entries());
+        branches.forEach(([branchName, branchData], index) => {
+          const branchId = `${thoughtNode.id}__branch__${branchName}`;
+          const branchX = 20 + (index % 2) * 200; // Two columns with more spacing
+          const branchY = 120 + Math.floor(index / 2) * 100; // Rows with more spacing
+
+          flowNodes.push({
+            id: branchId,
+            type: 'branchNode',
+            position: { x: branchX, y: branchY }, // Relative to parent group
+            data: {
+              branch: branchData,
+              parentId: thoughtNode.id,
+              color: branchData.isActive ? '#10b981' : '#6b7280' // Green for active, gray for inactive
+            },
+            parentId: thoughtNode.id, // ReactFlow sub-flow parent-child relationship
+            extent: 'parent' as const, // Keep branch within parent bounds
+            draggable: true, // Make branch nodes draggable
+            selectable: true,
+          });
+
+          // Create edges from branch relationships to other thoughts
+          branchData.relationships.forEach((rel: any, relIndex: number) => {
+            const targetNode = nodeArray.find(n => n.id === rel.target);
+            if (targetNode) {
+              const edge = createStyledEdge(
+                branchId,
+                rel.target,
+                rel,
+                relIndex,
+                { position: { x: x + branchX, y: y + branchY } } as Node, // Absolute position for edge calculation
+                { position: layoutPositions.get(targetNode.id) || { x: 0, y: 0 } } as Node,
+                showArrows,
+                showLabels
+              );
+              // Mark edges from branches with special styling
+              edge.style = {
+                ...edge.style,
+                strokeDasharray: '5,5', // Dashed lines for branch relationships
+                opacity: branchData.isActive ? 1 : 0.5
+              };
+              flowEdges.push(edge);
+            }
+          });
+        });
+      }
 
       // Create edges from relationships
       thoughtNode.relationships.forEach((rel, relIndex) => {
@@ -110,7 +217,7 @@ export const useThoughtGraphState = (
     });
 
     return { flowNodes, allEdges: flowEdges };
-  }, [thoughtNodes, layoutPositions]);
+  }, [thoughtNodes, layoutPositions, expandedNodes, toggleNodeExpansion]);
 
   // Use nodes state to enable dragging
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
@@ -200,5 +307,7 @@ export const useThoughtGraphState = (
     hoveredNodeId,
     setHoveredNodeId,
     isAnimating,
+    expandedNodes,
+    toggleNodeExpansion,
   };
 };

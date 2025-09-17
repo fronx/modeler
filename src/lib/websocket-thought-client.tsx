@@ -159,6 +159,23 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
       node.values = new Map(Object.entries(typedNodeData.values || {}));
       node.relationships = typedNodeData.relationships || [];
       node.metaphorBranches = typedNodeData.metaphorBranches || [];
+
+      // Convert branches from object to Map
+      node.branches = new Map();
+      if (typedNodeData.branches) {
+        for (const [branchName, branchData] of Object.entries(typedNodeData.branches)) {
+          const branch = branchData as any;
+          node.branches.set(branchName, {
+            name: branch.name,
+            interpretation: branch.interpretation,
+            relationships: branch.relationships || [],
+            values: new Map(Object.entries(branch.values || {})),
+            isActive: branch.isActive !== undefined ? branch.isActive : true
+          });
+        }
+      }
+
+      node.resolutions = typedNodeData.resolutions || [];
       node.tension = typedNodeData.tension;
       node.focus = typedNodeData.focus || 0.1; // Default to background if not specified
       node.semanticPosition = typedNodeData.semanticPosition || 0.0; // Default to center/neutral

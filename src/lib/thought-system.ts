@@ -27,6 +27,8 @@ import type {
   Meaning,
   Relationship,
   MetaphorBranch,
+  BranchInterpretation,
+  BranchResolution,
   SpaceMetadata,
   ThoughtBuilder,
   CognitiveOperations
@@ -46,10 +48,13 @@ export class ThoughtNode implements ThoughtBuilder {
   public readonly values = new Map<string, PropertyValue>();
   public relationships: Relationship[] = [];
   public metaphorBranches: MetaphorBranch[] = [];
+  public branches: Map<string, BranchInterpretation> = new Map();
+  public resolutions: BranchResolution[] = [];
   public tension?: string;
   public history: string[] = [];
   public focus: FocusLevel = 0.1; // Default to background
   public semanticPosition: SemanticPosition = 0.0; // Default to center/neutral
+  private currentBranch?: string; // Track which branch operations apply to
 
   constructor(id: NodeId) {
     this.id = id;
@@ -73,8 +78,16 @@ export class ThoughtNode implements ThoughtBuilder {
   }
 
   hasValue(key: string, value: PropertyValue): this {
-    this.values.set(key, value);
-    this.history.push(`Set ${key} = ${JSON.stringify(value)}`);
+    if (this.currentBranch) {
+      const branch = this.branches.get(this.currentBranch);
+      if (branch) {
+        branch.values.set(key, value);
+        this.history.push(`Branch "${this.currentBranch}": Set ${key} = ${JSON.stringify(value)}`);
+      }
+    } else {
+      this.values.set(key, value);
+      this.history.push(`Set ${key} = ${JSON.stringify(value)}`);
+    }
     return this;
   }
 
@@ -91,14 +104,30 @@ export class ThoughtNode implements ThoughtBuilder {
   }
 
   supports(target: NodeId, strength: RelationshipStrength = 0.7): this {
-    this.relationships.push({ type: 'supports', target, strength });
-    this.history.push(`Supports ${target} (${strength})`);
+    if (this.currentBranch) {
+      const branch = this.branches.get(this.currentBranch);
+      if (branch) {
+        branch.relationships.push({ type: 'supports', target, strength });
+        this.history.push(`Branch "${this.currentBranch}": Supports ${target} (${strength})`);
+      }
+    } else {
+      this.relationships.push({ type: 'supports', target, strength });
+      this.history.push(`Supports ${target} (${strength})`);
+    }
     return this;
   }
 
   conflictsWith(target: NodeId, strength: RelationshipStrength = 0.7): this {
-    this.relationships.push({ type: 'conflicts-with', target, strength: -Math.abs(strength) });
-    this.history.push(`Conflicts with ${target} (${Math.abs(strength)})`);
+    if (this.currentBranch) {
+      const branch = this.branches.get(this.currentBranch);
+      if (branch) {
+        branch.relationships.push({ type: 'conflicts-with', target, strength: -Math.abs(strength) });
+        this.history.push(`Branch "${this.currentBranch}": Conflicts with ${target} (${Math.abs(strength)})`);
+      }
+    } else {
+      this.relationships.push({ type: 'conflicts-with', target, strength: -Math.abs(strength) });
+      this.history.push(`Conflicts with ${target} (${Math.abs(strength)})`);
+    }
     return this;
   }
 
@@ -129,6 +158,45 @@ export class ThoughtNode implements ThoughtBuilder {
     const occurrences = this.history.filter(h => h.includes(transformType)).length;
     const adjustedMagnitude = magnitude / (1 + occurrences * 0.5);
     this.history.push(`Applied ${transformType} with adjusted magnitude: ${adjustedMagnitude}`);
+    return this;
+  }
+
+  branch(interpretation: string): this {
+    // Create branch if it doesn't exist
+    if (!this.branches.has(interpretation)) {
+      const branch: BranchInterpretation = {
+        name: interpretation,
+        interpretation,
+        relationships: [],
+        values: new Map(),
+        isActive: true
+      };
+      this.branches.set(interpretation, branch);
+      this.history.push(`Added branch: ${interpretation}`);
+    }
+
+    // Set current branch for subsequent operations
+    this.currentBranch = interpretation;
+    return this;
+  }
+
+  resolve(resolution: { context: string; selections: string[]; reason: string }): this {
+    const branchResolution: BranchResolution = {
+      context: resolution.context,
+      selections: resolution.selections,
+      reason: resolution.reason,
+      timestamp: Date.now()
+    };
+
+    this.resolutions.push(branchResolution);
+
+    // Mark selected branches as active, others as inactive
+    this.branches.forEach((branch, name) => {
+      branch.isActive = resolution.selections.includes(name);
+    });
+
+    this.history.push(`Resolved to: ${resolution.selections.join(', ')} (${resolution.reason})`);
+    this.currentBranch = undefined; // Clear current branch after resolution
     return this;
   }
 
@@ -259,12 +327,26 @@ export class ThoughtSpace implements CognitiveOperations {
     };
 
     this.nodes.forEach((node, id) => {
+      // Convert branch Map to serializable object
+      const branches: any = {};
+      node.branches.forEach((branch, name) => {
+        branches[name] = {
+          name: branch.name,
+          interpretation: branch.interpretation,
+          relationships: branch.relationships,
+          values: Object.fromEntries(branch.values),
+          isActive: branch.isActive
+        };
+      });
+
       serialized.nodes[id] = {
         id: node.id,
         meanings: node.meanings,
         values: Object.fromEntries(node.values),
         relationships: node.relationships,
         metaphorBranches: node.metaphorBranches,
+        branches: branches,
+        resolutions: node.resolutions,
         tension: node.tension,
         focus: node.focus,
         semanticPosition: node.semanticPosition,

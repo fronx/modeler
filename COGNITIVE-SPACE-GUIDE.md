@@ -113,9 +113,76 @@ space.thought('IncrementalApproach').conflictsWith('DisruptiveApproach', 0.8);
 
 Supporting concepts find their natural positions through relationships. Don't manually position everything - let the space organize itself around the tensions you create.
 
+### 6. Use Branching for High-Uncertainty Concepts
+
+When a concept can be validly interpreted in multiple ways, use branching to preserve cognitive flexibility rather than forcing premature collapse.
+
+**Decision-Making Example** - Team planning:
+```typescript
+space.thought('ArchitectureChoice')
+  .means('How should we structure the new system?')
+  .branch('Microservices')
+  .branch('Monolith with modules')
+  .branch('Serverless functions');
+
+// Later, team resolves based on constraints
+space.thought('ArchitectureChoice').resolve({
+  context: 'after technical review',
+  selections: ['Monolith with modules'],
+  reason: 'Team size and deployment complexity favor simplicity'
+});
+```
+
+**Semantic Ambiguity Example** - Understanding concepts:
+```typescript
+space.thought('Trust')
+  .means('Core relationship foundation')
+  .branch('Fragile but precious')      // Protective framing
+  .branch('Resilient and repairable')  // Growth framing
+  .branch('Binary: present or absent'); // Categorical framing
+
+// Each branch can have different relationships
+space.thought('Trust').getBranch('Fragile but precious')
+  .conflictsWith('QuickDecisions', 0.8);
+
+space.thought('Trust').getBranch('Resilient and repairable')
+  .supports('ExperimentationMindset', 0.7);
+```
+
+**When to branch:**
+- High uncertainty with multiple plausible interpretations
+- Context-dependent meanings that shift based on situation
+- Consequential decisions where interpretation choice affects outcomes
+- Learning situations where you want to track predictive success
+
+**When NOT to branch:**
+- Single clear interpretation (adds complexity without benefit)
+- Low-stakes decisions (choice between interpretations doesn't matter)
+- Exploratory phases (still discovering what the concept means)
+
+**For detailed guidance on branching**: See [`artifacts/documentation/branching-interpretation-capabilities.md`](artifacts/documentation/branching-interpretation-capabilities.md) for comprehensive examples, design patterns, and best practices.
+
+**Resolve at parent level when ready:**
+```typescript
+// Create branches first
+space.thought('Trust')
+  .branch('Fragile but precious')
+  .branch('Resilient and repairable');
+
+// Resolve with single or multiple selections
+space.thought('Trust').resolve({
+  context: 'after betrayal',
+  selections: ['Fragile but precious'],
+  reason: 'Need protective approach'
+});
+```
+
 ## Technical Essentials
 
 ```typescript
+import { Space } from '../../../src/lib/thought-system';
+const space = new Space('space-id', 'Title', 'Description');
+
 // Core API
 .means(content)                  // Semantic meaning
 .hasValue(key, value)           // Numerical properties
@@ -127,7 +194,12 @@ Supporting concepts find their natural positions through relationships. Don't ma
 .setPosition(-1.0 to 1.0)       // Semantic position
 .holdsTension(description)       // Unresolved contradiction
 
-// Create space
+// Branching for multiple interpretations
+.branch(interpretation)          // Add alternative meaning/framing
+.getBranch(name)                // Access specific branch for relationships
+.resolve({context, selections, reason}) // Commit to one or multiple branches (parent-level)
+
+// Create space (generates Space instance)
 ./create-cognitive-space.sh topic-name
 
 // Execute
@@ -144,6 +216,8 @@ npx tsx execute-space.ts <space-id>
 - **Ontological confusion** - Mixing decision objects with decision criteria at the same focus level
 - **Implementation obsession** - Modeling technical specifics instead of strategic choices
 - **Over-engineering relationships** - Let structure emerge rather than forcing connections
+- **Premature branching** - Creating interpretations before understanding the base concept
+- **Branch proliferation** - Adding complexity without purpose; branch only when interpretations truly differ
 
 ## What Success Feels Like
 
