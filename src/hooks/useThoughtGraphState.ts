@@ -70,23 +70,22 @@ export const useThoughtGraphState = (
     };
   }, [thoughtNodes]);
 
-  // Helper function to calculate adaptive group size based on branch positions
-  const calculateGroupBounds = (branches: Array<[string, any]>) => {
-    if (branches.length === 0) return { width: 400, height: 200 };
+  // Helper function to calculate generous group size that allows expansion
+  const calculateGenerousGroupBounds = (branches: Array<[string, any]>) => {
+    if (branches.length === 0) return { width: 800, height: 600 };
 
-    // Calculate positions for all branches
-    const positions = branches.map((_, index) => ({
-      x: 20 + (index % 2) * 200, // Two columns with more spacing
-      y: 120 + Math.floor(index / 2) * 100 // Rows with more spacing
-    }));
+    // Calculate a generous container size that allows for dragging in all directions
+    const branchCount = branches.length;
+    const minWidth = 800; // Generous minimum width
+    const minHeight = 600; // Generous minimum height
 
-    // Find bounding box with padding
-    const maxX = Math.max(...positions.map(p => p.x)) + 200; // Node width + padding
-    const maxY = Math.max(...positions.map(p => p.y)) + 100; // Node height + padding
+    // Scale container based on number of branches, with extra space for dragging
+    const scaledWidth = Math.max(minWidth, branchCount * 150 + 400);
+    const scaledHeight = Math.max(minHeight, Math.ceil(branchCount / 2) * 120 + 300);
 
     return {
-      width: Math.max(400, maxX + 40), // Extra padding for container
-      height: Math.max(200, maxY + 40)
+      width: scaledWidth,
+      height: scaledHeight
     };
   };
 
@@ -123,14 +122,15 @@ export const useThoughtGraphState = (
         },
         style: isExpanded && hasExpandableBranches ? (() => {
           const branches = Array.from(thoughtNode.branches.entries());
-          const bounds = calculateGroupBounds(branches);
+          const bounds = calculateGenerousGroupBounds(branches);
           return {
             width: bounds.width,
             height: bounds.height,
             backgroundColor: 'rgba(59, 130, 246, 0.08)',
             border: '2px dashed #3b82f6',
             borderRadius: '12px',
-            padding: '20px'
+            padding: '20px',
+            overflow: 'visible' // Allow children to extend beyond if needed
           };
         })() : {
           minWidth: 200,
@@ -138,6 +138,7 @@ export const useThoughtGraphState = (
         },
         draggable: true,
         selectable: true,
+        resizable: isExpanded && hasExpandableBranches, // Make group resizable when expanded
       });
 
       // Add branch nodes as children in sub-flow if expanded
@@ -158,7 +159,7 @@ export const useThoughtGraphState = (
               color: branchData.isActive ? '#10b981' : '#6b7280' // Green for active, gray for inactive
             },
             parentId: thoughtNode.id, // ReactFlow sub-flow parent-child relationship
-            extent: 'parent' as const, // Keep branch within parent bounds
+            expandParent: true, // Auto-expand parent when dragged beyond bounds
             draggable: true, // Make branch nodes draggable
             selectable: true,
           });
@@ -247,9 +248,9 @@ export const useThoughtGraphState = (
       const effectiveFocus = isHoveredEdge ? Math.max(maxFocus, 0.8) : maxFocus;
 
       // Calculate thickness based on centrality
-      const baseStrokeWidth = edge.style?.strokeWidth || 3;
+      const baseStrokeWidth = (edge.style?.strokeWidth as number) || 3;
       const relationship = edge.data?.relationship;
-      const typeMultiplier = relationship?.type === 'conflicts-with' ? 1.5 : 1.0; // Conflicts slightly thicker
+      const typeMultiplier = relationship && typeof relationship === 'object' && 'type' in relationship && relationship.type === 'conflicts-with' ? 1.5 : 1.0; // Conflicts slightly thicker
 
       // Scale thickness: 0.5x to 2.5x based on focus level
       const focusMultiplier = 0.5 + (effectiveFocus * 2.0);
