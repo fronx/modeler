@@ -92,36 +92,6 @@ export const useThoughtGraphState = (
     };
   }, [thoughtNodes]);
 
-  // Helper function to calculate optimal group size that fits child nodes
-  const calculateOptimalGroupBounds = (branches: Array<[string, any]>) => {
-    if (branches.length === 0) return { width: 400, height: 200 };
-
-    // Calculate container size based on actual child node layout
-    const branchCount = branches.length;
-    const nodeWidth = 180; // Max width of branch nodes (from BranchNodeComponent)
-    const nodeHeight = 100; // Approximate height of branch nodes
-    const padding = 20; // Base padding
-    const headerHeight = 80; // Space for group header
-    const spacing = 20; // Spacing between nodes
-
-    // Calculate grid layout: 2 columns
-    const columns = 2;
-    const rows = Math.ceil(branchCount / columns);
-
-    // Calculate exact dimensions needed
-    const contentWidth = columns * nodeWidth + (columns - 1) * spacing;
-    const contentHeight = headerHeight + (rows * nodeHeight) + ((rows - 1) * spacing);
-
-    // Add padding around content
-    const totalWidth = contentWidth + (padding * 2);
-    const totalHeight = contentHeight + (padding * 2);
-
-    return {
-      width: totalWidth,
-      height: totalHeight
-    };
-  };
-
   // Convert thought nodes to React Flow nodes and edges
   const { flowNodes, allEdges } = React.useMemo(() => {
     const flowNodes: Node[] = [];
@@ -154,15 +124,10 @@ export const useThoughtGraphState = (
           onToggleExpansion: () => toggleNodeExpansion(thoughtNode.id)
         },
         style: isExpanded && hasExpandableBranches ? (() => {
-          const branches = Array.from(thoughtNode.branches.entries());
-          const bounds = calculateOptimalGroupBounds(branches);
           return {
-            width: bounds.width,
-            height: bounds.height,
             backgroundColor: 'rgba(59, 130, 246, 0.08)',
-            border: '2px dashed #3b82f6',
             borderRadius: '12px',
-            overflow: 'visible' // Allow children to extend beyond if needed
+            boxSizing: 'content-box',
           };
         })() : {
           minWidth: 200,
