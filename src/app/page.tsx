@@ -5,10 +5,10 @@ import { ThoughtGraph } from '@/components/ThoughtGraph';
 import { SpaceSidebar } from '@/components/SpaceSidebar';
 import { NewSpaceDialog } from '@/components/NewSpaceDialog';
 import { InlineEdit } from '@/components/InlineEdit';
-import { useWebSocketThoughts } from '@/lib/websocket-thought-client';
+import { useCognitiveData } from '@/lib/providers/cognitive-data-provider';
 
 export default function CognitiveDashboard() {
-  const { nodes, spaces, lastUpdate, currentSpaceId, setCurrentSpaceId, connectionStatus, hasLoadedCurrentSpace, deleteSpace, createSpace, updateSpaceTitle, updateSpaceDescription } = useWebSocketThoughts();
+  const { nodes, spaces, lastUpdate, currentSpaceId, setCurrentSpaceId, connectionStatus, hasLoadedCurrentSpace, deleteSpace, createSpace, updateSpaceTitle, updateSpaceDescription } = useCognitiveData();
   const [showNewSpaceDialog, setShowNewSpaceDialog] = useState(false);
 
   // Get current space details

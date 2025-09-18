@@ -12,7 +12,7 @@ import {
   NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useWebSocketThoughts } from '../lib/websocket-thought-client';
+import { useCognitiveData } from '../lib/providers/cognitive-data-provider';
 import { useThoughtGraphState } from '../hooks/useThoughtGraphState';
 
 // Custom node component for branch interpretations in sub-flows
@@ -288,7 +288,7 @@ const ThoughtGraphComponent: React.FC<ThoughtGraphProps> = ({
   showArrows = false,
   showLabels = false
 }) => {
-  const { nodes: thoughtNodes, currentSpaceId, updateNode } = useWebSocketThoughts();
+  const { nodes: thoughtNodes, currentSpaceId, updateNode } = useCognitiveData();
 
   // Handle checkbox changes with optimistic updates
   const handleCheckboxChange = React.useCallback(async (spaceId: string, nodeId: string, itemIndex: number, checked: boolean) => {
