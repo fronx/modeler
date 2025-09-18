@@ -58,24 +58,24 @@ The same principle applies at every level - purpose-setting, domain modeling, de
 
 ```typescript
 // FOREGROUND: Clean strategic choices
-space.thought('LocationA_Downtown').setPosition(-0.5).hasValue('cost', 2200);
-space.thought('LocationB_Suburbs').setPosition(0.5).hasValue('cost', 1800);
-space.thought('LocationC_Remote').setPosition(0.0).hasValue('cost', 1200);
+space.thought('Downtown').setPosition(-0.5).hasValue('cost', 2200);
+space.thought('Suburbs').setPosition(0.5).hasValue('cost', 1800);
+space.thought('Remote').setPosition(0.0).hasValue('cost', 1200);
 
 // BACKGROUND: Rich context (hidden from humans, available for AI)
-space.thought('CommutePreference')
+space.thought('Commute preference')
   .setFocus(-1.0)  // Hidden but available
-  .conflictsWith('LocationC_Remote', 0.8)
-  .supports('LocationA_Downtown', 0.9);
+  .conflictsWith('Remote', 0.8)
+  .supports('Downtown', 0.9);
 
-space.thought('BudgetConstraint')
+space.thought('Budget constraint')
   .setFocus(-1.0)  // AI reasoning context
   .hasValue('max_monthly', 2000)
-  .conflictsWith('LocationA_Downtown', 0.7);
+  .conflictsWith('Downtown', 0.7);
 
-space.thought('QualityOfLife')
+space.thought('Quality of life')
   .setFocus(-1.0)  // Complex evaluation context
-  .supports('LocationB_Suburbs', 0.8)
+  .supports('Suburbs', 0.8)
   .hasValue('importance', 0.9);
 ```
 
@@ -89,11 +89,11 @@ After adding new focus=1.0 nodes, always clean up by removing focus from nodes t
 
 ```typescript
 // When you add new focused elements like this:
-space.thought('NewCentralDecision').setFocus(1.0);
+space.thought('New decision').setFocus(1.0);
 
 // Always review and clean up previous focus:
-space.thought('PreviousDecision'); // Remove .setFocus(1.0)
-space.thought('ResolvedTension'); // Remove .setFocus(1.0)
+space.thought('Previous decision'); // Remove .setFocus(1.0)
+space.thought('Resolved tension'); // Remove .setFocus(1.0)
 ```
 
 Execute the space to update the dashboard, ensuring only current decision elements remain highlighted.
@@ -104,12 +104,12 @@ Focus on strategic decisions and conceptual tensions. Avoid implementation speci
 
 ```typescript
 // Model the strategic tension between approaches
-space.thought('IncrementalApproach').setPosition(-1.0);
-space.thought('DisruptiveApproach').setPosition(1.0);
-space.thought('IncrementalApproach').conflictsWith('DisruptiveApproach', 0.8);
+space.thought('Incremental').setPosition(-1.0);
+space.thought('Disruptive').setPosition(1.0);
+space.thought('Incremental').conflictsWith('Disruptive', 0.8);
 
 // NOT the technical implementation details
-// space.thought('DatabaseSchema') <- unless the schema choice drives the strategic decision
+// space.thought('Database schema') <- unless the schema choice drives the strategic decision
 ```
 
 ### 5. Let Relationships Create Structure
@@ -126,16 +126,16 @@ If you're **exploring and comparing** design philosophies - learning about each,
 
 ```typescript
 // Goal: Understand different approaches
-space.thought('MinimalistApproach').means('Clean, reduced aesthetics');
-space.thought('BoldExperimental').means('Striking, innovative visuals');
-space.thought('AccessibilityFirst').means('Universal design principles');
+space.thought('Minimalist').means('Clean, reduced aesthetics');
+space.thought('Bold experimental').means('Striking, innovative visuals');
+space.thought('Accessibility first').means('Universal design principles');
 ```
 
 If you're **making a strategic choice** about which philosophy should guide your project - where you'll ultimately commit to one direction - use branching:
 
 ```typescript
 // Goal: Choose our creative direction
-space.thought('DesignPhilosophy')
+space.thought('Design philosophy')
   .means('What should guide our creative decisions?')
   .branch('Minimalist approach')
   .branch('Bold experimental')
@@ -150,7 +150,7 @@ The test: Could you resolve to one branch and ignore the others, or do all the e
 
 **Resolve when ready:**
 ```typescript
-space.thought('ProductStrategy').resolve({
+space.thought('Product strategy').resolve({
   context: 'after market research',
   selections: ['Niche specialization'],
   reason: 'Limited resources favor focused approach'

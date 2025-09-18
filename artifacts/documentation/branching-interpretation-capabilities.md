@@ -8,7 +8,7 @@ When modeling complex situations, we often face concepts that can be validly int
 
 **Decision-Making Context** - Planning team priorities:
 ```typescript
-space.thought('Q4_Focus')
+space.thought('Q4 focus')
   .means('What should the team prioritize in Q4?')
   .branch('Ship new features fast')
   .branch('Improve system reliability')
@@ -16,8 +16,8 @@ space.thought('Q4_Focus')
   .branch('Expand to new markets');
 
 // Team meeting resolves to pursue two approaches
-space.thought('Q4_Focus').resolve({
-  context: 'team planning meeting',
+space.thought('Q4 focus').resolve({
+  context: 'Team planning meeting',
   selections: ['Improve system reliability', 'Reduce technical debt'],
   reason: 'Infrastructure issues blocking growth'
 });
@@ -58,11 +58,11 @@ space.thought('Trust')
 // Each branch can have different properties and relationships
 space.thought('Trust').branch('Fragile but precious')
   .hasValue('recovery_time', 'months')
-  .conflictsWith('QuickDecisions', 0.8);
+  .conflictsWith('Quick decisions', 0.8);
 
 space.thought('Trust').branch('Resilient and repairable')
   .hasValue('recovery_time', 'weeks')
-  .supports('ExperimentationMindset', 0.7);
+  .supports('Experimentation mindset', 0.7);
 ```
 
 ### When to Use Branching
