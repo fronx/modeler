@@ -73,15 +73,21 @@ export const ThoughtsProvider: React.FC<ThoughtsProviderProps> = ({ children }) 
         } else {
           // Update existing node's content but keep the same object if possible
           if (newNode.checkableList && existingNode.checkableList) {
-            // Update checkbox states
-            let checkboxChanged = false;
-            for (let i = 0; i < newNode.checkableList.length; i++) {
-              if (newNode.checkableList[i]?.checked !== existingNode.checkableList[i]?.checked) {
-                existingNode.checkableList[i].checked = newNode.checkableList[i].checked;
-                checkboxChanged = true;
+            // If list lengths differ, replace the entire list
+            if (newNode.checkableList.length !== existingNode.checkableList.length) {
+              existingNode.checkableList = [...newNode.checkableList];
+              hasChanges = true;
+            } else {
+              // Update checkbox states in place
+              let checkboxChanged = false;
+              for (let i = 0; i < newNode.checkableList.length; i++) {
+                if (newNode.checkableList[i]?.checked !== existingNode.checkableList[i]?.checked) {
+                  existingNode.checkableList[i].checked = newNode.checkableList[i].checked;
+                  checkboxChanged = true;
+                }
               }
+              if (checkboxChanged) hasChanges = true;
             }
-            if (checkboxChanged) hasChanges = true;
           }
         }
       }
