@@ -1,5 +1,34 @@
 # Modeler - Giving Mental Content a Persistent Medium
 
+## 🚀 New Architecture: Real-Time Collaborative Cognitive Spaces
+
+**We're migrating to a database-driven, real-time collaborative system!**
+
+👉 **[See docs/DATABASE-ARCHITECTURE.md for the new vision](docs/DATABASE-ARCHITECTURE.md)**
+📚 **[Database Setup Guide](docs/DATABASE-SETUP.md)** - How to run the new system locally
+
+The system described below (file-based cognitive spaces) remains functional and provides the foundation for understanding our approach. However, we're building toward real-time collaborative thinking where multiple minds can simultaneously shape persistent mental models.
+
+**Key improvements coming:**
+- **Real-time collaboration**: Multiple users editing the same cognitive space
+- **Instant updates**: No compilation step - direct JSON editing with live dashboard sync
+- **Persistent shared context**: Mental models that survive and evolve across conversations
+- **Database storage**: PostgreSQL with JSONB for flexible, concurrent access
+
+**🚀 Quick Start (New Database System):**
+```bash
+# Start local database
+supabase start
+supabase db reset
+
+# Now you have PostgreSQL running with cognitive spaces schema
+# Connection: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+```
+
+---
+
+## Original Vision: Code as Thinking Medium
+
 In 2013 I gave a talk titled "Code as a Thinking Tool", in which I argued that writing code isn't just about transforming thoughts into something a machine can execute. Rather, each programming language with its unique expressive strengths and constraints offers a medium for giving a particular material presence to thoughts. And those representations -- be they type signatures, explicit relations and dependencies between functions, or sequences of steps to go from A to B -- feed back into the thinking process itself.
 
 Compared to natural language, code is an especially powerful medium for representing the internal structure and logic of mental models, because it forces you to make constraints and relations so specific that the model becomes executable. Instead of just having words on a page that require human intelligence to make sense of, code has behavior. It has the ability to act autonomously. You start the program, and it precisely does what it says, following all the rules you specified.

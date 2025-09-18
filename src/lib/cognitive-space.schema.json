@@ -1,0 +1,298 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://modeler.ai/schemas/cognitive-space.json",
+  "title": "Cognitive Space Schema",
+  "description": "JSON Schema for cognitive spaces - persistent, addressable thought structures",
+  "type": "object",
+  "required": ["metadata", "thoughtSpace"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "title": "Space Metadata",
+      "description": "Basic information about the cognitive space",
+      "required": ["id", "title", "description", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the space",
+          "pattern": "^[a-zA-Z0-9-_]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title for the space",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "What this space explores or models"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Unix timestamp when space was created"
+        }
+      }
+    },
+    "thoughtSpace": {
+      "type": "object",
+      "title": "Thought Network",
+      "description": "The core cognitive modeling structure",
+      "required": ["nodes", "globalHistory"],
+      "properties": {
+        "nodes": {
+          "type": "object",
+          "title": "Thought Nodes",
+          "description": "Map of node IDs to thought structures",
+          "patternProperties": {
+            "^[a-zA-Z0-9 _-]+$": {
+              "$ref": "#/$defs/ThoughtNode"
+            }
+          },
+          "additionalProperties": false
+        },
+        "globalHistory": {
+          "type": "array",
+          "title": "Global History",
+          "description": "Chronological log of space-level operations",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ThoughtNode": {
+      "type": "object",
+      "title": "Thought Node",
+      "description": "A single thought with semantic and numerical properties",
+      "required": ["id", "meanings", "values", "relationships", "resolutions", "focus", "semanticPosition", "history"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier matching the key in nodes map"
+        },
+        "meanings": {
+          "type": "array",
+          "description": "Semantic meanings with confidence and timestamps",
+          "items": {
+            "$ref": "#/$defs/Meaning"
+          }
+        },
+        "values": {
+          "type": "object",
+          "description": "Numerical properties and intervals",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9_]*$": {
+              "$ref": "#/$defs/PropertyValue"
+            }
+          },
+          "additionalProperties": false
+        },
+        "relationships": {
+          "type": "array",
+          "description": "Directed relationships to other nodes",
+          "items": {
+            "$ref": "#/$defs/Relationship"
+          }
+        },
+        "branches": {
+          "type": "object",
+          "description": "Alternative interpretations held in superposition",
+          "patternProperties": {
+            "^.+$": {
+              "$ref": "#/$defs/BranchInterpretation"
+            }
+          },
+          "additionalProperties": false
+        },
+        "resolutions": {
+          "type": "array",
+          "description": "Historical record of branch resolutions",
+          "items": {
+            "$ref": "#/$defs/BranchResolution"
+          }
+        },
+        "focus": {
+          "type": "number",
+          "description": "Focus level: 1.0 = highlighted, 0.0 = neutral, -1.0 = background/discarded",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "semanticPosition": {
+          "type": "number",
+          "description": "Semantic position: -1 = left pole, 0 = center, +1 = right pole",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "history": {
+          "type": "array",
+          "description": "Chronological record of operations on this node",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tension": {
+          "type": "string",
+          "description": "Unresolved contradiction or tension description"
+        },
+        "regularList": {
+          "type": "array",
+          "description": "Simple list of items (bullet points)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "checkableList": {
+          "type": "array",
+          "description": "List of items with completion tracking",
+          "items": {
+            "type": "object",
+            "required": ["item", "checked"],
+            "properties": {
+              "item": {
+                "type": "string",
+                "description": "The item description"
+              },
+              "checked": {
+                "type": "boolean",
+                "description": "Whether the item is completed"
+              }
+            }
+          }
+        }
+      }
+    },
+    "Meaning": {
+      "type": "object",
+      "title": "Semantic Meaning",
+      "description": "What a thought represents semantically",
+      "required": ["content", "confidence", "timestamp"],
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "The semantic content/meaning",
+          "minLength": 1
+        },
+        "confidence": {
+          "type": "number",
+          "description": "Confidence level: 0.9 = high, 0.5 = uncertain, 0.1 = speculative",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Unix timestamp when meaning was added"
+        }
+      }
+    },
+    "PropertyValue": {
+      "title": "Property Value",
+      "description": "Numerical value or uncertainty interval",
+      "oneOf": [
+        {
+          "type": "number",
+          "description": "Precise numerical value"
+        },
+        {
+          "type": "array",
+          "description": "Uncertainty interval [min, max]",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Relationship": {
+      "type": "object",
+      "title": "Thought Relationship",
+      "description": "Directed relationship between thoughts",
+      "required": ["type", "target", "strength"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["supports", "conflicts-with"],
+          "description": "Type of relationship"
+        },
+        "target": {
+          "type": "string",
+          "description": "ID of the target node"
+        },
+        "strength": {
+          "type": "number",
+          "description": "Relationship strength: 1.0 = fundamental, 0.7 = strong, 0.3 = weak",
+          "minimum": 0
+        },
+        "gloss": {
+          "type": "string",
+          "description": "Optional explanation of the relationship"
+        }
+      }
+    },
+    "BranchInterpretation": {
+      "type": "object",
+      "title": "Branch Interpretation",
+      "description": "Alternative interpretation held in superposition",
+      "required": ["name", "interpretation", "relationships", "values", "isActive"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of this interpretation"
+        },
+        "interpretation": {
+          "type": "string",
+          "description": "What this branch represents"
+        },
+        "relationships": {
+          "type": "array",
+          "description": "Relationships specific to this branch",
+          "items": {
+            "$ref": "#/$defs/Relationship"
+          }
+        },
+        "values": {
+          "type": "object",
+          "description": "Property values specific to this branch",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9_]*$": {
+              "$ref": "#/$defs/PropertyValue"
+            }
+          },
+          "additionalProperties": false
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether this branch is currently active"
+        }
+      }
+    },
+    "BranchResolution": {
+      "type": "object",
+      "title": "Branch Resolution",
+      "description": "Record of how branches were collapsed/resolved",
+      "required": ["context", "selections", "reason", "timestamp"],
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Context in which resolution occurred"
+        },
+        "selections": {
+          "type": "array",
+          "description": "Which branches were selected",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why these branches were chosen"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "When the resolution occurred"
+        }
+      }
+    }
+  }
+}
