@@ -37,14 +37,8 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
   // Initialize currentSpaceId from localStorage to persist across remounts
   const [nodes, setNodes] = useState<Map<string, ThoughtNode>>(new Map());
   const [spaces, setSpaces] = useState<Space[]>([]);
-  const [currentSpaceId, setCurrentSpaceId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('modeler-current-space-id');
-      console.log('🔄 Restored currentSpaceId from localStorage:', saved);
-      return saved;
-    }
-    return null;
-  });
+  const [currentSpaceId, setCurrentSpaceId] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [loadedSpaceIds, setLoadedSpaceIds] = useState<Set<string>>(new Set());
@@ -190,7 +184,10 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
       const node = new ThoughtNode(id);
       const typedNodeData = nodeData as any;
       node.meanings = typedNodeData.meanings || [];
-      node.values = new Map(Object.entries(typedNodeData.values || {}));
+      node.values.clear();
+      for (const [key, value] of Object.entries(typedNodeData.values || {})) {
+        node.values.set(key, value);
+      }
       node.relationships = typedNodeData.relationships || [];
       node.metaphorBranches = typedNodeData.metaphorBranches || [];
 
@@ -199,11 +196,15 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
       if (typedNodeData.branches) {
         for (const [branchName, branchData] of Object.entries(typedNodeData.branches)) {
           const branch = branchData as any;
+          const branchValues = new Map();
+          for (const [key, value] of Object.entries(branch.values || {})) {
+            branchValues.set(key, value);
+          }
           node.branches.set(branchName, {
             name: branch.name,
             interpretation: branch.interpretation,
             relationships: branch.relationships || [],
-            values: new Map(Object.entries(branch.values || {})),
+            values: branchValues,
             isActive: branch.isActive !== undefined ? branch.isActive : true
           });
         }
@@ -304,8 +305,20 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     }
   };
 
+  // Hydration effect - restore currentSpaceId from localStorage after mount
+  useEffect(() => {
+    setIsHydrated(true);
+    const saved = localStorage.getItem('modeler-current-space-id');
+    if (saved) {
+      console.log('🔄 Restored currentSpaceId from localStorage:', saved);
+      setCurrentSpaceId(saved);
+    }
+  }, []);
+
   // Initialize WebSocket connection
   useEffect(() => {
+    if (!isHydrated) return; // Wait for hydration
+
     // Initialize WebSocket server by hitting the API endpoint
     fetch('/api/ws').catch(() => {
       console.log('WebSocket server initialization endpoint not available');
@@ -325,7 +338,7 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
         wsRef.current.close();
       }
     };
-  }, []);
+  }, [isHydrated]);
 
   // Subscribe to space changes
   useEffect(() => {
@@ -339,13 +352,13 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
 
   // Load space data when provider initializes with a saved currentSpaceId
   useEffect(() => {
-    if (currentSpaceId && nodes.size === 0) {
+    if (isHydrated && currentSpaceId && nodes.size === 0) {
       console.log('🔄 Loading space data for restored currentSpaceId:', currentSpaceId);
       loadSpaceFromAPI(currentSpaceId).catch(() => {
         console.log('🔄 API failed, will wait for WebSocket connection');
       });
     }
-  }, [currentSpaceId]); // Only run when currentSpaceId changes
+  }, [isHydrated, currentSpaceId]); // Run when hydration completes and currentSpaceId changes
 
   // Function to update nodes locally (for optimistic updates)
   const updateNode = useCallback((nodeId: string, updater: (node: ThoughtNode) => void) => {
