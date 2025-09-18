@@ -23,6 +23,8 @@ interface ThoughtContextType {
   hasLoadedCurrentSpace: boolean;
   updateNode: (nodeId: string, updater: (node: ThoughtNode) => void) => void;
   deleteSpace: (spaceId: string) => void;
+  createSpace: (title?: string, description?: string) => Promise<Space>;
+  updateSpaceTitle: (spaceId: string, newTitle: string) => Promise<void>;
 }
 
 const ThoughtContext = createContext<ThoughtContextType | undefined>(undefined);
@@ -364,6 +366,71 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     });
   }, [currentSpaceId]);
 
+  // Function to create a new space
+  const createSpace = useCallback(async (title?: string, description?: string): Promise<Space> => {
+    try {
+      const response = await fetch('/api/spaces', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title || 'New Space',
+          description: description || 'A new cognitive modeling space'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create space: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const newSpace = data.space;
+
+      // Add the new space to the spaces list
+      setSpaces(currentSpaces => [newSpace, ...currentSpaces]);
+
+      // Automatically select the new space
+      handleSetCurrentSpaceId(newSpace.id);
+
+      return newSpace;
+    } catch (error) {
+      console.error('Error creating space:', error);
+      throw error;
+    }
+  }, []);
+
+  // Function to update space title
+  const updateSpaceTitle = useCallback(async (spaceId: string, newTitle: string): Promise<void> => {
+    try {
+      const response = await fetch(`/api/spaces/${spaceId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: newTitle
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update space title: ${response.status}`);
+      }
+
+      // Update the local spaces list
+      setSpaces(currentSpaces =>
+        currentSpaces.map(space =>
+          space.id === spaceId
+            ? { ...space, title: newTitle, lastModified: new Date().toISOString() }
+            : space
+        )
+      );
+    } catch (error) {
+      console.error('Error updating space title:', error);
+      throw error;
+    }
+  }, []);
+
   const value: ThoughtContextType = {
     nodes,
     spaces,
@@ -373,7 +440,9 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     connectionStatus,
     hasLoadedCurrentSpace: currentSpaceId ? loadedSpaceIds.has(currentSpaceId) : false,
     updateNode,
-    deleteSpace
+    deleteSpace,
+    createSpace,
+    updateSpaceTitle
   };
 
   return (

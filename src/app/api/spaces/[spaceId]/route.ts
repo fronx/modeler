@@ -84,6 +84,26 @@ export async function PATCH(
       return NextResponse.json({ error: 'Space not found' }, { status: 404 });
     }
 
+    // Handle simple title update
+    if (updates.title && typeof updates.title === 'string') {
+      const updatedSpace = {
+        ...existingSpace,
+        metadata: {
+          ...existingSpace.metadata,
+          title: updates.title,
+          updatedAt: Date.now()
+        }
+      };
+
+      await db.insertSpace(updatedSpace);
+
+      return NextResponse.json({
+        success: true,
+        message: `Space title updated to "${updates.title}"`,
+        spaceId: spaceId
+      });
+    }
+
     // Apply updates - deep merge with proper node merging
     const updatedNodes = { ...existingSpace.nodes };
 

@@ -1,11 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { ThoughtGraph } from '@/components/ThoughtGraph';
 import { SpaceSidebar } from '@/components/SpaceSidebar';
+import { NewSpaceDialog } from '@/components/NewSpaceDialog';
+import { InlineEdit } from '@/components/InlineEdit';
 import { useWebSocketThoughts } from '@/lib/websocket-thought-client';
 
 export default function CognitiveDashboard() {
-  const { nodes, spaces, lastUpdate, currentSpaceId, setCurrentSpaceId, connectionStatus, hasLoadedCurrentSpace, deleteSpace } = useWebSocketThoughts();
+  const { nodes, spaces, lastUpdate, currentSpaceId, setCurrentSpaceId, connectionStatus, hasLoadedCurrentSpace, deleteSpace, createSpace, updateSpaceTitle } = useWebSocketThoughts();
+  const [showNewSpaceDialog, setShowNewSpaceDialog] = useState(false);
+
+  // Get current space details
+  const currentSpace = spaces.find(space => space.path === currentSpaceId);
 
 
   return (
@@ -15,9 +22,7 @@ export default function CognitiveDashboard() {
         spaces={spaces}
         currentSpaceId={currentSpaceId}
         onSpaceSelect={setCurrentSpaceId}
-        onNewSpace={() => {
-          // The sidebar handles space creation
-        }}
+        onNewSpace={() => setShowNewSpaceDialog(true)}
         onSpaceDelete={deleteSpace}
       />
 
@@ -28,10 +33,18 @@ export default function CognitiveDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Cognitive Dashboard
+                {currentSpace ? (
+                  <InlineEdit
+                    value={currentSpace.title}
+                    onSave={(newTitle) => updateSpaceTitle(currentSpace.id, newTitle)}
+                    className="text-2xl font-bold text-gray-900 dark:text-white"
+                  />
+                ) : (
+                  'Cognitive Dashboard'
+                )}
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {currentSpaceId ? `Space: ${currentSpaceId}` : 'No space selected'}
+                {currentSpace ? currentSpace.description : 'No space selected'}
               </p>
             </div>
 
@@ -112,6 +125,15 @@ export default function CognitiveDashboard() {
           </div>
         </footer>
       </div>
+
+      {/* New Space Dialog */}
+      <NewSpaceDialog
+        isOpen={showNewSpaceDialog}
+        onClose={() => setShowNewSpaceDialog(false)}
+        onCreateSpace={async (title, description) => {
+          await createSpace(title, description);
+        }}
+      />
     </div>
   );
 }
