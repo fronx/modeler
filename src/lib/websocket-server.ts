@@ -1,22 +1,19 @@
 /**
  * WebSocket server for real-time thought updates
- * Watches the file system and pushes changes to connected clients
+ * Watches database changes and pushes updates to connected clients
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
-import chokidar from 'chokidar';
-import fs from 'fs/promises';
-import path from 'path';
 import { createServer } from 'http';
-
-const SPACES_DIR = path.join(process.cwd(), 'data/spaces');
+import { Database } from './database';
 
 export class ThoughtWebSocketServer {
   private wss: WebSocketServer;
   private server: any;
-  private watcher: any | null = null;
   private clients = new Set<WebSocket>();
   private actualPort: number = 8080;
+  private pollInterval: NodeJS.Timeout | null = null;
+  private lastUpdate: number = Date.now();
 
   constructor(port = 8080) {
     // Create HTTP server for WebSocket upgrade
@@ -24,7 +21,7 @@ export class ThoughtWebSocketServer {
     this.wss = new WebSocketServer({ server: this.server });
 
     this.setupWebSocketHandlers();
-    this.setupFileWatcher();
+    this.startDatabasePolling();
 
     this.server.listen(port, () => {
       this.actualPort = port;
@@ -91,108 +88,36 @@ export class ThoughtWebSocketServer {
     }
   }
 
-  private setupFileWatcher(): void {
-    // Ensure spaces directory exists
-    fs.mkdir(SPACES_DIR, { recursive: true }).catch(() => {});
+  private startDatabasePolling(): void {
+    // Poll database for changes every 2 seconds
+    this.pollInterval = setInterval(async () => {
+      try {
+        await this.checkForUpdates();
+      } catch (error) {
+        console.error('Database polling error:', error);
+      }
+    }, 2000);
 
-    // Watch the entire spaces directory tree
-    this.watcher = chokidar.watch(SPACES_DIR, {
-      ignored: /^\./,
-      persistent: true,
-      ignoreInitial: true
-    });
-
-    this.watcher.on('add', this.handleFileChange.bind(this));
-    this.watcher.on('change', this.handleFileChange.bind(this));
-    this.watcher.on('unlink', this.handleFileChange.bind(this));
-    this.watcher.on('addDir', this.handleSpaceChange.bind(this));
-    this.watcher.on('unlinkDir', this.handleSpaceChange.bind(this));
-
-    console.log('👁️  File system watcher started for:', SPACES_DIR);
+    console.log('👁️  Database polling started');
   }
 
-  private async handleFileChange(filePath: string): Promise<void> {
-    const relativePath = path.relative(SPACES_DIR, filePath);
-    const pathParts = relativePath.split(path.sep);
-
-    if (pathParts.length < 2) return; // Must be in a space directory
-
-    const spaceId = pathParts[0];
-    const fileName = pathParts[pathParts.length - 1];
-
-    console.log(`📁 File changed: ${fileName} in ${spaceId} (full path: ${filePath})`);
-
-    // Handle TypeScript space files - auto-execute when changed
-    if (fileName === 'space.ts') {
-      console.log(`🚀 Triggering auto-execution for ${spaceId}`);
-      await this.autoExecuteSpace(spaceId, filePath);
-      return; // The resulting JSON change will trigger another event
-    }
-
-    // Handle different file types
-    if (fileName === '_space.json') {
-      // Space metadata changed
-      await this.broadcastSpaceList();
-    }
-    // Note: space.json updates are now handled directly by execute-space.ts
-  }
-
-  private async autoExecuteSpace(spaceId: string, tsFilePath: string): Promise<void> {
+  private async checkForUpdates(): Promise<void> {
+    const db = new Database();
     try {
-      console.log(`🔄 Auto-executing space: ${spaceId}`);
+      // Check if any spaces have been updated since our last check
+      const result = await (db as any).pool.query(`
+        SELECT COUNT(*) as count FROM spaces
+        WHERE EXTRACT(epoch FROM updated_at) * 1000 > $1
+      `, [this.lastUpdate]);
 
-      // First validate TypeScript syntax
-      const { exec } = require('child_process');
-
-      await new Promise<void>((resolve, reject) => {
-        exec(`npx tsc --noEmit "${tsFilePath}"`, (error) => {
-          if (error) {
-            console.log(`⚠️  Syntax error in ${spaceId}/space.ts - skipping execution`);
-            reject(error);
-          } else {
-            resolve();
-          }
-        });
-      });
-
-      // If syntax is valid, execute to generate JSON
-      await new Promise<void>((resolve, reject) => {
-        exec(`npx tsx "${tsFilePath}"`, {
-          cwd: process.cwd(),
-          maxBuffer: 1024 * 1024 // 1MB buffer for large outputs
-        }, async (error, stdout, stderr) => {
-          if (error) {
-            console.error(`❌ Execution failed for ${spaceId}:`, error.message);
-            reject(error);
-          } else {
-            try {
-              // Validate JSON output
-              JSON.parse(stdout);
-
-              // Write to space.json atomically to avoid race conditions
-              const jsonPath = path.join(path.dirname(tsFilePath), 'space.json');
-              const tempPath = jsonPath + '.tmp';
-              await fs.writeFile(tempPath, stdout, 'utf8');
-              await fs.rename(tempPath, jsonPath);
-              console.log(`✅ Auto-executed ${spaceId} → space.json updated`);
-              resolve();
-            } catch (parseError) {
-              console.error(`❌ Invalid JSON output from ${spaceId}:`, parseError);
-              reject(parseError);
-            }
-          }
-        });
-      });
-
-    } catch (error) {
-      console.error(`Auto-execution failed for ${spaceId}:`, error.message || error);
+      if (result.rows[0].count > 0) {
+        // Update our timestamp and broadcast changes
+        this.lastUpdate = Date.now();
+        await this.broadcastSpaceList();
+      }
+    } finally {
+      await db.close();
     }
-  }
-
-
-  private async handleSpaceChange(): Promise<void> {
-    // Space directory added/removed
-    await this.broadcastSpaceList();
   }
 
   private async sendSpaceList(ws: WebSocket): Promise<void> {
@@ -255,95 +180,42 @@ export class ThoughtWebSocketServer {
   }
 
   private async loadSpaces(): Promise<any[]> {
+    const db = new Database();
     try {
-      await fs.mkdir(SPACES_DIR, { recursive: true });
-
-      const spaces = [];
-      const spaceDirs = await fs.readdir(SPACES_DIR);
-
-      for (const spaceDir of spaceDirs) {
-        const spacePath = path.join(SPACES_DIR, spaceDir);
-        const stat = await fs.stat(spacePath);
-
-        if (stat.isDirectory()) {
-          try {
-            // Read space metadata
-            const metaPath = path.join(spacePath, '_space.json');
-            const metaContent = await fs.readFile(metaPath, 'utf-8');
-            const spaceMeta = JSON.parse(metaContent);
-
-            // Count thought files
-            const files = await fs.readdir(spacePath);
-            const thoughtCount = files.filter(f => f.endsWith('.json') && f !== '_space.json').length;
-
-            spaces.push({
-              ...spaceMeta,
-              thoughtCount,
-              path: spaceDir
-            });
-
-          } catch (error) {
-            // If no metadata file, create basic space info
-            const files = await fs.readdir(spacePath);
-            const thoughtCount = files.filter(f => f.endsWith('.json')).length;
-
-            spaces.push({
-              id: spaceDir,
-              title: `Space ${spaceDir}`,
-              description: `Space with ${thoughtCount} thoughts`,
-              created: stat.birthtime.toISOString(),
-              lastModified: stat.mtime.toISOString(),
-              thoughtCount,
-              path: spaceDir
-            });
-          }
-        }
-      }
-
-      // Sort by creation time (newest first)
-      spaces.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
-      return spaces;
-
+      const spaces = await db.listSpaces();
+      return spaces.map(space => ({
+        id: space.id,
+        title: space.title,
+        description: space.description,
+        created: new Date(space.createdAt).toISOString(),
+        lastModified: new Date(space.updatedAt).toISOString(),
+        thoughtCount: space.nodeCount,
+        path: space.id
+      }));
     } catch (error) {
-      console.error('Failed to load spaces:', error);
+      console.error('Failed to load spaces from database:', error);
       return [];
+    } finally {
+      await db.close();
     }
   }
 
   private async loadSpaceThoughts(spaceId: string): Promise<Record<string, any>> {
+    const db = new Database();
     try {
-      const spaceDir = path.join(SPACES_DIR, spaceId);
-      const spaceJsonPath = path.join(spaceDir, 'space.json');
-
-      // Check if space.json exists
-      try {
-        await fs.access(spaceJsonPath);
-      } catch {
-        console.log(`No space.json found for ${spaceId}`);
-        return {};
-      }
-
-      // Read and parse space.json
-      const content = await fs.readFile(spaceJsonPath, 'utf-8');
-      const spaceData = JSON.parse(content);
-
-      // Extract nodes from the thoughtSpace.nodes structure
-      if (spaceData.thoughtSpace && spaceData.thoughtSpace.nodes) {
-        return spaceData.thoughtSpace.nodes;
-      }
-
-      console.log(`No thoughtSpace.nodes found in ${spaceId}/space.json`);
-      return {};
-
+      const space = await db.getSpace(spaceId);
+      return space?.thoughtSpace.nodes || {};
     } catch (error) {
       console.error(`Failed to load space thoughts for ${spaceId}:`, error);
       return {};
+    } finally {
+      await db.close();
     }
   }
 
   public close(): void {
-    if (this.watcher) {
-      this.watcher.close();
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
     }
     this.wss.close();
     this.server.close();

@@ -1,42 +1,35 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-
-const SPACES_DIR = path.join(process.cwd(), 'data/spaces');
+import { Database } from '@/lib/database';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
+  const db = new Database();
+
   try {
     const { spaceId } = await params;
-    const spaceDir = path.join(SPACES_DIR, spaceId);
-    const spaceFilePath = path.join(spaceDir, 'space.json');
+    const space = await db.getSpace(spaceId);
 
-    // Check if space.json exists
-    try {
-      await fs.access(spaceFilePath);
-    } catch {
+    if (!space) {
       return NextResponse.json({
-        error: 'Space not found or not yet executed. Run: npx tsx execute-space.ts ' + spaceId
+        error: 'Space not found in database. Create space first.'
       }, { status: 404 });
     }
 
-    // Read and return the space JSON
-    const spaceData = await fs.readFile(spaceFilePath, 'utf-8');
-    const parsedData = JSON.parse(spaceData);
-
     return NextResponse.json({
-      ...parsedData,
+      ...space,
       loadedAt: new Date().toISOString(),
-      source: 'typescript-execution'
+      source: 'database'
     });
 
   } catch (error) {
-    console.error('Failed to load space from TypeScript execution:', error);
+    console.error('Failed to load space from database:', error);
     return NextResponse.json({
       error: 'Failed to load space data',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
+  } finally {
+    await db.close();
   }
 }

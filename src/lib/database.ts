@@ -74,11 +74,26 @@ export class Database {
     };
   }
 
-  async listSpaces(): Promise<Array<{id: string, title: string}>> {
+  async listSpaces(): Promise<Array<{id: string, title: string, description: string, createdAt: number, updatedAt: number, nodeCount: number}>> {
     const result = await this.pool.query(`
-      SELECT id, title FROM spaces ORDER BY updated_at DESC
+      SELECT id, title, description,
+             EXTRACT(epoch FROM created_at) * 1000 as created_at,
+             EXTRACT(epoch FROM updated_at) * 1000 as updated_at,
+             CASE
+               WHEN data->'nodes' IS NOT NULL
+               THEN (SELECT COUNT(*) FROM jsonb_object_keys(data->'nodes'))
+               ELSE 0
+             END as node_count
+      FROM spaces ORDER BY updated_at DESC
     `);
-    return result.rows;
+    return result.rows.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      createdAt: parseInt(row.created_at),
+      updatedAt: parseInt(row.updated_at),
+      nodeCount: row.node_count
+    }));
   }
 
   async deleteSpace(id: string): Promise<boolean> {
