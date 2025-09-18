@@ -32,11 +32,16 @@ interface ThoughtProviderProps {
 
 export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ children }) => {
   const providerIdRef = useRef(Math.random().toString(36).substring(7));
-  console.log('🏭 WebSocket Provider instance:', providerIdRef.current);
 
   const [nodes, setNodes] = useState<Map<string, ThoughtNode>>(new Map());
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [currentSpaceId, setCurrentSpaceId] = useState<string | null>(null);
+  const currentSpaceIdRef = useRef<string | null>(null);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    currentSpaceIdRef.current = currentSpaceId;
+  }, [currentSpaceId]);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [loadedSpaceIds, setLoadedSpaceIds] = useState<Set<string>>(new Set());
@@ -101,8 +106,8 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     }
   };
 
-  const handleWebSocketMessage = (data: any) => {
-    console.log('📨 WebSocket message received:', { type: data.type, currentSpaceId, spaceId: data.spaceId });
+  const handleWebSocketMessage = useCallback((data: any) => {
+    const currentSpace = currentSpaceIdRef.current;
 
     switch (data.type) {
       case 'spaces_update':
@@ -110,8 +115,7 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
         setLastUpdate(new Date(data.timestamp));
 
         // Auto-select the most recent space if none is selected
-        if (!currentSpaceId && data.spaces.length > 0) {
-          console.log('🔄 Auto-selecting most recent space:', data.spaces[0].path);
+        if (!currentSpace && data.spaces.length > 0) {
           const mostRecentSpace = data.spaces[0].path;
           handleSetCurrentSpaceId(mostRecentSpace);
         }
@@ -119,23 +123,19 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
 
       case 'space_thoughts_update':
         // Only update if this is for the currently selected space
-        if (data.spaceId === currentSpaceId) {
-          console.log('🔄 Processing space_thoughts_update for current space');
+        if (data.spaceId === currentSpace) {
           // Use the same parsing logic as the API
           parseSpaceData(data, data.spaceId, data.timestamp);
-        } else {
-          console.log('✋ Ignoring space_thoughts_update for different space:', data.spaceId);
         }
         break;
 
       default:
         console.warn('Unknown WebSocket message type:', data.type);
     }
-  };
+  }, []);
 
   // Handle space changes
   const handleSetCurrentSpaceId = (spaceId: string | null) => {
-    console.log('🎯 Setting currentSpaceId:', { from: currentSpaceId, to: spaceId });
     setCurrentSpaceId(spaceId);
 
     if (!spaceId) {
@@ -263,14 +263,11 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
         }
       }
 
-      console.log('🔄 WebSocket update decision:', { hasChanges, returning: hasChanges ? 'new Map' : 'same Map' });
       return hasChanges ? updatedNodes : currentNodes;
     });
 
     setLoadedSpaceIds(prev => new Set(prev).add(spaceId));
     setLastUpdate(timestamp ? new Date(timestamp) : new Date());
-
-    console.log(`✅ Loaded space data: ${nodeMap.size} thoughts`);
   };
 
   // Load space data from the new TypeScript-based API
@@ -327,9 +324,8 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
   // Load space data when currentSpaceId changes
   useEffect(() => {
     if (currentSpaceId && nodes.size === 0) {
-      console.log('🔄 Loading space data for currentSpaceId:', currentSpaceId);
       loadSpaceFromAPI(currentSpaceId).catch(() => {
-        console.log('🔄 API failed, will wait for WebSocket connection');
+        // Fallback to WebSocket if API fails
       });
     }
   }, [currentSpaceId]);

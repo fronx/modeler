@@ -19,9 +19,8 @@ export const useThoughtGraphState = (
   spaceId: string | null = null,
   onCheckboxChange?: (spaceId: string, nodeId: string, itemIndex: number, checked: boolean) => void
 ) => {
-  // Track if this is a fresh instance
+  // Track if this is a fresh instance for debugging
   const instanceIdRef = React.useRef(Math.random().toString(36).substring(7));
-  // console.log('🆔 Hook instance:', instanceIdRef.current, 'nodeCount:', thoughtNodes.size);
 
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
   // Use ref to persist layout positions across re-renders
@@ -78,11 +77,8 @@ export const useThoughtGraphState = (
       .join('|');
 
     if (structuralHashRef.current !== newHash) {
-      console.log('🔍 Structural hash changed:', { old: structuralHashRef.current, new: newHash });
       structuralHashRef.current = newHash;
       setStructuralVersion(prev => prev + 1);
-    } else {
-      console.log('🔍 Structural hash unchanged:', newHash);
     }
   }, [thoughtNodes]);
 
@@ -96,19 +92,10 @@ export const useThoughtGraphState = (
 
     // Only run layout if we don't have positions for these nodes yet (check ref, not state)
     const needsLayout = nodeArray.some(node => !layoutPositionsRef.current.has(node.id));
-    console.log('🔄 Layout check:', {
-      nodeCount: nodeArray.length,
-      nodeIds: nodeArray.map(n => n.id),
-      existingPositions: Array.from(layoutPositionsRef.current.keys()),
-      needsLayout
-    });
 
     if (!needsLayout) {
-      console.log('🚫 Layout: All nodes have positions, skipping layout');
       return;
     }
-
-    console.log('🎯 Layout: Running layout calculation');
     setIsAnimating(true);
 
     const simulation = createAnimatedForceLayout(

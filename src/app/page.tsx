@@ -88,7 +88,7 @@ export default function CognitiveDashboard() {
               </div>
             </div>
           ) : (
-            <ThoughtGraph key={currentSpaceId} />
+            <ThoughtGraph />
           )}
         </main>
 
