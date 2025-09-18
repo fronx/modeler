@@ -21,13 +21,11 @@ const BranchNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ data
 
   return (
     <div
-      className={`relative px-3 py-2 rounded-lg shadow-sm border-2 min-w-[160px] max-w-[180px] transition-all duration-300 ${
-        selected ? 'ring-2 ring-blue-500 ring-offset-1 scale-105' : ''
-      } ${
-        branch.isActive
+      className={`relative px-3 py-2 rounded-lg shadow-sm border-2 min-w-[160px] max-w-[180px] transition-all duration-300 ${selected ? 'ring-2 ring-blue-500 ring-offset-1 scale-105' : ''
+        } ${branch.isActive
           ? 'bg-green-50 dark:bg-green-900 border-green-400 dark:border-green-500'
           : 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600'
-      }`}
+        }`}
       style={{
         borderColor: color
       }}
@@ -42,11 +40,10 @@ const BranchNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ data
       <Handle type="source" position={Position.Bottom} id="source-bottom" />
       <Handle type="source" position={Position.Left} id="source-left" />
       {/* Branch name and status */}
-      <div className={`text-sm font-medium mb-1 flex items-center justify-between ${
-        branch.isActive
+      <div className={`text-sm font-medium mb-1 flex items-center justify-between ${branch.isActive
           ? 'text-green-800 dark:text-green-200'
           : 'text-gray-600 dark:text-gray-400'
-      }`}>
+        }`}>
         <span className="flex items-center gap-1">
           {branch.name}
         </span>
@@ -111,11 +108,10 @@ const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ dat
 
   return (
     <div
-      className={`relative px-4 py-3 bg-white dark:bg-gray-800 border-2 rounded-lg shadow-lg min-w-[200px] max-w-[300px] cursor-pointer transition-all duration-300 hover:opacity-80 ${
-        isDiscarded ? 'opacity-40 saturate-50' :
-        selected ? 'ring-4 ring-offset-2 ring-offset-white dark:ring-offset-gray-800 shadow-2xl bg-purple-50 dark:bg-purple-900/30 scale-105' :
-        isHighlighted ? 'ring-2 ring-blue-400 shadow-xl' : ''
-      }`}
+      className={`relative px-4 py-3 bg-white dark:bg-gray-800 border-2 rounded-lg shadow-lg min-w-[200px] max-w-[300px] cursor-pointer transition-all duration-300 hover:opacity-80 ${isDiscarded ? 'opacity-40 saturate-50' :
+          selected ? 'ring-4 ring-offset-2 ring-offset-white dark:ring-offset-gray-800 shadow-2xl bg-purple-50 dark:bg-purple-900/30 scale-105' :
+            isHighlighted ? 'ring-2 ring-blue-400 shadow-xl' : ''
+        }`}
       style={{
         borderColor: color,
         borderWidth: selected ? '3px' : '2px',
@@ -160,7 +156,7 @@ const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ dat
       {showPartialDetail && (
         <div className="text-sm text-gray-700 dark:text-gray-300 mb-2">
           {showFullDetail ? node.currentMeaning() :
-           `${node.currentMeaning().substring(0, 60)}${node.currentMeaning().length > 60 ? '...' : ''}`}
+            `${node.currentMeaning().substring(0, 60)}${node.currentMeaning().length > 60 ? '...' : ''}`}
         </div>
       )}
 
@@ -194,7 +190,7 @@ const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ dat
           {node.checkableList && node.checkableList.length > 0 && (
             <div className="text-xs text-gray-700 dark:text-gray-300 mt-2">
               <ul className="space-y-1">
-                {node.checkableList.map((listItem: {item: string, checked: boolean}, index: number) => (
+                {node.checkableList.map((listItem: { item: string, checked: boolean }, index: number) => (
                   <li key={index} className="flex items-start">
                     <input
                       type="checkbox"
@@ -287,7 +283,7 @@ interface ThoughtGraphProps {
   showLabels?: boolean;
 }
 
-export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
+const ThoughtGraphComponent: React.FC<ThoughtGraphProps> = ({
   backgroundEdgeOpacity = 0.2,
   showArrows = false,
   showLabels = false
@@ -389,3 +385,6 @@ export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
     </div>
   );
 };
+
+// Memoize the component to prevent unnecessary re-renders
+export const ThoughtGraph = React.memo(ThoughtGraphComponent);

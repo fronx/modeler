@@ -31,9 +31,20 @@ interface ThoughtProviderProps {
 }
 
 export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ children }) => {
+  const providerIdRef = useRef(Math.random().toString(36).substring(7));
+  console.log('🏭 WebSocket Provider instance:', providerIdRef.current);
+
+  // Initialize currentSpaceId from localStorage to persist across remounts
   const [nodes, setNodes] = useState<Map<string, ThoughtNode>>(new Map());
   const [spaces, setSpaces] = useState<Space[]>([]);
-  const [currentSpaceId, setCurrentSpaceId] = useState<string | null>(null);
+  const [currentSpaceId, setCurrentSpaceId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('modeler-current-space-id');
+      console.log('🔄 Restored currentSpaceId from localStorage:', saved);
+      return saved;
+    }
+    return null;
+  });
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [loadedSpaceIds, setLoadedSpaceIds] = useState<Set<string>>(new Set());
@@ -99,22 +110,34 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
   };
 
   const handleWebSocketMessage = (data: any) => {
+    console.log('📨 WebSocket message received:', { type: data.type, currentSpaceId, spaceId: data.spaceId });
+
     switch (data.type) {
       case 'spaces_update':
         setSpaces(data.spaces);
         setLastUpdate(new Date(data.timestamp));
 
         // If no space is selected, select the most recent one
+        // But DON'T reload if we already have the current space selected
         if (!currentSpaceId && data.spaces.length > 0) {
+          console.log('🔄 Auto-selecting most recent space because no space selected');
           const mostRecentSpace = data.spaces[0].path;
           // Use the same logic as manual selection (will try API first, then WebSocket)
           handleSetCurrentSpaceId(mostRecentSpace);
+        } else {
+          console.log('✋ Skipping space reload - already have space selected:', currentSpaceId);
         }
         break;
 
       case 'space_thoughts_update':
-        // Use the same parsing logic as the API
-        parseSpaceData(data, data.spaceId, data.timestamp);
+        // Only update if this is for the currently selected space
+        if (data.spaceId === currentSpaceId) {
+          console.log('🔄 Processing space_thoughts_update for current space');
+          // Use the same parsing logic as the API
+          parseSpaceData(data, data.spaceId, data.timestamp);
+        } else {
+          console.log('✋ Ignoring space_thoughts_update for different space:', data.spaceId);
+        }
         break;
 
       default:
@@ -124,7 +147,17 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
 
   // Handle space changes
   const handleSetCurrentSpaceId = (spaceId: string | null) => {
+    console.log('🎯 Setting currentSpaceId:', { from: currentSpaceId, to: spaceId });
     setCurrentSpaceId(spaceId);
+
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      if (spaceId) {
+        localStorage.setItem('modeler-current-space-id', spaceId);
+      } else {
+        localStorage.removeItem('modeler-current-space-id');
+      }
+    }
 
     if (!spaceId) {
       setNodes(new Map());
@@ -206,7 +239,48 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
       nodeMap.set(id, node);
     }
 
-    setNodes(nodeMap);
+    // Update nodes but try to preserve Map reference when possible
+    setNodes(currentNodes => {
+      // If we have no existing nodes, use the new map
+      if (currentNodes.size === 0) {
+        return nodeMap;
+      }
+
+      // If node count changed, definitely update
+      if (currentNodes.size !== nodeMap.size) {
+        return nodeMap;
+      }
+
+      // Check if we can reuse existing nodes by updating them in-place
+      let hasChanges = false;
+      const updatedNodes = new Map(currentNodes);
+
+      for (const [id, newNode] of nodeMap) {
+        const existingNode = updatedNodes.get(id);
+        if (!existingNode) {
+          // New node - add it
+          updatedNodes.set(id, newNode);
+          hasChanges = true;
+        } else {
+          // Update existing node's content but keep the same object if possible
+          if (newNode.checkableList && existingNode.checkableList) {
+            // Update checkbox states
+            let checkboxChanged = false;
+            for (let i = 0; i < newNode.checkableList.length; i++) {
+              if (newNode.checkableList[i]?.checked !== existingNode.checkableList[i]?.checked) {
+                existingNode.checkableList[i].checked = newNode.checkableList[i].checked;
+                checkboxChanged = true;
+              }
+            }
+            if (checkboxChanged) hasChanges = true;
+          }
+        }
+      }
+
+      console.log('🔄 WebSocket update decision:', { hasChanges, returning: hasChanges ? 'new Map' : 'same Map' });
+      return hasChanges ? updatedNodes : currentNodes;
+    });
+
     setLoadedSpaceIds(prev => new Set(prev).add(spaceId));
     setLastUpdate(timestamp ? new Date(timestamp) : new Date());
 
@@ -263,17 +337,29 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     }
   }, [currentSpaceId]);
 
+  // Load space data when provider initializes with a saved currentSpaceId
+  useEffect(() => {
+    if (currentSpaceId && nodes.size === 0) {
+      console.log('🔄 Loading space data for restored currentSpaceId:', currentSpaceId);
+      loadSpaceFromAPI(currentSpaceId).catch(() => {
+        console.log('🔄 API failed, will wait for WebSocket connection');
+      });
+    }
+  }, [currentSpaceId]); // Only run when currentSpaceId changes
+
   // Function to update nodes locally (for optimistic updates)
   const updateNode = useCallback((nodeId: string, updater: (node: ThoughtNode) => void) => {
     setNodes(currentNodes => {
-      const updatedNodes = new Map(currentNodes);
-      const node = updatedNodes.get(nodeId);
+      const node = currentNodes.get(nodeId);
       if (node) {
         updater(node);
+        // Return the same Map reference since we're only modifying content
+        // The Map itself doesn't change, only the internal properties of the nodes
+        return currentNodes;
       }
-      return updatedNodes;
+      return currentNodes;
     });
-  }, []);
+  }, [])
 
   const value: ThoughtContextType = {
     nodes,

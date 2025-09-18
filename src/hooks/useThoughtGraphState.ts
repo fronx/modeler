@@ -19,7 +19,13 @@ export const useThoughtGraphState = (
   spaceId: string | null = null,
   onCheckboxChange?: (spaceId: string, nodeId: string, itemIndex: number, checked: boolean) => void
 ) => {
+  // Track if this is a fresh instance
+  const instanceIdRef = React.useRef(Math.random().toString(36).substring(7));
+  // console.log('🆔 Hook instance:', instanceIdRef.current, 'nodeCount:', thoughtNodes.size);
+
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
+  // Use ref to persist layout positions across re-renders
+  const layoutPositionsRef = React.useRef<Map<string, { x: number; y: number }>>(new Map());
   const [layoutPositions, setLayoutPositions] = React.useState<Map<string, { x: number; y: number }>>(new Map());
   const [isAnimating, setIsAnimating] = React.useState(false);
   // Initialize expanded nodes with all nodes that have branches
@@ -59,21 +65,62 @@ export const useThoughtGraphState = (
     });
   }, [thoughtNodes]);
 
-  // Calculate D3 force layout when nodes change - use animated version
+  // Track structural changes using refs to avoid unnecessary memoization
+  const structuralHashRef = React.useRef<string>('');
+  const [structuralVersion, setStructuralVersion] = React.useState(0);
+
+  // Calculate structural hash and only update version if it actually changed
+  React.useEffect(() => {
+    const nodes = Array.from(thoughtNodes.values());
+    const newHash = nodes
+      .map(node => `${node.id}:${node.focus || 0.1}:${node.semanticPosition || 0}:${node.relationships.length}`)
+      .sort()
+      .join('|');
+
+    if (structuralHashRef.current !== newHash) {
+      console.log('🔍 Structural hash changed:', { old: structuralHashRef.current, new: newHash });
+      structuralHashRef.current = newHash;
+      setStructuralVersion(prev => prev + 1);
+    } else {
+      console.log('🔍 Structural hash unchanged:', newHash);
+    }
+  }, [thoughtNodes]);
+
+  // Calculate D3 force layout only when node structure changes (not content updates)
   React.useEffect(() => {
     const nodeArray = Array.from(thoughtNodes.values()).filter(node => node.focus !== -1);
-    if (nodeArray.length === 0) return;
+    if (nodeArray.length === 0) {
+      console.log('🔄 Layout: No nodes to layout');
+      return;
+    }
 
+    // Only run layout if we don't have positions for these nodes yet (check ref, not state)
+    const needsLayout = nodeArray.some(node => !layoutPositionsRef.current.has(node.id));
+    console.log('🔄 Layout check:', {
+      nodeCount: nodeArray.length,
+      nodeIds: nodeArray.map(n => n.id),
+      existingPositions: Array.from(layoutPositionsRef.current.keys()),
+      needsLayout
+    });
+
+    if (!needsLayout) {
+      console.log('🚫 Layout: All nodes have positions, skipping layout');
+      return;
+    }
+
+    console.log('🎯 Layout: Running layout calculation');
     setIsAnimating(true);
 
     const simulation = createAnimatedForceLayout(
       nodeArray,
       // onTick - update positions in real-time
       (positions) => {
+        layoutPositionsRef.current = positions;
         setLayoutPositions(positions);
       },
       // onComplete - animation finished
       (finalPositions) => {
+        layoutPositionsRef.current = finalPositions;
         setLayoutPositions(finalPositions);
         setIsAnimating(false);
       },
@@ -92,7 +139,7 @@ export const useThoughtGraphState = (
       simulation.stop();
       setIsAnimating(false);
     };
-  }, [thoughtNodes]);
+  }, [structuralVersion]); // Only depend on structural version, not content
 
   // Convert thought nodes to React Flow nodes and edges
   const { flowNodes, allEdges } = React.useMemo(() => {
