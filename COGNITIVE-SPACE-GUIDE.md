@@ -29,24 +29,27 @@ When multiple cognitive architectures share persistent thought structures, new f
 
 ## Essential Workflow
 
-### 1. Establish Conversation Purpose First
+### 1. Choose Your Structural Approach
 
-Before modeling any content, create isolated goal options. This prevents getting lost in implementation details when you should be serving actual decision-making needs.
+**Every modeling decision reflects conversational intent.** Are you exploring multiple concepts, or resolving between interpretations? This applies from initial purpose-setting through detailed content modeling.
 
+**When choosing conversation approach** (pick one framing):
 ```typescript
-// Isolated purpose options - no relationships yet
-space.thought('Goal_ClearPriority')
-  .means('Goal: Decide what to work on next')
-  .setFocus(1.0)
-  .holdsTension('Which direction serves my real needs?');
-
-space.thought('Goal_SystemDesign')
-  .means('Goal: Design approach for managing complexity')
-  .setFocus(1.0)
-  .holdsTension('How should I structure this systematically?');
+space.thought('Goal')
+  .means('What do we want to accomplish here?')
+  .branch('Get clarity on next steps')
+  .branch('Understand the bigger picture')
+  .branch('Make a specific decision');
 ```
 
-Let participants choose visually from the dashboard. Only after purpose is clear should you model domain content.
+**When managing multiple agendas** (all need attention):
+```typescript
+space.thought('Research').means('Gather information we need');
+space.thought('Build').means('Actually create the thing');
+space.thought('Test').means('Make sure it works');
+```
+
+The same principle applies at every level - purpose-setting, domain modeling, detailed planning.
 
 ### 2. Create Clean Foreground, Rich Background
 
@@ -113,67 +116,44 @@ space.thought('IncrementalApproach').conflictsWith('DisruptiveApproach', 0.8);
 
 Supporting concepts find their natural positions through relationships. Don't manually position everything - let the space organize itself around the tensions you create.
 
-### 6. Use Branching for High-Uncertainty Concepts
+### 6. Structural Choice: Separate Nodes vs Branching
 
-When a concept can be validly interpreted in multiple ways, use branching to preserve cognitive flexibility rather than forcing premature collapse.
+**Key decision**: Are these different ways of understanding the same thing, or different things that need to happen?
 
-**Decision-Making Example** - Team planning:
+**The distinction depends on your conversational goal:**
+
+If you're **exploring and comparing** design philosophies - learning about each, sharing examples, understanding their differences - model them as separate thoughts:
+
 ```typescript
-space.thought('ArchitectureChoice')
-  .means('How should we structure the new system?')
-  .branch('Microservices')
-  .branch('Monolith with modules')
-  .branch('Serverless functions');
-
-// Later, team resolves based on constraints
-space.thought('ArchitectureChoice').resolve({
-  context: 'after technical review',
-  selections: ['Monolith with modules'],
-  reason: 'Team size and deployment complexity favor simplicity'
-});
+// Goal: Understand different approaches
+space.thought('MinimalistApproach').means('Clean, reduced aesthetics');
+space.thought('BoldExperimental').means('Striking, innovative visuals');
+space.thought('AccessibilityFirst').means('Universal design principles');
 ```
 
-**Semantic Ambiguity Example** - Understanding concepts:
+If you're **making a strategic choice** about which philosophy should guide your project - where you'll ultimately commit to one direction - use branching:
+
 ```typescript
-space.thought('Trust')
-  .means('Core relationship foundation')
-  .branch('Fragile but precious')      // Protective framing
-  .branch('Resilient and repairable')  // Growth framing
-  .branch('Binary: present or absent'); // Categorical framing
-
-// Each branch can have different relationships
-space.thought('Trust').getBranch('Fragile but precious')
-  .conflictsWith('QuickDecisions', 0.8);
-
-space.thought('Trust').getBranch('Resilient and repairable')
-  .supports('ExperimentationMindset', 0.7);
+// Goal: Choose our creative direction
+space.thought('DesignPhilosophy')
+  .means('What should guide our creative decisions?')
+  .branch('Minimalist approach')
+  .branch('Bold experimental')
+  .branch('Accessibility first');
 ```
 
-**When to branch:**
-- High uncertainty with multiple plausible interpretations
-- Context-dependent meanings that shift based on situation
-- Consequential decisions where interpretation choice affects outcomes
-- Learning situations where you want to track predictive success
+The structure reflects **decision intent**: Are you analyzing multiple concepts, or resolving between interpretations of one choice?
 
-**When NOT to branch:**
-- Single clear interpretation (adds complexity without benefit)
-- Low-stakes decisions (choice between interpretations doesn't matter)
-- Exploratory phases (still discovering what the concept means)
+The test: Could you resolve to one branch and ignore the others, or do all the elements need to coexist?
 
 **For detailed guidance on branching**: See [`artifacts/documentation/branching-interpretation-capabilities.md`](artifacts/documentation/branching-interpretation-capabilities.md) for comprehensive examples, design patterns, and best practices.
 
-**Resolve at parent level when ready:**
+**Resolve when ready:**
 ```typescript
-// Create branches first
-space.thought('Trust')
-  .branch('Fragile but precious')
-  .branch('Resilient and repairable');
-
-// Resolve with single or multiple selections
-space.thought('Trust').resolve({
-  context: 'after betrayal',
-  selections: ['Fragile but precious'],
-  reason: 'Need protective approach'
+space.thought('ProductStrategy').resolve({
+  context: 'after market research',
+  selections: ['Niche specialization'],
+  reason: 'Limited resources favor focused approach'
 });
 ```
 
