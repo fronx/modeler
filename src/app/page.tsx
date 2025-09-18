@@ -8,7 +8,7 @@ import { InlineEdit } from '@/components/InlineEdit';
 import { useWebSocketThoughts } from '@/lib/websocket-thought-client';
 
 export default function CognitiveDashboard() {
-  const { nodes, spaces, lastUpdate, currentSpaceId, setCurrentSpaceId, connectionStatus, hasLoadedCurrentSpace, deleteSpace, createSpace, updateSpaceTitle } = useWebSocketThoughts();
+  const { nodes, spaces, lastUpdate, currentSpaceId, setCurrentSpaceId, connectionStatus, hasLoadedCurrentSpace, deleteSpace, createSpace, updateSpaceTitle, updateSpaceDescription } = useWebSocketThoughts();
   const [showNewSpaceDialog, setShowNewSpaceDialog] = useState(false);
 
   // Get current space details
@@ -44,7 +44,15 @@ export default function CognitiveDashboard() {
                 )}
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {currentSpace ? currentSpace.description : 'No space selected'}
+                {currentSpace ? (
+                  <InlineEdit
+                    value={currentSpace.description}
+                    onSave={(newDescription) => updateSpaceDescription(currentSpace.id, newDescription)}
+                    className="text-sm text-gray-600 dark:text-gray-400"
+                  />
+                ) : (
+                  'No space selected'
+                )}
               </p>
             </div>
 

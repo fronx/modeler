@@ -25,6 +25,7 @@ interface ThoughtContextType {
   deleteSpace: (spaceId: string) => void;
   createSpace: (title?: string, description?: string) => Promise<Space>;
   updateSpaceTitle: (spaceId: string, newTitle: string) => Promise<void>;
+  updateSpaceDescription: (spaceId: string, newDescription: string) => Promise<void>;
 }
 
 const ThoughtContext = createContext<ThoughtContextType | undefined>(undefined);
@@ -431,6 +432,37 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     }
   }, []);
 
+  // Function to update space description
+  const updateSpaceDescription = useCallback(async (spaceId: string, newDescription: string): Promise<void> => {
+    try {
+      const response = await fetch(`/api/spaces/${spaceId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          description: newDescription
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update space description: ${response.status}`);
+      }
+
+      // Update the local spaces list
+      setSpaces(currentSpaces =>
+        currentSpaces.map(space =>
+          space.id === spaceId
+            ? { ...space, description: newDescription, lastModified: new Date().toISOString() }
+            : space
+        )
+      );
+    } catch (error) {
+      console.error('Error updating space description:', error);
+      throw error;
+    }
+  }, []);
+
   const value: ThoughtContextType = {
     nodes,
     spaces,
@@ -442,7 +474,8 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     updateNode,
     deleteSpace,
     createSpace,
-    updateSpaceTitle
+    updateSpaceTitle,
+    updateSpaceDescription
   };
 
   return (

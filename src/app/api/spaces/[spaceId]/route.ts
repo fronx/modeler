@@ -104,6 +104,26 @@ export async function PATCH(
       });
     }
 
+    // Handle simple description update
+    if (updates.description && typeof updates.description === 'string') {
+      const updatedSpace = {
+        ...existingSpace,
+        metadata: {
+          ...existingSpace.metadata,
+          description: updates.description,
+          updatedAt: Date.now()
+        }
+      };
+
+      await db.insertSpace(updatedSpace);
+
+      return NextResponse.json({
+        success: true,
+        message: `Space description updated`,
+        spaceId: spaceId
+      });
+    }
+
     // Apply updates - deep merge with proper node merging
     const updatedNodes = { ...existingSpace.nodes };
 
