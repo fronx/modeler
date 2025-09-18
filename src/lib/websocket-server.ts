@@ -1,27 +1,30 @@
 /**
  * WebSocket server for real-time thought updates
- * Watches database changes and pushes updates to connected clients
+ * Uses PostgreSQL LISTEN/NOTIFY for instant push notifications
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
-import { Database } from './database';
+import { Database, DatabaseConfig } from './database';
+import { Client } from 'pg';
 
 export class ThoughtWebSocketServer {
   private wss: WebSocketServer;
   private server: any;
   private clients = new Set<WebSocket>();
   private actualPort: number = 8080;
-  private pollInterval: NodeJS.Timeout | null = null;
-  private lastUpdate: number = Date.now();
+  private notificationClient: Client | null = null;
+  private dbConfig: DatabaseConfig;
 
-  constructor(port = 8080) {
+  constructor(port = 8080, dbConfig: DatabaseConfig = {}) {
+    this.dbConfig = dbConfig;
+
     // Create HTTP server for WebSocket upgrade
     this.server = createServer();
     this.wss = new WebSocketServer({ server: this.server });
 
     this.setupWebSocketHandlers();
-    this.startDatabasePolling();
+    this.setupDatabaseNotifications();
 
     this.server.listen(port, () => {
       this.actualPort = port;
@@ -71,6 +74,60 @@ export class ThoughtWebSocketServer {
     });
   }
 
+  private async setupDatabaseNotifications(): Promise<void> {
+    try {
+      // Create a dedicated client for notifications (must stay connected)
+      this.notificationClient = new Client({
+        host: this.dbConfig.host || '127.0.0.1',
+        port: this.dbConfig.port || 54322,
+        database: this.dbConfig.database || 'postgres',
+        user: this.dbConfig.user || 'postgres',
+        password: this.dbConfig.password || 'postgres'
+      });
+
+      await this.notificationClient.connect();
+
+      // Listen for space changes
+      await this.notificationClient.query('LISTEN space_changes');
+
+      // Handle notifications
+      this.notificationClient.on('notification', async (msg) => {
+        if (msg.channel === 'space_changes') {
+          try {
+            const payload = JSON.parse(msg.payload || '{}');
+            console.log('📢 Database notification:', payload);
+
+            // Broadcast updates to all connected clients
+            await this.handleSpaceChange(payload);
+          } catch (error) {
+            console.error('Failed to parse notification payload:', error);
+          }
+        }
+      });
+
+      console.log('👁️  PostgreSQL LISTEN/NOTIFY notifications started');
+
+    } catch (error) {
+      console.error('Failed to setup database notifications:', error);
+      throw new Error('Database notifications are required - cannot start WebSocket server without push notifications');
+    }
+  }
+
+  private async handleSpaceChange(payload: any): Promise<void> {
+    const { operation, space_id } = payload;
+
+    if (operation === 'INSERT' || operation === 'UPDATE' || operation === 'DELETE') {
+      // Broadcast updated space list to all clients
+      await this.broadcastSpaceList();
+
+      // If it's an update to a specific space, also broadcast its thoughts
+      if (operation === 'UPDATE' && space_id) {
+        await this.broadcastSpaceUpdate(space_id);
+      }
+    }
+  }
+
+
   private async handleClientMessage(ws: WebSocket, data: any): Promise<void> {
     switch (data.type) {
       case 'subscribe_space':
@@ -85,38 +142,6 @@ export class ThoughtWebSocketServer {
 
       default:
         console.warn('Unknown message type:', data.type);
-    }
-  }
-
-  private startDatabasePolling(): void {
-    // Poll database for changes every 2 seconds
-    this.pollInterval = setInterval(async () => {
-      try {
-        await this.checkForUpdates();
-      } catch (error) {
-        console.error('Database polling error:', error);
-      }
-    }, 2000);
-
-    console.log('👁️  Database polling started');
-  }
-
-  private async checkForUpdates(): Promise<void> {
-    const db = new Database();
-    try {
-      // Check if any spaces have been updated since our last check
-      const result = await (db as any).pool.query(`
-        SELECT COUNT(*) as count FROM spaces
-        WHERE EXTRACT(epoch FROM updated_at) * 1000 > $1
-      `, [this.lastUpdate]);
-
-      if (result.rows[0].count > 0) {
-        // Update our timestamp and broadcast changes
-        this.lastUpdate = Date.now();
-        await this.broadcastSpaceList();
-      }
-    } finally {
-      await db.close();
     }
   }
 
@@ -180,7 +205,7 @@ export class ThoughtWebSocketServer {
   }
 
   private async loadSpaces(): Promise<any[]> {
-    const db = new Database();
+    const db = new Database(this.dbConfig);
     try {
       const spaces = await db.listSpaces();
       return spaces.map(space => ({
@@ -201,7 +226,7 @@ export class ThoughtWebSocketServer {
   }
 
   private async loadSpaceThoughts(spaceId: string): Promise<Record<string, any>> {
-    const db = new Database();
+    const db = new Database(this.dbConfig);
     try {
       const space = await db.getSpace(spaceId);
       return space?.thoughtSpace.nodes || {};
@@ -214,8 +239,8 @@ export class ThoughtWebSocketServer {
   }
 
   public close(): void {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
+    if (this.notificationClient) {
+      this.notificationClient.end();
     }
     this.wss.close();
     this.server.close();
