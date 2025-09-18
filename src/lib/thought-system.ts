@@ -56,6 +56,10 @@ export class ThoughtNode implements ThoughtBuilder {
   public semanticPosition: SemanticPosition = 0.0; // Default to center/neutral
   private currentBranch?: string; // Track which branch operations apply to
 
+  // List properties
+  public regularList?: string[];
+  public checkableList?: Array<{item: string, checked: boolean}>;
+
   constructor(id: NodeId) {
     this.id = id;
     this.history.push(`Created node: ${id}`);
@@ -197,6 +201,18 @@ export class ThoughtNode implements ThoughtBuilder {
 
     this.history.push(`Resolved to: ${resolution.selections.join(', ')} (${resolution.reason})`);
     this.currentBranch = undefined; // Clear current branch after resolution
+    return this;
+  }
+
+  hasList(items: string[]): this {
+    this.regularList = [...items]; // Create a copy to avoid mutation
+    this.history.push(`Set regular list with ${items.length} items`);
+    return this;
+  }
+
+  hasCheckableList(items: Array<{item: string, checked: boolean}>): this {
+    this.checkableList = items.map(item => ({...item})); // Create a copy to avoid mutation
+    this.history.push(`Set checkable list with ${items.length} items`);
     return this;
   }
 
@@ -350,7 +366,9 @@ export class ThoughtSpace implements CognitiveOperations {
         tension: node.tension,
         focus: node.focus,
         semanticPosition: node.semanticPosition,
-        history: node.history
+        history: node.history,
+        regularList: node.regularList,
+        checkableList: node.checkableList
       };
     });
 

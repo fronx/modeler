@@ -181,6 +181,27 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
       node.semanticPosition = typedNodeData.semanticPosition || 0.0; // Default to center/neutral
       node.history = typedNodeData.history || [];
 
+      // List properties - handle both old and new formats
+      if (typedNodeData.regularList) {
+        if (Array.isArray(typedNodeData.regularList)) {
+          // Simple array format
+          node.regularList = typedNodeData.regularList;
+        } else if (typeof typedNodeData.regularList === 'object' && typedNodeData.regularList.items) {
+          // Legacy {name, items} format - extract just the items
+          node.regularList = typedNodeData.regularList.items;
+        }
+      }
+
+      if (typedNodeData.checkableList) {
+        if (Array.isArray(typedNodeData.checkableList)) {
+          // Simple array format
+          node.checkableList = typedNodeData.checkableList;
+        } else if (typeof typedNodeData.checkableList === 'object' && typedNodeData.checkableList.items) {
+          // Legacy {name, items} format - extract just the items
+          node.checkableList = typedNodeData.checkableList.items;
+        }
+      }
+
       nodeMap.set(id, node);
     }
 

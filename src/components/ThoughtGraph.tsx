@@ -176,6 +176,41 @@ const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ dat
           )}
 
 
+          {/* Regular List */}
+          {node.regularList && node.regularList.length > 0 && (
+            <div className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+              <ul className="space-y-1 pl-2">
+                {node.regularList.map((item: string, index: number) => (
+                  <li key={index} className="flex items-start">
+                    <span className="text-blue-400 mr-2">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Checkable List */}
+          {node.checkableList && node.checkableList.length > 0 && (
+            <div className="text-xs text-gray-700 dark:text-gray-300 mt-2">
+              <ul className="space-y-1">
+                {node.checkableList.map((listItem: {item: string, checked: boolean}, index: number) => (
+                  <li key={index} className="flex items-start">
+                    <input
+                      type="checkbox"
+                      checked={listItem.checked}
+                      readOnly
+                      className="mr-2 mt-0.5 rounded"
+                    />
+                    <span className={listItem.checked ? 'line-through opacity-60' : ''}>
+                      {listItem.item}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Values */}
           {node.values.size > 0 && (
             <div className="text-xs text-green-600 dark:text-green-400 mt-1">

@@ -51,7 +51,26 @@ space.thought('Test').means('Make sure it works');
 
 The same principle applies at every level - purpose-setting, domain modeling, detailed planning.
 
-### 2. Create Clean Foreground, Rich Background
+### 2. Lists for Whole-Parts Relationships
+
+**When a thought naturally contains parts** rather than alternatives, use lists instead of separate nodes:
+
+```typescript
+space.thought('Shopping')
+  .means('Items to buy for the trip')
+  .hasCheckableList([
+    {item: 'Travel shampoo', checked: false},
+    {item: 'Contact lens solution', checked: true}
+  ]);
+
+space.thought('Itinerary')
+  .means('Places we\'ll visit')
+  .hasList(['Partner\'s mom\'s house', 'Nature cabin', 'Montreal']);
+```
+
+Use `.hasCheckableList(items)` for actionable items with checkboxes, `.hasList(items)` for reference items with bullets. One list per node - if you need multiple lists, create separate nodes.
+
+### 3. Create Clean Foreground, Rich Background
 
 **Foreground (focus=1.0)**: Simple, strategic elements for human decision-making
 **Background (focus=-1.0)**: Complex context available for AI reasoning
@@ -83,7 +102,7 @@ Promote background elements to focus=1.0 when they become decision-relevant, but
 
 **Critical**: Never discuss or reference nodes with focus=-1.0 in conversation. If a hidden element becomes relevant to the discussion, first promote it to visible focus (either remove .setFocus() or set focus=1.0), then execute the space to update the dashboard before mentioning it.
 
-### 3. Maintain Focus Hygiene
+### 4. Maintain Focus Hygiene
 
 After adding new focus=1.0 nodes, always clean up by removing focus from nodes that are no longer central to the current decision. Limit focus=1.0 to the essential elements - too many focused nodes defeats the visual hierarchy.
 
@@ -98,7 +117,7 @@ space.thought('Resolved tension'); // Remove .setFocus(1.0)
 
 Execute the space to update the dashboard, ensuring only current decision elements remain highlighted.
 
-### 4. Model Tensions, Not Details
+### 5. Model Tensions, Not Details
 
 Focus on strategic decisions and conceptual tensions. Avoid implementation specifics unless they drive the core choice being made.
 
@@ -112,11 +131,11 @@ space.thought('Incremental').conflictsWith('Disruptive', 0.8);
 // space.thought('Database schema') <- unless the schema choice drives the strategic decision
 ```
 
-### 5. Let Relationships Create Structure
+### 6. Let Relationships Create Structure
 
 Supporting concepts find their natural positions through relationships. Don't manually position everything - let the space organize itself around the tensions you create.
 
-### 6. Structural Choice: Separate Nodes vs Branching
+### 7. Structural Choice: Separate Nodes vs Branching
 
 **Key decision**: Are these different ways of understanding the same thing, or different things that need to happen?
 
@@ -173,6 +192,10 @@ const space = new Space('space-id', 'Title', 'Description');
 // Omit .setFocus() for normal visible nodes
 .setPosition(-1.0 to 1.0)       // Semantic position
 .holdsTension(description)       // Unresolved contradiction
+
+// List modeling (declarative)
+.hasList(items)                 // Regular list of strings
+.hasCheckableList(items)        // Actionable list with completion tracking
 
 // Branching for multiple interpretations
 .branch(interpretation)          // Add alternative meaning/framing
