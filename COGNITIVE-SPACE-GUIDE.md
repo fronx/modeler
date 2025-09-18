@@ -241,7 +241,11 @@ The same principle applies at every level - purpose-setting, domain modeling, de
 }
 ```
 
-Use `checkableList` for actionable items with completion tracking, `regularList` for reference items with bullets. One list per node - if you need multiple lists, create separate nodes.
+**Two list types:**
+- `checkableList` - Tasks, to-dos, actionable items with completion tracking
+- `regularList` - Information, examples, reference items with bullet points
+
+One list per node - if you need multiple lists, create separate nodes.
 
 ### 3. Create Clean Foreground, Rich Background
 
