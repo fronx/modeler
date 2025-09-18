@@ -101,12 +101,8 @@ npm run dev
 ```
 
 **For AI Systems:**
-```bash
-# Use the cognitive-modeler agent for space creation
-# Or manually execute spaces:
-npx tsx execute-space.ts <spaceId>
-# Thoughts automatically appear in the user's dashboard via WebSocket
-```
+
+If curl requests fail, ask the user to start the server.
 
 ### 🤖 **Installing the Cognitive-Modeler Agent**
 
@@ -187,7 +183,6 @@ artifacts/claude-code/           # Original research tools (legacy API)
 1. **[`COGNITIVE-SPACE-GUIDE.md`](COGNITIVE-SPACE-GUIDE.md)** - Essential guide for creating effective cognitive spaces
 2. **Direct workflow**: `./create-cognitive-space.sh topic-name` → edit space.ts → execute
 3. **[`src/lib/types.ts`](src/lib/types.ts)** - Self-documenting API reference
-4. Ask user to run **`npm run dev`** for real-time visualization
 
 **Core Insight**: Model conceptual tensions first - identify opposing poles, anchor them explicitly, let supporting concepts position naturally through relationships.
 

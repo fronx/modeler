@@ -176,10 +176,7 @@ curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-
 ### 6. View Your Space
 
 ```bash
-# Open dashboard to see your space
-open http://localhost:3000
-
-# Or access via API
+# Access via API
 curl http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ
 ```
 

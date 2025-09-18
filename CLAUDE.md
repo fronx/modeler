@@ -30,7 +30,7 @@ npm run start
 npm run lint
 ```
 
-**Important**: When using Claude Code, always run `npm run dev` in the background using the `run_in_background: true` parameter to avoid blocking other operations.
+**Important**: **DO NOT start or restart the dev server**. That's the user's responsinbility.
 
 ## Project Structure
 
