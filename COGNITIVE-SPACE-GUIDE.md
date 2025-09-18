@@ -61,10 +61,8 @@ Your generated JSON structure starts with metadata:
     "description": "Planning for upcoming travel to Canada - apartment, packing, and shopping",
     "createdAt": 1695123456789
   },
-  "thoughtSpace": {
-    "nodes": {},
-    "globalHistory": []
-  }
+  "nodes": {},
+  "globalHistory": []
 }
 ```
 
@@ -113,15 +111,13 @@ Use PATCH to enhance existing thoughts with specific values and actionable items
 curl -X PATCH http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ \
   -H "Content-Type: application/json" \
   -d '{
-    "thoughtSpace": {
-      "nodes": {
-        "Apartment prep": {
-          "checkableList": [
-            {"item": "Take down hanging plants without plates", "checked": false},
-            {"item": "Brief Susan on plant watering", "checked": true},
-            {"item": "Tidy up living spaces", "checked": false}
-          ]
-        }
+    "nodes": {
+      "Apartment prep": {
+        "checkableList": [
+          {"item": "Take down hanging plants without plates", "checked": false},
+          {"item": "Brief Susan on plant watering", "checked": true},
+          {"item": "Tidy up living spaces", "checked": false}
+        ]
       }
     }
   }'
@@ -130,15 +126,13 @@ curl -X PATCH http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10
 curl -X PATCH http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ \
   -H "Content-Type: application/json" \
   -d '{
-    "thoughtSpace": {
-      "nodes": {
-        "Shopping": {
-          "values": {"estimated_cost": [50, 100]},
-          "checkableList": [
-            {"item": "Travel shampoo", "checked": false},
-            {"item": "Contact lens solution (travel size)", "checked": false}
-          ]
-        }
+    "nodes": {
+      "Shopping": {
+        "values": {"estimated_cost": [50, 100]},
+        "checkableList": [
+          {"item": "Travel shampoo", "checked": false},
+          {"item": "Contact lens solution (travel size)", "checked": false}
+        ]
       }
     }
   }'
@@ -209,7 +203,6 @@ curl http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3N
       "Get clarity on next steps": {"interpretation": "Focus on immediate actionable steps"},
       "Understand the bigger picture": {"interpretation": "Zoom out to see context and connections"},
       "Make a specific decision": {"interpretation": "Resolve to one clear choice"}
-    }
   }
 }
 ```
@@ -260,8 +253,7 @@ Use `checkableList` for actionable items with completion tracking, `regularList`
 
 ```json
 {
-  "thoughtSpace": {
-    "nodes": {
+  "nodes": {
       "Downtown": {
         "focus": 1.0,
         "semanticPosition": -0.5,
@@ -304,7 +296,6 @@ Use `checkableList` for actionable items with completion tracking, `regularList`
         ],
         "meanings": [{"content": "Life satisfaction factors", "confidence": 0.8}]
       }
-    }
   }
 }
 ```
@@ -319,8 +310,7 @@ After adding new focus=1.0 nodes, always clean up by removing focus from nodes t
 
 ```json
 {
-  "thoughtSpace": {
-    "nodes": {
+  "nodes": {
       "New decision": {
         "focus": 1.0,
         "meanings": [{"content": "Current decision point", "confidence": 0.9}]
@@ -333,7 +323,6 @@ After adding new focus=1.0 nodes, always clean up by removing focus from nodes t
         "focus": 0.0,
         "meanings": [{"content": "No longer active conflict", "confidence": 0.9}]
       }
-    }
   }
 }
 ```
@@ -346,8 +335,7 @@ Focus on strategic decisions and conceptual tensions. Avoid implementation speci
 
 ```json
 {
-  "thoughtSpace": {
-    "nodes": {
+  "nodes": {
       "Incremental": {
         "semanticPosition": -1.0,
         "meanings": [{"content": "Gradual, step-by-step improvement approach", "confidence": 0.9}],
@@ -381,8 +369,7 @@ If you're **exploring and comparing** design philosophies - learning about each,
 
 ```json
 {
-  "thoughtSpace": {
-    "nodes": {
+  "nodes": {
       "Minimalist": {
         "meanings": [{"content": "Clean, reduced aesthetics", "confidence": 0.9}]
       },
@@ -392,7 +379,6 @@ If you're **exploring and comparing** design philosophies - learning about each,
       "Accessibility first": {
         "meanings": [{"content": "Universal design principles", "confidence": 0.9}]
       }
-    }
   }
 }
 ```
@@ -401,8 +387,7 @@ If you're **making a strategic choice** about which philosophy should guide your
 
 ```json
 {
-  "thoughtSpace": {
-    "nodes": {
+  "nodes": {
       "Design philosophy": {
         "meanings": [{"content": "What should guide our creative decisions?", "confidence": 0.9}],
         "branches": {
@@ -420,7 +405,6 @@ If you're **making a strategic choice** about which philosophy should guide your
           }
         }
       }
-    }
   }
 }
 ```
@@ -434,8 +418,7 @@ The test: Could you resolve to one branch and ignore the others, or do all the e
 **Resolve when ready:**
 ```json
 {
-  "thoughtSpace": {
-    "nodes": {
+  "nodes": {
       "Product strategy": {
         "resolutions": [
           {
@@ -446,7 +429,6 @@ The test: Could you resolve to one branch and ignore the others, or do all the e
           }
         ]
       }
-    }
   }
 }
 ```
@@ -522,7 +504,8 @@ curl -X PUT http://localhost:3000/api/spaces/SPACE_ID \
   -H "Content-Type: application/json" \
   -d '{
     "metadata": {"id": "SPACE_ID", "title": "Updated Title", "description": "New description"},
-    "thoughtSpace": {"nodes": {...}, "globalHistory": [...]}
+    "nodes": {...},
+    "globalHistory": [...]
   }'
 ```
 
@@ -532,7 +515,7 @@ curl -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
   -H "Content-Type: application/json" \
   -d '{
     "metadata": {"description": "Updated description only"},
-    "thoughtSpace": {"nodes": {"NewThought": {...}}}
+    "nodes": {"NewThought": {...}}
   }'
 ```
 
@@ -575,17 +558,16 @@ The system uses comprehensive JSON Schema validation (`src/lib/cognitive-space.s
     "description": "What this space explores",
     "createdAt": 1234567890
   },
-  "thoughtSpace": {
-    "nodes": {
-      "NodeId": {
-        "meanings": [{"content": "text", "confidence": 0.9}],
-        "values": {"property": 42},
-        "relationships": [{"type": "supports", "target": "Other", "strength": 0.8}],
-        "focus": 1.0,
-        "semanticPosition": 0.5
-      }
+  "nodes": {
+    "NodeId": {
+      "meanings": [{"content": "text", "confidence": 0.9}],
+      "values": {"property": 42},
+      "relationships": [{"type": "supports", "target": "Other", "strength": 0.8}],
+      "focus": 1.0,
+      "semanticPosition": 0.5
     }
-  }
+  },
+  "globalHistory": ["Space created: 2025-09-18T10:00:00.000Z"]
 }
 ```
 

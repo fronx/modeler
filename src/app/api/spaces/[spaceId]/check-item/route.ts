@@ -22,7 +22,7 @@ export async function POST(
       return NextResponse.json({ error: 'Space not found' }, { status: 404 });
     }
 
-    const node = space.thoughtSpace.nodes[nodeId];
+    const node = space.nodes[nodeId];
     if (!node) {
       return NextResponse.json({ error: 'Node not found' }, { status: 404 });
     }

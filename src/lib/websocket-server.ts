@@ -229,7 +229,7 @@ export class ThoughtWebSocketServer {
     const db = new Database(this.dbConfig);
     try {
       const space = await db.getSpace(spaceId);
-      return space?.thoughtSpace.nodes || {};
+      return space?.nodes || {};
     } catch (error) {
       console.error(`Failed to load space thoughts for ${spaceId}:`, error);
       return {};

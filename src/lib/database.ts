@@ -8,10 +8,8 @@ export interface CognitiveSpace {
     description: string;
     createdAt: number;
   };
-  thoughtSpace: {
-    nodes: Record<string, any>;
-    globalHistory: string[];
-  };
+  nodes: Record<string, any>;
+  globalHistory: string[];
 }
 
 export interface DatabaseConfig {
@@ -48,7 +46,7 @@ export class Database {
       space.metadata.id,
       space.metadata.title,
       space.metadata.description,
-      JSON.stringify(space.thoughtSpace),
+      JSON.stringify({nodes: space.nodes, globalHistory: space.globalHistory}),
       space.metadata.createdAt
     ]);
   }
@@ -70,7 +68,8 @@ export class Database {
         description: row.description,
         createdAt: parseInt(row.created_at)
       },
-      thoughtSpace: row.data
+      nodes: row.data.nodes || {},
+      globalHistory: row.data.globalHistory || []
     };
   }
 

@@ -46,10 +46,8 @@ export async function POST(request: Request) {
         description: description || 'A new cognitive modeling space',
         createdAt: Date.now()
       },
-      thoughtSpace: {
-        nodes: {},
-        globalHistory: [`Space created: ${new Date().toISOString()}`]
-      }
+      nodes: {},
+      globalHistory: [`Space created: ${new Date().toISOString()}`]
     };
 
     await db.insertSpace(newSpace);
@@ -89,9 +87,9 @@ export async function PUT(request: Request) {
     const spaceData = await request.json();
 
     // Validate basic structure
-    if (!spaceData.metadata || !spaceData.thoughtSpace) {
+    if (!spaceData.metadata || !spaceData.nodes || !spaceData.globalHistory) {
       return NextResponse.json({
-        error: 'Invalid space structure. Must have metadata and thoughtSpace'
+        error: 'Invalid space structure. Must have metadata, nodes, and globalHistory'
       }, { status: 400 });
     }
 

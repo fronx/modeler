@@ -16,10 +16,10 @@ export async function GET(
     }
 
     return NextResponse.json({
-      nodes: space.thoughtSpace.nodes,
+      nodes: space.nodes,
       spaceId: spaceId,
       loadedAt: new Date().toISOString(),
-      count: Object.keys(space.thoughtSpace.nodes).length
+      count: Object.keys(space.nodes).length
     });
 
   } catch (error) {
@@ -70,17 +70,14 @@ export async function POST(
     // Add thought to space
     const updatedSpace = {
       ...existingSpace,
-      thoughtSpace: {
-        ...existingSpace.thoughtSpace,
-        nodes: {
-          ...existingSpace.thoughtSpace.nodes,
-          [thoughtData.id]: newThought
-        },
-        globalHistory: [
-          ...existingSpace.thoughtSpace.globalHistory,
-          `Created thought: ${thoughtData.id}`
-        ]
-      }
+      nodes: {
+        ...existingSpace.nodes,
+        [thoughtData.id]: newThought
+      },
+      globalHistory: [
+        ...existingSpace.globalHistory,
+        `Created thought: ${thoughtData.id}`
+      ]
     };
 
     // Save updated space

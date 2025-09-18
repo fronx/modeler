@@ -4,7 +4,7 @@
   "title": "Cognitive Space Schema",
   "description": "JSON Schema for cognitive spaces - persistent, addressable thought structures",
   "type": "object",
-  "required": ["metadata", "thoughtSpace"],
+  "required": ["metadata", "nodes", "globalHistory"],
   "properties": {
     "metadata": {
       "type": "object",
@@ -32,31 +32,23 @@
         }
       }
     },
-    "thoughtSpace": {
+    "nodes": {
       "type": "object",
-      "title": "Thought Network",
-      "description": "The core cognitive modeling structure",
-      "required": ["nodes", "globalHistory"],
-      "properties": {
-        "nodes": {
-          "type": "object",
-          "title": "Thought Nodes",
-          "description": "Map of node IDs to thought structures",
-          "patternProperties": {
-            "^[a-zA-Z0-9 _-]+$": {
-              "$ref": "#/$defs/ThoughtNode"
-            }
-          },
-          "additionalProperties": false
-        },
-        "globalHistory": {
-          "type": "array",
-          "title": "Global History",
-          "description": "Chronological log of space-level operations",
-          "items": {
-            "type": "string"
-          }
+      "title": "Thought Nodes",
+      "description": "Map of node IDs to thought structures",
+      "patternProperties": {
+        "^[a-zA-Z0-9 _-]+$": {
+          "$ref": "#/$defs/ThoughtNode"
         }
+      },
+      "additionalProperties": false
+    },
+    "globalHistory": {
+      "type": "array",
+      "title": "Global History",
+      "description": "Chronological log of space-level operations",
+      "items": {
+        "type": "string"
       }
     }
   },

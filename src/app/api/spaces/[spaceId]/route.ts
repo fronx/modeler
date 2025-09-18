@@ -39,9 +39,9 @@ export async function PUT(
     const spaceData = await request.json();
 
     // Validate basic structure
-    if (!spaceData.metadata || !spaceData.thoughtSpace) {
+    if (!spaceData.metadata || !spaceData.nodes || !spaceData.globalHistory) {
       return NextResponse.json({
-        error: 'Invalid space structure. Must have metadata and thoughtSpace'
+        error: 'Invalid space structure. Must have metadata, nodes, and globalHistory'
       }, { status: 400 });
     }
 
@@ -85,11 +85,11 @@ export async function PATCH(
     }
 
     // Apply updates - deep merge with proper node merging
-    const updatedNodes = { ...existingSpace.thoughtSpace.nodes };
+    const updatedNodes = { ...existingSpace.nodes };
 
     // Deep merge individual nodes
-    if (updates.thoughtSpace?.nodes) {
-      for (const [nodeId, nodeUpdates] of Object.entries(updates.thoughtSpace.nodes)) {
+    if (updates.nodes) {
+      for (const [nodeId, nodeUpdates] of Object.entries(updates.nodes)) {
         if (updatedNodes[nodeId]) {
           // Merge with existing node
           updatedNodes[nodeId] = {
@@ -121,11 +121,8 @@ export async function PATCH(
         ...existingSpace.metadata,
         ...(updates.metadata || {})
       },
-      thoughtSpace: {
-        ...existingSpace.thoughtSpace,
-        ...(updates.thoughtSpace || {}),
-        nodes: updatedNodes
-      }
+      nodes: updatedNodes,
+      globalHistory: updates.globalHistory || existingSpace.globalHistory
     };
 
     // Update the space
