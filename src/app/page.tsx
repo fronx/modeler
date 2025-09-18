@@ -5,7 +5,7 @@ import { SpaceSidebar } from '@/components/SpaceSidebar';
 import { useWebSocketThoughts } from '@/lib/websocket-thought-client';
 
 export default function CognitiveDashboard() {
-  const { nodes, spaces, lastUpdate, currentSpaceId, setCurrentSpaceId, connectionStatus, hasLoadedCurrentSpace } = useWebSocketThoughts();
+  const { nodes, spaces, lastUpdate, currentSpaceId, setCurrentSpaceId, connectionStatus, hasLoadedCurrentSpace, deleteSpace } = useWebSocketThoughts();
 
 
   return (
@@ -18,6 +18,7 @@ export default function CognitiveDashboard() {
         onNewSpace={() => {
           // The sidebar handles space creation
         }}
+        onSpaceDelete={deleteSpace}
       />
 
       {/* Main content area */}

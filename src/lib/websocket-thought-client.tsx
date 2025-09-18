@@ -22,6 +22,7 @@ interface ThoughtContextType {
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   hasLoadedCurrentSpace: boolean;
   updateNode: (nodeId: string, updater: (node: ThoughtNode) => void) => void;
+  deleteSpace: (spaceId: string) => void;
 }
 
 const ThoughtContext = createContext<ThoughtContextType | undefined>(undefined);
@@ -342,7 +343,26 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
       }
       return currentNodes;
     });
-  }, [])
+  }, []);
+
+  // Function to delete a space
+  const deleteSpace = useCallback((spaceId: string) => {
+    // Remove the space from the spaces list
+    setSpaces(currentSpaces => currentSpaces.filter(space => space.id !== spaceId));
+
+    // If the deleted space is currently selected, clear the selection
+    if (currentSpaceId === spaceId) {
+      setCurrentSpaceId(null);
+      setNodes(new Map());
+    }
+
+    // Remove from loaded spaces
+    setLoadedSpaceIds(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(spaceId);
+      return newSet;
+    });
+  }, [currentSpaceId]);
 
   const value: ThoughtContextType = {
     nodes,
@@ -352,7 +372,8 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     lastUpdate,
     connectionStatus,
     hasLoadedCurrentSpace: currentSpaceId ? loadedSpaceIds.has(currentSpaceId) : false,
-    updateNode
+    updateNode,
+    deleteSpace
   };
 
   return (
