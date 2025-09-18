@@ -292,10 +292,18 @@ export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
   showArrows = false,
   showLabels = false
 }) => {
-  const { nodes: thoughtNodes, currentSpaceId } = useWebSocketThoughts();
+  const { nodes: thoughtNodes, currentSpaceId, updateNode } = useWebSocketThoughts();
 
-  // Handle checkbox changes
+  // Handle checkbox changes with optimistic updates
   const handleCheckboxChange = React.useCallback(async (spaceId: string, nodeId: string, itemIndex: number, checked: boolean) => {
+    // Optimistic update - immediately update local state
+    updateNode(nodeId, (node) => {
+      if (node.checkableList && node.checkableList[itemIndex]) {
+        node.checkableList[itemIndex].checked = checked;
+      }
+    });
+
+    // Then make API call
     try {
       const response = await fetch(`/api/spaces/${spaceId}/check-item`, {
         method: 'POST',
@@ -309,7 +317,7 @@ export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
     } catch (error) {
       console.error('Failed to update item:', error);
     }
-  }, []);
+  }, [updateNode]);
 
   const {
     nodes,

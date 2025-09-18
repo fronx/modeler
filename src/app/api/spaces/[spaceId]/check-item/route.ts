@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { Database } from '@/lib/database';
-import { getThoughtWebSocketServer } from '@/lib/websocket-server';
 
 export async function POST(
   request: Request,
@@ -42,11 +41,8 @@ export async function POST(
     // Save back to database
     await db.insertSpace(space);
 
-    // Broadcast update via WebSocket
-    const wsServer = getThoughtWebSocketServer();
-    if (wsServer) {
-      await wsServer.broadcastSpaceUpdate(spaceId);
-    }
+    // Note: WebSocket broadcast happens automatically via PostgreSQL LISTEN/NOTIFY
+    // The database trigger will send notifications to all connected clients
 
     return NextResponse.json({
       success: true,

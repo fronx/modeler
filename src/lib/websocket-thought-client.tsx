@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from 'react';
 import { ThoughtNode } from './thought-system';
 
 interface Space {
@@ -21,6 +21,7 @@ interface ThoughtContextType {
   lastUpdate: Date | null;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   hasLoadedCurrentSpace: boolean;
+  updateNode: (nodeId: string, updater: (node: ThoughtNode) => void) => void;
 }
 
 const ThoughtContext = createContext<ThoughtContextType | undefined>(undefined);
@@ -262,6 +263,18 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     }
   }, [currentSpaceId]);
 
+  // Function to update nodes locally (for optimistic updates)
+  const updateNode = useCallback((nodeId: string, updater: (node: ThoughtNode) => void) => {
+    setNodes(currentNodes => {
+      const updatedNodes = new Map(currentNodes);
+      const node = updatedNodes.get(nodeId);
+      if (node) {
+        updater(node);
+      }
+      return updatedNodes;
+    });
+  }, []);
+
   const value: ThoughtContextType = {
     nodes,
     spaces,
@@ -269,7 +282,8 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     setCurrentSpaceId: handleSetCurrentSpaceId,
     lastUpdate,
     connectionStatus,
-    hasLoadedCurrentSpace: currentSpaceId ? loadedSpaceIds.has(currentSpaceId) : false
+    hasLoadedCurrentSpace: currentSpaceId ? loadedSpaceIds.has(currentSpaceId) : false,
+    updateNode
   };
 
   return (
