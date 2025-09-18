@@ -75,7 +75,7 @@ const BranchNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ data
 
 // Custom node component for thoughts with semantic zooming
 const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ data, selected }) => {
-  const { node, color, hasExpandableBranches, isExpanded, onToggleExpansion } = data;
+  const { node, color, hasExpandableBranches, isExpanded, onToggleExpansion, spaceId, onCheckboxChange } = data;
 
   const [isManuallyExpanded, setIsManuallyExpanded] = React.useState(false);
 
@@ -199,8 +199,13 @@ const ThoughtNodeComponent: React.FC<{ data: any, selected?: boolean }> = ({ dat
                     <input
                       type="checkbox"
                       checked={listItem.checked}
-                      readOnly
-                      className="mr-2 mt-0.5 rounded"
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        if (onCheckboxChange && spaceId) {
+                          onCheckboxChange(spaceId, node.id, index, e.target.checked);
+                        }
+                      }}
+                      className="mr-2 mt-0.5 rounded cursor-pointer"
                     />
                     <span className={listItem.checked ? 'line-through opacity-60' : ''}>
                       {listItem.item}
@@ -287,7 +292,24 @@ export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
   showArrows = false,
   showLabels = false
 }) => {
-  const { nodes: thoughtNodes } = useWebSocketThoughts();
+  const { nodes: thoughtNodes, currentSpaceId } = useWebSocketThoughts();
+
+  // Handle checkbox changes
+  const handleCheckboxChange = React.useCallback(async (spaceId: string, nodeId: string, itemIndex: number, checked: boolean) => {
+    try {
+      const response = await fetch(`/api/spaces/${spaceId}/check-item`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodeId, itemIndex, checked })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to update item:', await response.text());
+      }
+    } catch (error) {
+      console.error('Failed to update item:', error);
+    }
+  }, []);
 
   const {
     nodes,
@@ -295,7 +317,7 @@ export const ThoughtGraph: React.FC<ThoughtGraphProps> = ({
     onNodesChange,
     onEdgesChange,
     setHoveredNodeId,
-  } = useThoughtGraphState(thoughtNodes, backgroundEdgeOpacity, showArrows, showLabels);
+  } = useThoughtGraphState(thoughtNodes, backgroundEdgeOpacity, showArrows, showLabels, currentSpaceId, handleCheckboxChange);
 
   // Handle clearing selection when clicking on background or pressing escape
   const handlePaneClick = React.useCallback(() => {

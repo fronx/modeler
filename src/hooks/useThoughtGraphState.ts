@@ -15,7 +15,9 @@ export const useThoughtGraphState = (
   thoughtNodes: Map<string, ThoughtNode>,
   backgroundEdgeOpacity: number = 0.2,
   showArrows: boolean = false,
-  showLabels: boolean = false
+  showLabels: boolean = false,
+  spaceId: string | null = null,
+  onCheckboxChange?: (spaceId: string, nodeId: string, itemIndex: number, checked: boolean) => void
 ) => {
   const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
   const [layoutPositions, setLayoutPositions] = React.useState<Map<string, { x: number; y: number }>>(new Map());
@@ -121,7 +123,9 @@ export const useThoughtGraphState = (
           color: nodeColors.get(thoughtNode.id) || '#6b7280',
           hasExpandableBranches,
           isExpanded,
-          onToggleExpansion: () => toggleNodeExpansion(thoughtNode.id)
+          onToggleExpansion: () => toggleNodeExpansion(thoughtNode.id),
+          spaceId,
+          onCheckboxChange
         },
         style: isExpanded && hasExpandableBranches ? (() => {
           return {
