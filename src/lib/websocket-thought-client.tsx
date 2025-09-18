@@ -34,11 +34,9 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
   const providerIdRef = useRef(Math.random().toString(36).substring(7));
   console.log('🏭 WebSocket Provider instance:', providerIdRef.current);
 
-  // Initialize currentSpaceId from localStorage to persist across remounts
   const [nodes, setNodes] = useState<Map<string, ThoughtNode>>(new Map());
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [currentSpaceId, setCurrentSpaceId] = useState<string | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [loadedSpaceIds, setLoadedSpaceIds] = useState<Set<string>>(new Set());
@@ -111,15 +109,11 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
         setSpaces(data.spaces);
         setLastUpdate(new Date(data.timestamp));
 
-        // If no space is selected, select the most recent one
-        // But DON'T reload if we already have the current space selected
+        // Auto-select the most recent space if none is selected
         if (!currentSpaceId && data.spaces.length > 0) {
-          console.log('🔄 Auto-selecting most recent space because no space selected');
+          console.log('🔄 Auto-selecting most recent space:', data.spaces[0].path);
           const mostRecentSpace = data.spaces[0].path;
-          // Use the same logic as manual selection (will try API first, then WebSocket)
           handleSetCurrentSpaceId(mostRecentSpace);
-        } else {
-          console.log('✋ Skipping space reload - already have space selected:', currentSpaceId);
         }
         break;
 
@@ -143,15 +137,6 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
   const handleSetCurrentSpaceId = (spaceId: string | null) => {
     console.log('🎯 Setting currentSpaceId:', { from: currentSpaceId, to: spaceId });
     setCurrentSpaceId(spaceId);
-
-    // Persist to localStorage
-    if (typeof window !== 'undefined') {
-      if (spaceId) {
-        localStorage.setItem('modeler-current-space-id', spaceId);
-      } else {
-        localStorage.removeItem('modeler-current-space-id');
-      }
-    }
 
     if (!spaceId) {
       setNodes(new Map());
@@ -186,7 +171,7 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
       node.meanings = typedNodeData.meanings || [];
       node.values.clear();
       for (const [key, value] of Object.entries(typedNodeData.values || {})) {
-        node.values.set(key, value);
+        node.values.set(key, value as any);
       }
       node.relationships = typedNodeData.relationships || [];
       node.metaphorBranches = typedNodeData.metaphorBranches || [];
@@ -305,19 +290,8 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     }
   };
 
-  // Hydration effect - restore currentSpaceId from localStorage after mount
-  useEffect(() => {
-    setIsHydrated(true);
-    const saved = localStorage.getItem('modeler-current-space-id');
-    if (saved) {
-      console.log('🔄 Restored currentSpaceId from localStorage:', saved);
-      setCurrentSpaceId(saved);
-    }
-  }, []);
-
   // Initialize WebSocket connection
   useEffect(() => {
-    if (!isHydrated) return; // Wait for hydration
 
     // Initialize WebSocket server by hitting the API endpoint
     fetch('/api/ws').catch(() => {
@@ -338,7 +312,7 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
         wsRef.current.close();
       }
     };
-  }, [isHydrated]);
+  }, []);
 
   // Subscribe to space changes
   useEffect(() => {
@@ -350,15 +324,15 @@ export const WebSocketThoughtProvider: React.FC<ThoughtProviderProps> = ({ child
     }
   }, [currentSpaceId]);
 
-  // Load space data when provider initializes with a saved currentSpaceId
+  // Load space data when currentSpaceId changes
   useEffect(() => {
-    if (isHydrated && currentSpaceId && nodes.size === 0) {
-      console.log('🔄 Loading space data for restored currentSpaceId:', currentSpaceId);
+    if (currentSpaceId && nodes.size === 0) {
+      console.log('🔄 Loading space data for currentSpaceId:', currentSpaceId);
       loadSpaceFromAPI(currentSpaceId).catch(() => {
         console.log('🔄 API failed, will wait for WebSocket connection');
       });
     }
-  }, [isHydrated, currentSpaceId]); // Run when hydration completes and currentSpaceId changes
+  }, [currentSpaceId]);
 
   // Function to update nodes locally (for optimistic updates)
   const updateNode = useCallback((nodeId: string, updater: (node: ThoughtNode) => void) => {
