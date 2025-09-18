@@ -74,3 +74,46 @@ export async function POST(request: Request) {
     await db.close();
   }
 }
+
+export async function PUT(request: Request) {
+  const db = new Database();
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const spaceId = searchParams.get('id');
+
+    if (!spaceId) {
+      return NextResponse.json({ error: 'Space ID required' }, { status: 400 });
+    }
+
+    const spaceData = await request.json();
+
+    // Validate basic structure
+    if (!spaceData.metadata || !spaceData.thoughtSpace) {
+      return NextResponse.json({
+        error: 'Invalid space structure. Must have metadata and thoughtSpace'
+      }, { status: 400 });
+    }
+
+    // Ensure the ID matches
+    spaceData.metadata.id = spaceId;
+
+    // Update the space (upsert)
+    await db.insertSpace(spaceData);
+
+    return NextResponse.json({
+      success: true,
+      message: `Space ${spaceId} updated successfully`,
+      spaceId: spaceId
+    });
+
+  } catch (error) {
+    console.error('Failed to update space:', error);
+    return NextResponse.json({
+      error: 'Failed to update space',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  } finally {
+    await db.close();
+  }
+}

@@ -27,26 +27,206 @@ When multiple cognitive architectures share persistent thought structures, new f
 7. **Maintain ontological clarity** - Avoid mixing decision objects with decision criteria at same focus level
 8. **Trust the process** - The medium shapes the message; executable models change how you think
 
-## Essential Workflow
+## Step-by-Step: Creating Your First Cognitive Space
+
+### 1. Create a New Space
+
+```bash
+# Create via Next.js API
+curl -X POST http://localhost:3000/api/spaces \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Canada Journey Preparation",
+    "description": "Planning for upcoming travel to Canada - apartment, packing, and shopping"
+  }'
+
+# Returns: {"id": "canada-journey-prep-2025-09-18T10-33-52-3NZ", "title": "...", ...}
+```
+
+**What happens:**
+- Generates unique timestamped space ID
+- Creates JSON document in PostgreSQL JSONB
+- Initializes empty thought space structure
+- Space immediately available via dashboard and API
+
+### 2. Define Your Space Purpose
+
+Your generated JSON structure starts with metadata:
+
+```json
+{
+  "metadata": {
+    "id": "canada-journey-prep-2025-09-18T10-33-52-3NZ",
+    "title": "Canada Journey Preparation",
+    "description": "Planning for upcoming travel to Canada - apartment, packing, and shopping",
+    "createdAt": 1695123456789
+  },
+  "thoughtSpace": {
+    "nodes": {},
+    "globalHistory": []
+  }
+}
+```
+
+### 3. Create Your First Thoughts
+
+Add the main conceptual structure - usually 3-5 core thoughts that capture the essential tensions or categories:
+
+```bash
+# Add first thought
+curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ/thoughts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "Apartment prep",
+    "meanings": [{"content": "Getting home ready for departure and return", "confidence": 0.9, "timestamp": 1695123456789}],
+    "focus": 1.0,
+    "semanticPosition": -0.8
+  }'
+
+# Add second thought
+curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ/thoughts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "Packing",
+    "meanings": [{"content": "Selecting and organizing what to bring", "confidence": 0.9, "timestamp": 1695123456789}],
+    "focus": 1.0,
+    "semanticPosition": 0.0
+  }'
+
+# Add third thought
+curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ/thoughts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "Shopping",
+    "meanings": [{"content": "Items to buy for the journey", "confidence": 0.9, "timestamp": 1695123456789}],
+    "focus": 1.0,
+    "semanticPosition": 0.8
+  }'
+```
+
+### 4. Add Properties and Lists
+
+Use PATCH to enhance existing thoughts with specific values and actionable items:
+
+```bash
+# Add checkable list to apartment prep
+curl -X PATCH http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "thoughtSpace": {
+      "nodes": {
+        "Apartment prep": {
+          "checkableList": [
+            {"item": "Take down hanging plants without plates", "checked": false},
+            {"item": "Brief Susan on plant watering", "checked": true},
+            {"item": "Tidy up living spaces", "checked": false}
+          ]
+        }
+      }
+    }
+  }'
+
+# Add values and list to shopping
+curl -X PATCH http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "thoughtSpace": {
+      "nodes": {
+        "Shopping": {
+          "values": {"estimated_cost": [50, 100]},
+          "checkableList": [
+            {"item": "Travel shampoo", "checked": false},
+            {"item": "Contact lens solution (travel size)", "checked": false}
+          ]
+        }
+      }
+    }
+  }'
+```
+
+### 5. Create Background Context
+
+Add supporting information with `focus: -1.0` (hidden from dashboard but available for AI reasoning):
+
+```bash
+# Add background context with relationships
+curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ/thoughts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "Trip duration",
+    "meanings": [{"content": "10 days in Canada", "confidence": 0.9, "timestamp": 1695123456789}],
+    "values": {"days": 10},
+    "relationships": [
+      {"type": "supports", "target": "Packing", "strength": 0.9},
+      {"type": "supports", "target": "Shopping", "strength": 0.7}
+    ],
+    "focus": -1.0,
+    "semanticPosition": 0.0
+  }'
+
+# Add budget constraints
+curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ/thoughts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "Budget constraint",
+    "meanings": [{"content": "Financial limits for the trip", "confidence": 0.9, "timestamp": 1695123456789}],
+    "values": {"max_total": 500},
+    "relationships": [
+      {"type": "conflicts-with", "target": "Shopping", "strength": 0.6}
+    ],
+    "focus": -1.0,
+    "semanticPosition": 0.0
+  }'
+```
+
+### 6. View Your Space
+
+```bash
+# Open dashboard to see your space
+open http://localhost:3000
+
+# Or access via API
+curl http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ
+```
+
+**Real-time updates:**
+- Changes save automatically to PostgreSQL
+- Dashboard updates instantly via WebSocket
+- Multiple participants can collaborate simultaneously
+
+## Essential Workflow Patterns
 
 ### 1. Choose Your Structural Approach
 
 **Every modeling decision reflects conversational intent.** Are you exploring multiple concepts, or resolving between interpretations? This applies from initial purpose-setting through detailed content modeling.
 
 **When choosing conversation approach** (pick one framing):
-```typescript
-space.thought('Goal')
-  .means('What do we want to accomplish here?')
-  .branch('Get clarity on next steps')
-  .branch('Understand the bigger picture')
-  .branch('Make a specific decision');
+```json
+{
+  "Goal": {
+    "meanings": [{"content": "What do we want to accomplish here?", "confidence": 0.9}],
+    "branches": {
+      "Get clarity on next steps": {"interpretation": "Focus on immediate actionable steps"},
+      "Understand the bigger picture": {"interpretation": "Zoom out to see context and connections"},
+      "Make a specific decision": {"interpretation": "Resolve to one clear choice"}
+    }
+  }
+}
 ```
 
 **When managing multiple agendas** (all need attention):
-```typescript
-space.thought('Research').means('Gather information we need');
-space.thought('Build').means('Actually create the thing');
-space.thought('Test').means('Make sure it works');
+```json
+{
+  "Research": {
+    "meanings": [{"content": "Gather information we need", "confidence": 0.9}]
+  },
+  "Build": {
+    "meanings": [{"content": "Actually create the thing", "confidence": 0.9}]
+  },
+  "Test": {
+    "meanings": [{"content": "Make sure it works", "confidence": 0.9}]
+  }
+}
 ```
 
 The same principle applies at every level - purpose-setting, domain modeling, detailed planning.
@@ -55,47 +235,78 @@ The same principle applies at every level - purpose-setting, domain modeling, de
 
 **When a thought naturally contains parts** rather than alternatives, use lists instead of separate nodes:
 
-```typescript
-space.thought('Shopping')
-  .means('Items to buy for the trip')
-  .hasCheckableList([
-    {item: 'Travel shampoo', checked: false},
-    {item: 'Contact lens solution', checked: true}
-  ]);
-
-space.thought('Itinerary')
-  .means('Places we\'ll visit')
-  .hasList(['Partner\'s mom\'s house', 'Nature cabin', 'Montreal']);
+```json
+{
+  "Shopping": {
+    "meanings": [{"content": "Items to buy for the trip", "confidence": 0.9}],
+    "checkableList": [
+      {"item": "Travel shampoo", "checked": false},
+      {"item": "Contact lens solution", "checked": true}
+    ]
+  },
+  "Itinerary": {
+    "meanings": [{"content": "Places we'll visit", "confidence": 0.9}],
+    "regularList": ["Partner's mom's house", "Nature cabin", "Montreal"]
+  }
+}
 ```
 
-Use `.hasCheckableList(items)` for actionable items with checkboxes, `.hasList(items)` for reference items with bullets. One list per node - if you need multiple lists, create separate nodes.
+Use `checkableList` for actionable items with completion tracking, `regularList` for reference items with bullets. One list per node - if you need multiple lists, create separate nodes.
 
 ### 3. Create Clean Foreground, Rich Background
 
 **Foreground (focus=1.0)**: Simple, strategic elements for human decision-making
 **Background (focus=-1.0)**: Complex context available for AI reasoning
 
-```typescript
-// FOREGROUND: Clean strategic choices
-space.thought('Downtown').setPosition(-0.5).hasValue('cost', 2200);
-space.thought('Suburbs').setPosition(0.5).hasValue('cost', 1800);
-space.thought('Remote').setPosition(0.0).hasValue('cost', 1200);
-
-// BACKGROUND: Rich context (hidden from humans, available for AI)
-space.thought('Commute preference')
-  .setFocus(-1.0)  // Hidden but available
-  .conflictsWith('Remote', 0.8)
-  .supports('Downtown', 0.9);
-
-space.thought('Budget constraint')
-  .setFocus(-1.0)  // AI reasoning context
-  .hasValue('max_monthly', 2000)
-  .conflictsWith('Downtown', 0.7);
-
-space.thought('Quality of life')
-  .setFocus(-1.0)  // Complex evaluation context
-  .supports('Suburbs', 0.8)
-  .hasValue('importance', 0.9);
+```json
+{
+  "thoughtSpace": {
+    "nodes": {
+      "Downtown": {
+        "focus": 1.0,
+        "semanticPosition": -0.5,
+        "values": {"cost": 2200},
+        "meanings": [{"content": "Urban living option", "confidence": 0.9}]
+      },
+      "Suburbs": {
+        "focus": 1.0,
+        "semanticPosition": 0.5,
+        "values": {"cost": 1800},
+        "meanings": [{"content": "Suburban living option", "confidence": 0.9}]
+      },
+      "Remote": {
+        "focus": 1.0,
+        "semanticPosition": 0.0,
+        "values": {"cost": 1200},
+        "meanings": [{"content": "Remote living option", "confidence": 0.9}]
+      },
+      "Commute preference": {
+        "focus": -1.0,
+        "relationships": [
+          {"type": "conflicts-with", "target": "Remote", "strength": 0.8},
+          {"type": "supports", "target": "Downtown", "strength": 0.9}
+        ],
+        "meanings": [{"content": "Transportation preferences", "confidence": 0.8}]
+      },
+      "Budget constraint": {
+        "focus": -1.0,
+        "values": {"max_monthly": 2000},
+        "relationships": [
+          {"type": "conflicts-with", "target": "Downtown", "strength": 0.7}
+        ],
+        "meanings": [{"content": "Financial limitations", "confidence": 0.9}]
+      },
+      "Quality of life": {
+        "focus": -1.0,
+        "values": {"importance": 0.9},
+        "relationships": [
+          {"type": "supports", "target": "Suburbs", "strength": 0.8}
+        ],
+        "meanings": [{"content": "Life satisfaction factors", "confidence": 0.8}]
+      }
+    }
+  }
+}
 ```
 
 Promote background elements to focus=1.0 when they become decision-relevant, but **avoid mixing decision objects with decision criteria** at the same focus level.
@@ -106,13 +317,25 @@ Promote background elements to focus=1.0 when they become decision-relevant, but
 
 After adding new focus=1.0 nodes, always clean up by removing focus from nodes that are no longer central to the current decision. Limit focus=1.0 to the essential elements - too many focused nodes defeats the visual hierarchy.
 
-```typescript
-// When you add new focused elements like this:
-space.thought('New decision').setFocus(1.0);
-
-// Always review and clean up previous focus:
-space.thought('Previous decision'); // Remove .setFocus(1.0)
-space.thought('Resolved tension'); // Remove .setFocus(1.0)
+```json
+{
+  "thoughtSpace": {
+    "nodes": {
+      "New decision": {
+        "focus": 1.0,
+        "meanings": [{"content": "Current decision point", "confidence": 0.9}]
+      },
+      "Previous decision": {
+        "focus": 0.0,
+        "meanings": [{"content": "Previously resolved choice", "confidence": 0.9}]
+      },
+      "Resolved tension": {
+        "focus": 0.0,
+        "meanings": [{"content": "No longer active conflict", "confidence": 0.9}]
+      }
+    }
+  }
+}
 ```
 
 Execute the space to update the dashboard, ensuring only current decision elements remain highlighted.
@@ -121,14 +344,27 @@ Execute the space to update the dashboard, ensuring only current decision elemen
 
 Focus on strategic decisions and conceptual tensions. Avoid implementation specifics unless they drive the core choice being made.
 
-```typescript
-// Model the strategic tension between approaches
-space.thought('Incremental').setPosition(-1.0);
-space.thought('Disruptive').setPosition(1.0);
-space.thought('Incremental').conflictsWith('Disruptive', 0.8);
+```json
+{
+  "thoughtSpace": {
+    "nodes": {
+      "Incremental": {
+        "semanticPosition": -1.0,
+        "meanings": [{"content": "Gradual, step-by-step improvement approach", "confidence": 0.9}],
+        "relationships": [
+          {"type": "conflicts-with", "target": "Disruptive", "strength": 0.8}
+        ]
+      },
+      "Disruptive": {
+        "semanticPosition": 1.0,
+        "meanings": [{"content": "Revolutionary, paradigm-shifting approach", "confidence": 0.9}]
+      }
+    }
+  }
+}
 
-// NOT the technical implementation details
-// space.thought('Database schema') <- unless the schema choice drives the strategic decision
+// Focus on strategic tensions, NOT implementation details
+// Only add technical specifics if they drive the core strategic choice
 ```
 
 ### 6. Let Relationships Create Structure
@@ -143,22 +379,50 @@ Supporting concepts find their natural positions through relationships. Don't ma
 
 If you're **exploring and comparing** design philosophies - learning about each, sharing examples, understanding their differences - model them as separate thoughts:
 
-```typescript
-// Goal: Understand different approaches
-space.thought('Minimalist').means('Clean, reduced aesthetics');
-space.thought('Bold experimental').means('Striking, innovative visuals');
-space.thought('Accessibility first').means('Universal design principles');
+```json
+{
+  "thoughtSpace": {
+    "nodes": {
+      "Minimalist": {
+        "meanings": [{"content": "Clean, reduced aesthetics", "confidence": 0.9}]
+      },
+      "Bold experimental": {
+        "meanings": [{"content": "Striking, innovative visuals", "confidence": 0.9}]
+      },
+      "Accessibility first": {
+        "meanings": [{"content": "Universal design principles", "confidence": 0.9}]
+      }
+    }
+  }
+}
 ```
 
 If you're **making a strategic choice** about which philosophy should guide your project - where you'll ultimately commit to one direction - use branching:
 
-```typescript
-// Goal: Choose our creative direction
-space.thought('Design philosophy')
-  .means('What should guide our creative decisions?')
-  .branch('Minimalist approach')
-  .branch('Bold experimental')
-  .branch('Accessibility first');
+```json
+{
+  "thoughtSpace": {
+    "nodes": {
+      "Design philosophy": {
+        "meanings": [{"content": "What should guide our creative decisions?", "confidence": 0.9}],
+        "branches": {
+          "Minimalist approach": {
+            "interpretation": "Focus on clean, reduced aesthetic choices",
+            "isActive": true
+          },
+          "Bold experimental": {
+            "interpretation": "Emphasize striking, innovative visual solutions",
+            "isActive": true
+          },
+          "Accessibility first": {
+            "interpretation": "Prioritize universal design principles",
+            "isActive": true
+          }
+        }
+      }
+    }
+  }
+}
 ```
 
 The structure reflects **decision intent**: Are you analyzing multiple concepts, or resolving between interpretations of one choice?
@@ -168,46 +432,171 @@ The test: Could you resolve to one branch and ignore the others, or do all the e
 **For detailed guidance on branching**: See [`artifacts/documentation/branching-interpretation-capabilities.md`](artifacts/documentation/branching-interpretation-capabilities.md) for comprehensive examples, design patterns, and best practices.
 
 **Resolve when ready:**
-```typescript
-space.thought('Product strategy').resolve({
-  context: 'after market research',
-  selections: ['Niche specialization'],
-  reason: 'Limited resources favor focused approach'
-});
+```json
+{
+  "thoughtSpace": {
+    "nodes": {
+      "Product strategy": {
+        "resolutions": [
+          {
+            "context": "after market research",
+            "selections": ["Niche specialization"],
+            "reason": "Limited resources favor focused approach",
+            "timestamp": 1695123456789
+          }
+        ]
+      }
+    }
+  }
+}
 ```
 
 ## Technical Essentials
 
-```typescript
-import { Space } from '../../../src/lib/thought-system';
-const space = new Space('space-id', 'Title', 'Description');
+### JSON-First Architecture
 
-// Core API
-.means(content)                  // Semantic meaning
-.hasValue(key, value)           // Numerical properties
-.supports(target, strength)      // Positive relationship
-.conflictsWith(target, strength) // Negative relationship
-.setFocus(1.0)                  // Highlighted, center of active discussion
-.setFocus(-1.0)                 // Background context (hidden from humans)
-// Omit .setFocus() for normal visible nodes
-.setPosition(-1.0 to 1.0)       // Semantic position
-.holdsTension(description)       // Unresolved contradiction
+Cognitive spaces are now **JSON documents** stored in PostgreSQL with real-time synchronization. This eliminates compilation barriers and enables direct editing of thought structures.
 
-// List modeling (declarative)
-.hasList(items)                 // Regular list of strings
-.hasCheckableList(items)        // Actionable list with completion tracking
+**Key Benefits:**
+- **No compilation step** - Edit JSON directly
+- **Real-time collaboration** - Multiple participants edit simultaneously
+- **Database persistence** - PostgreSQL JSONB storage with rich querying
+- **JSON Schema validation** - Maintains data integrity
+- **WebSocket sync** - Instant dashboard updates
 
-// Branching for multiple interpretations
-.branch(interpretation)          // Add alternative meaning/framing
-.getBranch(name)                // Access specific branch for relationships
-.resolve({context, selections, reason}) // Commit to one or multiple branches (parent-level)
+### Complete API Reference
 
-// Create space (generates Space instance)
-./create-cognitive-space.sh topic-name
+#### Creating Spaces
 
-// Execute
-npx tsx execute-space.ts <space-id>
+**Create a new space:**
+```bash
+curl -X POST http://localhost:3000/api/spaces \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "AI-Human Collaboration Study",
+    "description": "Exploring tensions and synergies in creative work"
+  }'
+
+# Returns: {"space": {"id": "2025-09-18T16-56-30-254Z", ...}, "message": "Space created successfully"}
 ```
+
+#### Working with Thoughts
+
+**Add individual thoughts:**
+```bash
+curl -X POST http://localhost:3000/api/spaces/SPACE_ID/thoughts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "Artificial Intelligence",
+    "meanings": [{"content": "AI capabilities and limitations", "confidence": 0.9, "timestamp": 1695123456789}],
+    "focus": 1.0,
+    "semanticPosition": -0.5,
+    "values": {"importance": 0.8},
+    "relationships": [{"type": "conflicts-with", "target": "Human Creativity", "strength": 0.6}]
+  }'
+```
+
+**Add thoughts with lists:**
+```bash
+curl -X POST http://localhost:3000/api/spaces/SPACE_ID/thoughts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "Collaboration Tasks",
+    "meanings": [{"content": "Areas of AI-human collaboration", "confidence": 0.9, "timestamp": 1695123456789}],
+    "focus": 1.0,
+    "checkableList": [
+      {"item": "Content generation", "checked": false},
+      {"item": "Code review", "checked": true}
+    ],
+    "relationships": [
+      {"type": "supports", "target": "Artificial Intelligence", "strength": 0.7}
+    ]
+  }'
+```
+
+#### Updating Spaces
+
+**Full space update (replace entire content):**
+```bash
+curl -X PUT http://localhost:3000/api/spaces/SPACE_ID \
+  -H "Content-Type: application/json" \
+  -d '{
+    "metadata": {"id": "SPACE_ID", "title": "Updated Title", "description": "New description"},
+    "thoughtSpace": {"nodes": {...}, "globalHistory": [...]}
+  }'
+```
+
+**Partial space update (merge changes):**
+```bash
+curl -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
+  -H "Content-Type: application/json" \
+  -d '{
+    "metadata": {"description": "Updated description only"},
+    "thoughtSpace": {"nodes": {"NewThought": {...}}}
+  }'
+```
+
+#### Reading Data
+
+**Get all spaces:**
+```bash
+curl -X GET http://localhost:3000/api/spaces
+# Returns: {"spaces": [...], "count": 3}
+```
+
+**Get full space data:**
+```bash
+curl -X GET http://localhost:3000/api/spaces/SPACE_ID
+# Returns complete space with metadata and all thoughts
+```
+
+**Get just the thoughts:**
+```bash
+curl -X GET http://localhost:3000/api/spaces/SPACE_ID/thoughts
+# Returns: {"nodes": {...}, "spaceId": "...", "count": 3}
+```
+
+#### Real-time Features
+
+- **Auto-save**: All changes persist immediately to PostgreSQL JSONB
+- **WebSocket sync**: Dashboard updates automatically across all clients
+- **JSON Schema validation**: All data validated against cognitive space schema
+- **Conflict-free**: PATCH operations merge safely with existing data
+
+### JSON Schema Validation
+
+The system uses comprehensive JSON Schema validation (`src/lib/cognitive-space.schema.json`) to ensure data integrity:
+
+```json
+{
+  "metadata": {
+    "id": "space-identifier",
+    "title": "Human-readable title",
+    "description": "What this space explores",
+    "createdAt": 1234567890
+  },
+  "thoughtSpace": {
+    "nodes": {
+      "NodeId": {
+        "meanings": [{"content": "text", "confidence": 0.9}],
+        "values": {"property": 42},
+        "relationships": [{"type": "supports", "target": "Other", "strength": 0.8}],
+        "focus": 1.0,
+        "semanticPosition": 0.5
+      }
+    }
+  }
+}
+```
+
+### New Database Architecture Benefits
+
+- **Real-time collaboration**: Multiple participants can edit simultaneously
+- **Instant persistence**: Changes save automatically to PostgreSQL JSONB
+- **No compilation barrier**: Direct JSON editing without TypeScript compilation
+- **JSON Schema validation**: Maintains data integrity without compilation
+- **Rich querying**: Database-level analysis of cognitive structures
+- **Version history**: Full audit trail of cognitive evolution
 
 ## Common Traps
 
