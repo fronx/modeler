@@ -1,5 +1,5 @@
 import React from 'react';
-import { Node, Edge, useNodesState, useEdgesState } from '@xyflow/react';
+import { Node, Edge, useNodesState, useEdgesState, NodeChange } from '@xyflow/react';
 import { ThoughtNode } from '../lib/thought-system';
 import {
   calculateCircleLayout,
@@ -10,6 +10,45 @@ import {
 } from '../lib/thought-graph-utils';
 import { calculateNodeColors } from '../lib/thought-colors';
 import { createAnimatedForceLayout } from '../lib/d3-force-layout';
+
+// Local storage helpers for persisting node positions
+const STORAGE_KEY_PREFIX = 'thought-graph-positions-';
+
+const saveNodePositions = (spaceId: string, positions: Map<string, { x: number; y: number }>) => {
+  if (typeof window === 'undefined' || !spaceId) return;
+
+  const positionsObj: Record<string, { x: number; y: number }> = {};
+  positions.forEach((pos, nodeId) => {
+    positionsObj[nodeId] = pos;
+  });
+
+  try {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}${spaceId}`, JSON.stringify(positionsObj));
+  } catch (error) {
+    console.warn('Failed to save node positions to localStorage:', error);
+  }
+};
+
+const loadNodePositions = (spaceId: string): Map<string, { x: number; y: number }> => {
+  if (typeof window === 'undefined' || !spaceId) return new Map();
+
+  try {
+    const stored = localStorage.getItem(`${STORAGE_KEY_PREFIX}${spaceId}`);
+    if (!stored) return new Map();
+
+    const positionsObj = JSON.parse(stored);
+    const positions = new Map<string, { x: number; y: number }>();
+
+    Object.entries(positionsObj).forEach(([nodeId, pos]) => {
+      positions.set(nodeId, pos as { x: number; y: number });
+    });
+
+    return positions;
+  } catch (error) {
+    console.warn('Failed to load node positions from localStorage:', error);
+    return new Map();
+  }
+};
 
 export const useThoughtGraphState = (
   thoughtNodes: Map<string, ThoughtNode>,
@@ -37,6 +76,17 @@ export const useThoughtGraphState = (
     });
     return initialExpanded;
   });
+
+  // Load saved positions from localStorage when space changes
+  React.useEffect(() => {
+    if (!spaceId) return;
+
+    const savedPositions = loadNodePositions(spaceId);
+    if (savedPositions.size > 0) {
+      layoutPositionsRef.current = savedPositions;
+      setLayoutPositions(savedPositions);
+    }
+  }, [spaceId]);
 
   // Toggle expansion state for a node
   const toggleNodeExpansion = React.useCallback((nodeId: string) => {
@@ -278,7 +328,31 @@ export const useThoughtGraphState = (
   }, [thoughtNodes, layoutPositions, expandedNodes, toggleNodeExpansion]);
 
   // Use nodes state to enable dragging
-  const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
+  const [nodes, setNodes, onNodesChangeOriginal] = useNodesState(flowNodes);
+
+  // Wrap onNodesChange to save positions to localStorage when nodes are dragged
+  const onNodesChange = React.useCallback((changes: NodeChange[]) => {
+    // First apply the changes
+    onNodesChangeOriginal(changes);
+
+    // Then check if any position changes occurred and save to localStorage
+    const positionChanges = changes.filter(
+      (change): change is NodeChange & { type: 'position' } =>
+        change.type === 'position' && 'position' in change && change.position !== undefined && !change.dragging
+    );
+
+    if (positionChanges.length > 0 && spaceId) {
+      // Update layoutPositionsRef with new positions
+      positionChanges.forEach((change) => {
+        if (change.position) {
+          layoutPositionsRef.current.set(change.id, change.position);
+        }
+      });
+
+      // Save all positions to localStorage (debounced via the changes only firing after drag ends)
+      saveNodePositions(spaceId, layoutPositionsRef.current);
+    }
+  }, [onNodesChangeOriginal, spaceId]);
 
   // Calculate handles for edges based on current node positions
   const calculateHandles = React.useCallback((sourceNode: Node, targetNode: Node) => {
