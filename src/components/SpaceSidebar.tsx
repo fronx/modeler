@@ -18,7 +18,7 @@ interface SpaceSidebarProps {
   currentSpaceId: string | null;
   onSpaceSelect: (spaceId: string) => void;
   onNewSpace: () => void;
-  onSpaceDelete?: (spaceId: string) => void;
+  onSpaceDelete?: (spaceId: string) => void | Promise<void>;
 }
 
 export const SpaceSidebar: React.FC<SpaceSidebarProps> = ({
@@ -54,17 +54,8 @@ export const SpaceSidebar: React.FC<SpaceSidebarProps> = ({
 
     setIsDeleting(spaceId);
     try {
-      const response = await fetch(`/api/spaces/${spaceId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        onSpaceDelete(spaceId);
-        setDeleteConfirm(null);
-      } else {
-        console.error('Failed to delete space');
-        // You could add error handling here
-      }
+      await onSpaceDelete(spaceId);
+      setDeleteConfirm(null);
     } catch (error) {
       console.error('Error deleting space:', error);
     } finally {
