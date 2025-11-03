@@ -13,10 +13,23 @@ export class ThoughtWebSocketClient {
   private messageHandlers: Set<MessageHandler> = new Set();
   private statusHandlers: Set<(status: ConnectionStatus) => void> = new Set();
   private status: ConnectionStatus = 'disconnected';
+  private url: string = '';
 
-  constructor(private url: string = 'ws://localhost:8080') {}
+  constructor() {}
 
-  connect(): void {
+  async connect(): Promise<void> {
+    // Get the WebSocket URL from the API if we don't have it yet
+    if (!this.url) {
+      try {
+        const response = await fetch('/api/ws');
+        const data = await response.json();
+        this.url = data.websocketUrl;
+      } catch (error) {
+        console.error('Failed to get WebSocket URL from API:', error);
+        this.setStatus('error');
+        return;
+      }
+    }
     if (this.ws?.readyState === WebSocket.OPEN) {
       return; // Already connected
     }
@@ -46,8 +59,10 @@ export class ThoughtWebSocketClient {
         this.scheduleReconnect();
       };
 
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+      this.ws.onerror = () => {
+        // Browser WebSocket errors don't provide much detail for security reasons
+        // The actual error information comes via onclose event
+        console.error('WebSocket connection error - check if WebSocket server is running on', this.url);
         this.setStatus('error');
       };
 

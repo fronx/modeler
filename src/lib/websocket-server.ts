@@ -11,28 +11,23 @@ export class ThoughtWebSocketServer {
   private wss: WebSocketServer;
   private server: any;
   private clients = new Set<WebSocket>();
-  private actualPort: number = 8080;
+  private actualPort: number = 0;
 
-  constructor(port = 8080) {
-
+  constructor() {
     // Create HTTP server for WebSocket upgrade
     this.server = createServer();
     this.wss = new WebSocketServer({ server: this.server });
 
     this.setupWebSocketHandlers();
 
-    this.server.listen(port, () => {
-      this.actualPort = port;
-      console.log(`🔗 ThoughtWebSocket server running on port ${port}`);
+    // Listen on port 0 to let OS assign a free port
+    this.server.listen(0, () => {
+      this.actualPort = this.server.address().port;
+      console.log(`🔗 ThoughtWebSocket server running on port ${this.actualPort}`);
     });
 
     this.server.on('error', (err: any) => {
-      if (err.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${port} is already in use. Please free up port ${port} and restart the server.`);
-        console.error(`   Try: lsof -ti :${port} | xargs kill`);
-      } else {
-        console.error('WebSocket server error:', err);
-      }
+      console.error('WebSocket server error:', err);
     });
   }
 

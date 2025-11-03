@@ -3,15 +3,19 @@
  * This initializes the file watcher when the Next.js app starts
  */
 
-import { startThoughtWebSocketServer } from '@/lib/websocket-server';
+import { startThoughtWebSocketServer, getThoughtWebSocketServer } from '@/lib/websocket-server';
 import { NextResponse } from 'next/server';
 
 // Start WebSocket server when this module loads
 startThoughtWebSocketServer();
 
 export async function GET() {
+  const server = getThoughtWebSocketServer();
+  const port = server?.getPort() || 0;
+
   return NextResponse.json({
     message: 'ThoughtWebSocket server is running',
-    websocketUrl: 'ws://localhost:8080'
+    port,
+    websocketUrl: `ws://localhost:${port}`
   });
 }
