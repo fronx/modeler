@@ -40,3 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+
+# Turso/SQLite database files
+*.db
+*.db-shm
+*.db-wal

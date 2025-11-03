@@ -5,7 +5,8 @@
 
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
-import { Database, DatabaseConfig } from './database';
+import { DatabaseConfig } from './database';
+import { createDatabase } from './database-factory';
 import { Client } from 'pg';
 
 export class ThoughtWebSocketServer {
@@ -75,6 +76,15 @@ export class ThoughtWebSocketServer {
   }
 
   private async setupDatabaseNotifications(): Promise<void> {
+    const dbType = process.env.DATABASE_TYPE || 'postgres';
+
+    // Only set up LISTEN/NOTIFY for PostgreSQL
+    if (dbType !== 'postgres') {
+      console.log('📡 Using update-then-reload pattern for real-time updates (Turso mode)');
+      console.log('   Broadcasts triggered explicitly after API writes');
+      return;
+    }
+
     try {
       // Create a dedicated client for notifications (must stay connected)
       this.notificationClient = new Client({
@@ -205,7 +215,7 @@ export class ThoughtWebSocketServer {
   }
 
   private async loadSpaces(): Promise<any[]> {
-    const db = new Database(this.dbConfig);
+    const db = createDatabase();
     try {
       const spaces = await db.listSpaces();
       return spaces.map(space => ({
@@ -226,7 +236,7 @@ export class ThoughtWebSocketServer {
   }
 
   private async loadSpaceThoughts(spaceId: string): Promise<Record<string, any>> {
-    const db = new Database(this.dbConfig);
+    const db = createDatabase();
     try {
       const space = await db.getSpace(spaceId);
       return space?.nodes || {};

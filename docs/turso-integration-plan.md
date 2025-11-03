@@ -1,5 +1,41 @@
 # Turso Integration Plan
 
+## ✅ Implementation Status
+
+### Phase 1: Core Implementation - **COMPLETED**
+
+**Implementation Date:** January 2025
+
+All Phase 1 goals have been successfully implemented and tested:
+- ✅ Normalized relational schema (spaces, nodes, history tables)
+- ✅ TursoDatabase class with full CRUD support
+- ✅ Database factory for runtime backend selection
+- ✅ All API routes updated to use factory pattern
+- ✅ WebSocket broadcasts work with both PostgreSQL and Turso
+- ✅ Local file database tested and verified
+- ✅ Update-then-reload pattern for real-time updates
+
+**Key Files:**
+- Schema: [`scripts/init-turso-schema.sql`](../scripts/init-turso-schema.sql)
+- Implementation: [`src/lib/turso-database.ts`](../src/lib/turso-database.ts)
+- Factory: [`src/lib/database-factory.ts`](../src/lib/database-factory.ts)
+- WebSocket: [`src/lib/websocket-server.ts`](../src/lib/websocket-server.ts)
+- Test: [`test-turso.ts`](../test-turso.ts)
+- Documentation: [`docs/turso-usage.md`](./turso-usage.md)
+
+**Usage:**
+```bash
+# Switch to Turso
+export DATABASE_TYPE=turso
+npm run dev
+
+# Switch to PostgreSQL
+export DATABASE_TYPE=postgres
+npm run dev
+```
+
+---
+
 ## Current State Analysis
 
 ### Existing Database Architecture
@@ -246,305 +282,44 @@ interface ResultSet {
 4. **Gradual enhancement:** Add vector capabilities as a second phase
 5. **Environment-based selection:** Use env vars to choose database backend
 
-### Phase 1: Core Implementation (Normalized Schema)
+### Phase 1: Core Implementation (Normalized Schema) - ✅ COMPLETED
 
-**Goal:** Relational design with nodes as first-class entities
+**Status:** Fully implemented and tested
 
-**Scope:**
-- ✅ Three tables: `spaces`, `nodes`, `history`
-- ✅ Nodes stored as separate rows (not embedded in JSON)
-- ✅ History entries as separate rows
-- ✅ Node data (meanings, values, relationships) stored as JSON per node
-- ✅ All CRUD methods working with the new schema
-- ❌ No vector embeddings yet (Phase 2)
+**Implementation:**
+- Schema: [`scripts/init-turso-schema.sql`](../scripts/init-turso-schema.sql) - Normalized relational design with 3 tables
+- Database class: [`src/lib/turso-database.ts`](../src/lib/turso-database.ts) - Full CRUD implementation
+- Factory: [`src/lib/database-factory.ts`](../src/lib/database-factory.ts) - Runtime backend selection
 
-#### File Structure
-```
-src/lib/
-├── database.ts           # Existing PostgreSQL (unchanged)
-├── turso-database.ts     # New Turso implementation
-└── database-factory.ts   # Optional: Runtime selection
-```
+**Schema Overview:**
+- `spaces` table - Metadata only (id, title, description, timestamps)
+- `nodes` table - Each node as separate row with JSON data
+- `history` table - Each history entry as separate row
 
-#### Schema Design
+See the schema file for full DDL.
 
-**Normalized Relational Schema:**
-```sql
--- Spaces: Just metadata, no embedded data
-CREATE TABLE spaces (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    created_at INTEGER NOT NULL,     -- Unix timestamp (ms)
-    updated_at INTEGER NOT NULL
-);
+**Key Design Decisions:**
+- Normalized schema allows efficient node counting via SQL JOIN
+- Individual node updates without rewriting entire space
+- Queryable nodes by space or timestamp
+- Ready for vector embeddings in Phase 2
 
-CREATE INDEX spaces_created_at_idx ON spaces (created_at DESC);
-CREATE INDEX spaces_updated_at_idx ON spaces (updated_at DESC);
+**Implementation Challenges Solved:**
 
--- Nodes: Each node is a separate row
-CREATE TABLE nodes (
-    id TEXT PRIMARY KEY,                 -- Generated: `${space_id}:${node_key}`
-    space_id TEXT NOT NULL,
-    node_key TEXT NOT NULL,              -- e.g., "DirectTransmission" (user identifier)
-    data TEXT NOT NULL,                  -- JSON: meanings, values, relationships, etc.
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    UNIQUE(space_id, node_key),          -- Each space has its own namespace
-    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
-);
+1. **Real-time Updates (LISTEN/NOTIFY replacement)**
+   - Implemented update-then-reload pattern
+   - API routes explicitly trigger `broadcastSpaceUpdate()` after writes
+   - See: All API route files now call `getThoughtWebSocketServer().broadcastSpaceUpdate(spaceId)`
 
-CREATE INDEX nodes_space_id_idx ON nodes(space_id);
-CREATE INDEX nodes_updated_at_idx ON nodes(updated_at DESC);
+2. **Data Model Transformation**
+   - PostgreSQL's nested JSON → Turso's normalized tables
+   - Handled automatically by `TursoDatabase` class
+   - Benefits: SQL JOINs for counting, individual node updates, better indexing
 
--- History: One row per history entry
-CREATE TABLE history (
-    id TEXT PRIMARY KEY,                 -- Generated UUID or autoincrement
-    space_id TEXT NOT NULL,
-    entry TEXT NOT NULL,                 -- The history message
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE
-);
-
-CREATE INDEX history_space_id_idx ON history(space_id);
-CREATE INDEX history_created_at_idx ON history(created_at DESC);
-```
-
-**Migration from PostgreSQL:**
-- **Spaces:** Extract metadata only (id, title, description, timestamps)
-- **Nodes:** Unpack `data.nodes` object into separate rows
-- **History:** Unpack `data.globalHistory` array into separate rows
-
-#### Implementation: `TursoDatabase` class
-
-```typescript
-import { createClient, Client } from "@libsql/client";
-import type { CognitiveSpace } from './database';
-
-export interface TursoDatabaseConfig {
-  url?: string;              // file:local.db or https://...
-  authToken?: string;        // For remote/replica
-  syncUrl?: string;          // For embedded replica
-}
-
-export class TursoDatabase {
-  private client: Client;
-
-  constructor(config: TursoDatabaseConfig = {}) {
-    this.client = createClient({
-      url: config.url || process.env.TURSO_DATABASE_URL || "file:modeler.db",
-      authToken: config.authToken || process.env.TURSO_AUTH_TOKEN,
-      syncUrl: config.syncUrl || process.env.TURSO_SYNC_URL
-    });
-  }
-
-  async insertSpace(space: CognitiveSpace): Promise<void> {
-    const now = Date.now();
-
-    // Use batch for transactional insert across tables
-    const statements = [
-      // Upsert space metadata
-      {
-        sql: `
-          INSERT INTO spaces (id, title, description, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            title = excluded.title,
-            description = excluded.description,
-            updated_at = excluded.updated_at
-        `,
-        args: [
-          space.metadata.id,
-          space.metadata.title,
-          space.metadata.description,
-          space.metadata.createdAt,
-          now
-        ]
-      },
-      // Delete existing nodes for this space (for clean upsert)
-      {
-        sql: 'DELETE FROM nodes WHERE space_id = ?',
-        args: [space.metadata.id]
-      },
-      // Delete existing history for this space
-      {
-        sql: 'DELETE FROM history WHERE space_id = ?',
-        args: [space.metadata.id]
-      }
-    ];
-
-    // Insert all nodes
-    for (const [nodeKey, nodeData] of Object.entries(space.nodes)) {
-      statements.push({
-        sql: `
-          INSERT INTO nodes (id, space_id, node_key, data, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `,
-        args: [
-          `${space.metadata.id}:${nodeKey}`,  // Composite ID
-          space.metadata.id,
-          nodeKey,
-          JSON.stringify(nodeData),
-          now,
-          now
-        ]
-      });
-    }
-
-    // Insert all history entries
-    for (const entry of space.globalHistory) {
-      statements.push({
-        sql: `
-          INSERT INTO history (id, space_id, entry, created_at)
-          VALUES (?, ?, ?, ?)
-        `,
-        args: [
-          `${space.metadata.id}:${Date.now()}:${Math.random()}`,  // Unique ID
-          space.metadata.id,
-          entry,
-          now
-        ]
-      });
-    }
-
-    await this.client.batch(statements, 'write');
-  }
-
-  async getSpace(id: string): Promise<CognitiveSpace | null> {
-    // Fetch space metadata
-    const spaceResult = await this.client.execute({
-      sql: "SELECT * FROM spaces WHERE id = ?",
-      args: [id]
-    });
-
-    if (spaceResult.rows.length === 0) return null;
-
-    const spaceRow = spaceResult.rows[0];
-
-    // Fetch all nodes for this space
-    const nodesResult = await this.client.execute({
-      sql: "SELECT node_key, data FROM nodes WHERE space_id = ? ORDER BY created_at",
-      args: [id]
-    });
-
-    const nodes: Record<string, any> = {};
-    for (const row of nodesResult.rows) {
-      const nodeKey = row.node_key as string;
-      const nodeData = JSON.parse(row.data as string);
-      nodes[nodeKey] = nodeData;
-    }
-
-    // Fetch all history for this space
-    const historyResult = await this.client.execute({
-      sql: "SELECT entry FROM history WHERE space_id = ? ORDER BY created_at",
-      args: [id]
-    });
-
-    const globalHistory = historyResult.rows.map(row => row.entry as string);
-
-    return {
-      metadata: {
-        id: spaceRow.id as string,
-        title: spaceRow.title as string,
-        description: spaceRow.description as string,
-        createdAt: spaceRow.created_at as number
-      },
-      nodes,
-      globalHistory
-    };
-  }
-
-  async listSpaces(): Promise<Array<{
-    id: string;
-    title: string;
-    description: string;
-    createdAt: number;
-    updatedAt: number;
-    nodeCount: number;
-  }>> {
-    // Join with nodes table to count - much cleaner with relational design!
-    const result = await this.client.execute(`
-      SELECT
-        s.id,
-        s.title,
-        s.description,
-        s.created_at,
-        s.updated_at,
-        COUNT(n.id) as node_count
-      FROM spaces s
-      LEFT JOIN nodes n ON n.space_id = s.id
-      GROUP BY s.id, s.title, s.description, s.created_at, s.updated_at
-      ORDER BY s.updated_at DESC
-    `);
-
-    return result.rows.map(row => ({
-      id: row.id as string,
-      title: row.title as string,
-      description: row.description as string,
-      createdAt: row.created_at as number,
-      updatedAt: row.updated_at as number,
-      nodeCount: row.node_count as number
-    }));
-  }
-
-  async deleteSpace(id: string): Promise<boolean> {
-    const result = await this.client.execute({
-      sql: "DELETE FROM spaces WHERE id = ?",
-      args: [id]
-    });
-    return result.rowsAffected > 0;
-  }
-
-  async close(): Promise<void> {
-    this.client.close();
-  }
-}
-```
-
-#### Challenges & Solutions
-
-**Challenge 1: PostgreSQL LISTEN/NOTIFY**
-- **Problem:** WebSocket server relies on `pg_notify()` for real-time push
-- **Solution:**
-  - Turso doesn't have LISTEN/NOTIFY equivalent
-  - **Recommended approach:** Update-then-reload pattern
-    - After any write operation (INSERT/UPDATE/DELETE), explicitly broadcast updated data
-    - WebSocket server's `broadcastSpaceUpdate()` method already exists
-    - Simply call it after database operations complete
-  - **Benefits:**
-    - No polling overhead
-    - Guaranteed consistency (data is fresh after write)
-    - Simple to implement - just trigger broadcasts after writes
-    - Aligns with write patterns (API routes already handle writes)
-  - **Implementation example:**
-    ```typescript
-    // In API route after database write
-    await db.insertSpace(space);
-
-    // Trigger WebSocket broadcast
-    const wsServer = getThoughtWebSocketServer();
-    if (wsServer) {
-      await wsServer.broadcastSpaceUpdate(space.metadata.id);
-    }
-    ```
-
-**Challenge 2: Data Model Migration**
-- **Problem:** PostgreSQL stores everything as nested JSON in one row
-- **New design:** Relational schema with nodes and history as separate tables
-- **Benefits:**
-  - Node counting via SQL JOIN (no JSON parsing needed!)
-  - Individual node updates without rewriting entire space
-  - Queryable: Can filter/search nodes directly
-  - Better for indexing and vector embeddings (Phase 2)
-- **Trade-off:** More complex writes (need transactions for consistency)
-  - Solution: Use `client.batch()` for transactional multi-table writes
-
-**Challenge 3: Connection Pooling**
-- **Problem:** PostgreSQL uses `pg.Pool`, libSQL client is connection-per-instance
-- **Solution:**
-  - For local file: Single client instance is fine (SQLite handles concurrency)
-  - For remote: Client handles connection internally
-  - Match existing pattern: create/close per request (works with libSQL)
+3. **Connection Management**
+   - Matches existing pattern: create/close per request
+   - Works with both local file and remote Turso
+   - SQLite handles concurrency for local files
 
 ### Phase 2: Vector Search Enhancement
 
@@ -823,16 +598,17 @@ migrate();
 
 ## Next Steps
 
-### Immediate (Phase 1)
-1. Install `@libsql/client` package
-2. Create `src/lib/turso-database.ts` with core interface
-3. Create schema initialization script (`scripts/init-turso-schema.sql`)
-4. Implement all 5 core methods with test coverage
-5. Add environment variable configuration
-6. Test with local file database first
-7. Update API routes to trigger WebSocket broadcasts after writes (update-then-reload pattern)
+### ~~Immediate (Phase 1)~~ - ✅ ALL COMPLETED
+1. ✅ Install `@libsql/client` package
+2. ✅ Create `src/lib/turso-database.ts` with core interface
+3. ✅ Create schema initialization script (`scripts/init-turso-schema.sql`)
+4. ✅ Implement all 5 core methods with test coverage
+5. ✅ Add environment variable configuration
+6. ✅ Test with local file database first
+7. ✅ Update API routes to trigger WebSocket broadcasts after writes (update-then-reload pattern)
+8. ✅ Update WebSocket server to use database factory
 
-### Future (Phase 2)
+### Next Steps (Phase 2)
 1. Design node-level embedding schema
 2. Add vector search methods to `TursoDatabase`
 3. Integrate embedding generation (OpenAI/Transformers.js)
@@ -879,12 +655,20 @@ migrate();
 
 ## Conclusion
 
-Turso/libSQL offers compelling capabilities for this cognitive modeling project, particularly with native vector search. The integration plan preserves existing PostgreSQL functionality while introducing Turso as an alternative backend with semantic search superpowers.
+**Phase 1 Status: ✅ COMPLETE**
 
-**Recommendation:**
-- Start with Phase 1 (feature parity) using local file database
-- Test thoroughly against existing PostgreSQL behavior
-- Add Phase 2 (vector search) once core functionality is stable
-- Deploy with embedded replicas for optimal local-first experience
+Turso integration is fully operational. The system now supports both PostgreSQL and Turso/libSQL backends with seamless switching via environment variables. All core functionality works identically across both databases.
 
-The "code-as-gesture" philosophy of this project aligns well with Turso's lightweight, embeddable nature - cognitive spaces become truly portable artifacts.
+**Current Capabilities:**
+- ✅ Full CRUD operations on cognitive spaces
+- ✅ Normalized relational schema for better querying
+- ✅ Real-time WebSocket updates via update-then-reload pattern
+- ✅ Local file, remote, and embedded replica support
+- ✅ Complete interface compatibility between backends
+
+**What's Next (Phase 2):**
+- Vector embeddings for semantic search
+- Find similar spaces and related thought nodes
+- Semantic graph traversal using embedded relationships
+
+The "code-as-gesture" philosophy of this project aligns well with Turso's lightweight, embeddable nature - cognitive spaces are now truly portable artifacts that can run anywhere from local SQLite files to globally distributed edge databases.

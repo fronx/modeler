@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { Database } from '@/lib/database';
+import { createDatabase } from '@/lib/database-factory';
+import { getThoughtWebSocketServer } from '@/lib/websocket-server';
 
 export async function GET() {
-  const db = new Database();
+  const db = createDatabase();
 
   try {
     const spaces = await db.listSpaces();
@@ -32,7 +33,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const db = new Database();
+  const db = createDatabase();
 
   try {
     const { title, description } = await request.json();
@@ -51,6 +52,12 @@ export async function POST(request: Request) {
     };
 
     await db.insertSpace(newSpace);
+
+    // Trigger WebSocket broadcast (required for Turso, redundant but harmless for PostgreSQL)
+    const wsServer = getThoughtWebSocketServer();
+    if (wsServer) {
+      await wsServer.broadcastSpaceUpdate(spaceId);
+    }
 
     return NextResponse.json({
       space: {
@@ -74,7 +81,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const db = new Database();
+  const db = createDatabase();
 
   try {
     const { searchParams } = new URL(request.url);
@@ -98,6 +105,12 @@ export async function PUT(request: Request) {
 
     // Update the space (upsert)
     await db.insertSpace(spaceData);
+
+    // Trigger WebSocket broadcast (required for Turso, redundant but harmless for PostgreSQL)
+    const wsServer = getThoughtWebSocketServer();
+    if (wsServer) {
+      await wsServer.broadcastSpaceUpdate(spaceId);
+    }
 
     return NextResponse.json({
       success: true,

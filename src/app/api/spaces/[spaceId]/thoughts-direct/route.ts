@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { Database } from '@/lib/database';
+import { createDatabase } from '@/lib/database-factory';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
-  const db = new Database();
+  const db = createDatabase();
 
   try {
     const { spaceId } = await params;

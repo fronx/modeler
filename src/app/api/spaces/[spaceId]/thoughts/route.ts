@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { Database } from '@/lib/database';
+import { createDatabase } from '@/lib/database-factory';
+import { getThoughtWebSocketServer } from '@/lib/websocket-server';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
-  const db = new Database();
+  const db = createDatabase();
 
   try {
     const { spaceId } = await params;
@@ -34,7 +35,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
-  const db = new Database();
+  const db = createDatabase();
 
   try {
     const { spaceId } = await params;
@@ -82,6 +83,12 @@ export async function POST(
 
     // Save updated space
     await db.insertSpace(updatedSpace);
+
+    // Trigger WebSocket broadcast (required for Turso, redundant but harmless for PostgreSQL)
+    const wsServer = getThoughtWebSocketServer();
+    if (wsServer) {
+      await wsServer.broadcastSpaceUpdate(spaceId);
+    }
 
     return NextResponse.json({
       success: true,
