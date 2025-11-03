@@ -4,6 +4,8 @@
  *
  * This tool provides a comprehensive interface for Claude Code to interact with
  * cognitive spaces autonomously, supporting the complete /modeler workflow.
+ *
+ * Spaces can be referenced by either ID or title throughout all commands.
  */
 
 import { Command } from 'commander';
@@ -26,6 +28,28 @@ program
 // Utility function for consistent output
 function output(data: any, debugData?: any) {
   console.log(JSON.stringify(debugMode && debugData ? debugData : data, null, 2));
+}
+
+// Resolve space identifier (ID or title) to actual space
+async function resolveSpace(identifier: string): Promise<CognitiveSpace | null> {
+  const db = createDatabase();
+  try {
+    // Try as ID first
+    let space = await db.getSpace(identifier);
+    if (space) return space;
+
+    // Try as title - search all spaces
+    const allSpaces = await db.listSpaces();
+    const matchingSpace = allSpaces.find(s => s.title === identifier);
+    if (matchingSpace) {
+      space = await db.getSpace(matchingSpace.id);
+      return space;
+    }
+
+    return null;
+  } finally {
+    await db.close();
+  }
 }
 
 // ============================================================================
@@ -89,25 +113,20 @@ program
 program
   .command('get')
   .description('Get full space JSON')
-  .argument('<spaceId>', 'Space ID')
+  .argument('<spaceIdentifier>', 'Space ID or title')
   .option('--nodes-only', 'Return only the nodes')
-  .action(async (spaceId: string, options: { nodesOnly?: boolean }) => {
-    const db = createDatabase();
-    try {
-      const space = await db.getSpace(spaceId);
+  .action(async (spaceIdentifier: string, options: { nodesOnly?: boolean }) => {
+    const space = await resolveSpace(spaceIdentifier);
 
-      if (!space) {
-        console.error(`Space not found: ${spaceId}`);
-        process.exit(1);
-      }
+    if (!space) {
+      console.error(`Space not found: ${spaceIdentifier}`);
+      process.exit(1);
+    }
 
-      if (options.nodesOnly) {
-        console.log(JSON.stringify(space.nodes, null, 2));
-      } else {
-        console.log(JSON.stringify(space, null, 2));
-      }
-    } finally {
-      await db.close();
+    if (options.nodesOnly) {
+      console.log(JSON.stringify(space.nodes, null, 2));
+    } else {
+      console.log(JSON.stringify(space, null, 2));
     }
   });
 
@@ -117,65 +136,60 @@ program
 program
   .command('analyze')
   .description('Analyze space structure (focus levels, relationships, branches)')
-  .argument('<spaceId>', 'Space ID')
-  .action(async (spaceId: string) => {
-    const db = createDatabase();
-    try {
-      const space = await db.getSpace(spaceId);
+  .argument('<spaceIdentifier>', 'Space ID or title')
+  .action(async (spaceIdentifier: string) => {
+    const space = await resolveSpace(spaceIdentifier);
 
-      if (!space) {
-        console.error(`Space not found: ${spaceId}`);
-        process.exit(1);
-      }
-
-      // Analyze focus levels
-      const focusLevels: Record<string, string[]> = {
-        visible: [],
-        neutral: [],
-        hidden: []
-      };
-
-      const relationships: Array<{from: string, to: string, type: string, strength: number}> = [];
-      const branchedNodes: string[] = [];
-
-      for (const [nodeKey, nodeData] of Object.entries(space.nodes)) {
-        const focus = nodeData.focus ?? 0.0;
-        if (focus > 0.5) {
-          focusLevels.visible.push(nodeKey);
-        } else if (focus < -0.5) {
-          focusLevels.hidden.push(nodeKey);
-        } else {
-          focusLevels.neutral.push(nodeKey);
-        }
-
-        if (nodeData.relationships) {
-          for (const rel of nodeData.relationships) {
-            relationships.push({
-              from: nodeKey,
-              to: rel.target,
-              type: rel.type,
-              strength: rel.strength
-            });
-          }
-        }
-
-        if (nodeData.branches && Object.keys(nodeData.branches).length > 0) {
-          branchedNodes.push(nodeKey);
-        }
-      }
-
-      console.log(JSON.stringify({
-        title: space.metadata.title,
-        description: space.metadata.description,
-        totalNodes: Object.keys(space.nodes).length,
-        historyEntries: space.globalHistory.length,
-        focusLevels,
-        relationships,
-        branchedNodes
-      }, null, 2));
-    } finally {
-      await db.close();
+    if (!space) {
+      console.error(`Space not found: ${spaceIdentifier}`);
+      process.exit(1);
     }
+
+    // Analyze focus levels
+    const focusLevels: Record<string, string[]> = {
+      visible: [],
+      neutral: [],
+      hidden: []
+    };
+
+    const relationships: Array<{from: string, to: string, type: string, strength: number}> = [];
+    const branchedNodes: string[] = [];
+
+    for (const [nodeKey, nodeData] of Object.entries(space.nodes)) {
+      const focus = nodeData.focus ?? 0.0;
+      if (focus > 0.5) {
+        focusLevels.visible.push(nodeKey);
+      } else if (focus < -0.5) {
+        focusLevels.hidden.push(nodeKey);
+      } else {
+        focusLevels.neutral.push(nodeKey);
+      }
+
+      if (nodeData.relationships) {
+        for (const rel of nodeData.relationships) {
+          relationships.push({
+            from: nodeKey,
+            to: rel.target,
+            type: rel.type,
+            strength: rel.strength
+          });
+        }
+      }
+
+      if (nodeData.branches && Object.keys(nodeData.branches).length > 0) {
+        branchedNodes.push(nodeKey);
+      }
+    }
+
+    console.log(JSON.stringify({
+      title: space.metadata.title,
+      description: space.metadata.description,
+      totalNodes: Object.keys(space.nodes).length,
+      historyEntries: space.globalHistory.length,
+      focusLevels,
+      relationships,
+      branchedNodes
+    }, null, 2));
   });
 
 // ============================================================================
@@ -184,7 +198,7 @@ program
 program
   .command('add-node')
   .description('Add a new thought node to a space')
-  .argument('<spaceId>', 'Space ID')
+  .argument('<spaceIdentifier>', 'Space ID or title')
   .requiredOption('-t, --title <text>', 'Node title (used to generate ID)')
   .option('--body <text>', 'Node body/content')
   .option('-c, --confidence <number>', 'Confidence level (0-1)', parseFloat, 0.9)
@@ -195,14 +209,15 @@ program
   .option('--checkable <item...>', 'Add checkable list items', collect, [])
   .option('--regular <item...>', 'Add regular list items', collect, [])
   .option('-b, --branches <json>', 'Branches JSON object')
-  .action(async (spaceId: string, options: any) => {
+  .action(async (spaceIdentifier: string, options: any) => {
+    const space = await resolveSpace(spaceIdentifier);
+    if (!space) {
+      console.error(`Space not found: ${spaceIdentifier}`);
+      process.exit(1);
+    }
+
     const db = createDatabase();
     try {
-      const space = await db.getSpace(spaceId);
-      if (!space) {
-        console.error(`Space not found: ${spaceId}`);
-        process.exit(1);
-      }
 
       // Generate nodeId from title (PascalCase)
       const nodeId = options.title
@@ -270,7 +285,7 @@ program
 
       await db.insertSpace(space);
 
-      output({ success: true, nodeId }, { spaceId, nodeId, node: newNode });
+      output({ success: true, nodeId }, { spaceId: space.metadata.id, nodeId, node: newNode });
     } finally {
       await db.close();
     }
@@ -282,7 +297,7 @@ program
 program
   .command('update-node')
   .description('Update an existing thought node')
-  .argument('<spaceId>', 'Space ID')
+  .argument('<spaceIdentifier>', 'Space ID or title')
   .argument('<nodeId>', 'Node ID')
   .option('-m, --meaning <text>', 'Add new meaning')
   .option('-c, --confidence <number>', 'Confidence for new meaning', parseFloat, 0.9)
@@ -292,19 +307,20 @@ program
   .option('-r, --relates-to <nodeId:type:strength...>', 'Add relationships', collect, [])
   .option('--checkable <item...>', 'Add checkable list items', collect, [])
   .option('--regular <item...>', 'Add regular list items', collect, [])
-  .action(async (spaceId: string, nodeId: string, options: any) => {
+  .action(async (spaceIdentifier: string, nodeId: string, options: any) => {
+    const space = await resolveSpace(spaceIdentifier);
+    if (!space) {
+      console.error(`Space not found: ${spaceIdentifier}`);
+      process.exit(1);
+    }
+
+    if (!space.nodes[nodeId]) {
+      console.error(`Node '${nodeId}' not found. Use add-node to create.`);
+      process.exit(1);
+    }
+
     const db = createDatabase();
     try {
-      const space = await db.getSpace(spaceId);
-      if (!space) {
-        console.error(`Space not found: ${spaceId}`);
-        process.exit(1);
-      }
-
-      if (!space.nodes[nodeId]) {
-        console.error(`Node '${nodeId}' not found. Use add-node to create.`);
-        process.exit(1);
-      }
 
       const node = space.nodes[nodeId];
 
@@ -354,7 +370,7 @@ program
 
       await db.insertSpace(space);
 
-      output({ success: true, nodeId }, { spaceId, nodeId, node });
+      output({ success: true, nodeId }, { spaceId: space.metadata.id, nodeId, node });
     } finally {
       await db.close();
     }
@@ -366,16 +382,17 @@ program
 program
   .command('patch')
   .description('Apply raw JSON patch to a space')
-  .argument('<spaceId>', 'Space ID')
+  .argument('<spaceIdentifier>', 'Space ID or title')
   .argument('<jsonPatch>', 'JSON patch object')
-  .action(async (spaceId: string, jsonPatch: string) => {
+  .action(async (spaceIdentifier: string, jsonPatch: string) => {
+    const space = await resolveSpace(spaceIdentifier);
+    if (!space) {
+      console.error(`Space not found: ${spaceIdentifier}`);
+      process.exit(1);
+    }
+
     const db = createDatabase();
     try {
-      const space = await db.getSpace(spaceId);
-      if (!space) {
-        console.error(`Space not found: ${spaceId}`);
-        process.exit(1);
-      }
 
       const patch = JSON.parse(jsonPatch);
 
@@ -397,7 +414,7 @@ program
 
       await db.insertSpace(space);
 
-      output({ success: true, spaceId });
+      output({ success: true, spaceId: space.metadata.id });
     } finally {
       await db.close();
     }
@@ -409,16 +426,18 @@ program
 program
   .command('delete')
   .description('Delete a cognitive space')
-  .argument('<spaceId>', 'Space ID')
-  .action(async (spaceId: string) => {
+  .argument('<spaceIdentifier>', 'Space ID or title')
+  .action(async (spaceIdentifier: string) => {
+    const space = await resolveSpace(spaceIdentifier);
+    if (!space) {
+      console.error(`Space not found: ${spaceIdentifier}`);
+      process.exit(1);
+    }
+
     const db = createDatabase();
     try {
-      const deleted = await db.deleteSpace(spaceId);
-      if (!deleted) {
-        console.error(`Space not found: ${spaceId}`);
-        process.exit(1);
-      }
-      output({ success: true, deleted: spaceId });
+      await db.deleteSpace(space.metadata.id);
+      output({ success: true, deleted: space.metadata.id });
     } finally {
       await db.close();
     }

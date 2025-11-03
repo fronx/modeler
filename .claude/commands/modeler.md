@@ -38,15 +38,15 @@ When multiple cognitive architectures share persistent thought structures, new f
 npx tsx scripts/space-cli.ts create "Canada Journey Preparation" "Planning for upcoming travel to Canada"
 
 # Returns: {"id": "2025-11-03T14-29-07-411Z"}
-# Save this ID for subsequent commands
-SPACE_ID="2025-11-03T14-29-07-411Z"
+# You can now reference this space by either ID OR title in all subsequent commands
 ```
 
 **What happens:**
 - Generates unique timestamped space ID
-- Creates space in database (PostgreSQL or Turso based on DATABASE_TYPE env var)
+- Creates space in database (Turso or PostgreSQL based on DATABASE_TYPE env var)
 - Initializes empty thought space structure
-- Space immediately available via dashboard at `http://localhost:3000/?space=$SPACE_ID`
+- Space immediately available via dashboard at `http://localhost:3000/?space=<ID>`
+- **All commands accept either the space ID or the space title as identifier**
 
 ### 2. Define Your Space Purpose
 
@@ -71,21 +71,22 @@ Add the main conceptual structure - usually 3-5 core thoughts that capture the e
 
 ```bash
 # Add first thought (ID auto-generated: "ApartmentPrep")
-npx tsx scripts/space-cli.ts add-node $SPACE_ID \
+# Use space title instead of ID - much cleaner!
+npx tsx scripts/space-cli.ts add-node "Canada Journey Preparation" \
   --title "Apartment prep" \
   --body "Getting home ready for departure and return" \
   --focus 1.0 \
   --position -0.8
 
 # Add second thought
-npx tsx scripts/space-cli.ts add-node $SPACE_ID \
+npx tsx scripts/space-cli.ts add-node "Canada Journey Preparation" \
   --title "Packing" \
   --body "Selecting and organizing what to bring" \
   --focus 1.0 \
   --position 0.0
 
 # Add third thought
-npx tsx scripts/space-cli.ts add-node $SPACE_ID \
+npx tsx scripts/space-cli.ts add-node "Canada Journey Preparation" \
   --title "Shopping" \
   --body "Items to buy for the journey" \
   --focus 1.0 \
@@ -104,13 +105,13 @@ Enhance existing thoughts with checkable lists, values, and other properties:
 
 ```bash
 # Add checkable list to apartment prep
-npx tsx scripts/space-cli.ts update-node $SPACE_ID "ApartmentPrep" \
+npx tsx scripts/space-cli.ts update-node "Canada Journey Preparation" "ApartmentPrep" \
   --checkable "Take down hanging plants without plates" \
   --checkable "Brief Susan on plant watering" \
   --checkable "Tidy up living spaces"
 
 # Add values and list to shopping
-npx tsx scripts/space-cli.ts update-node $SPACE_ID "Shopping" \
+npx tsx scripts/space-cli.ts update-node "Canada Journey Preparation" "Shopping" \
   --values '{"estimated_cost": [50, 100]}' \
   --checkable "Travel shampoo" \
   --checkable "Contact lens solution (travel size)"
@@ -127,7 +128,7 @@ Add supporting information with `--focus -1.0` (hidden from dashboard but availa
 
 ```bash
 # Add background context with relationships
-npx tsx scripts/space-cli.ts add-node $SPACE_ID \
+npx tsx scripts/space-cli.ts add-node "Canada Journey Preparation" \
   --title "Trip duration" \
   --body "10 days in Canada" \
   --values '{"days": 10}' \
@@ -136,7 +137,7 @@ npx tsx scripts/space-cli.ts add-node $SPACE_ID \
   --focus -1.0
 
 # Add budget constraints
-npx tsx scripts/space-cli.ts add-node $SPACE_ID \
+npx tsx scripts/space-cli.ts add-node "Canada Journey Preparation" \
   --title "Budget constraint" \
   --body "Financial limits for the trip" \
   --values '{"max_total": 500}' \
@@ -152,17 +153,18 @@ npx tsx scripts/space-cli.ts add-node $SPACE_ID \
 ### 6. View Your Space
 
 ```bash
-# Get full space JSON
-npx tsx scripts/space-cli.ts get $SPACE_ID
+# Get full space JSON (by title or ID)
+npx tsx scripts/space-cli.ts get "Canada Journey Preparation"
 
 # Get just the nodes
-npx tsx scripts/space-cli.ts get $SPACE_ID --nodes-only
+npx tsx scripts/space-cli.ts get "Canada Journey Preparation" --nodes-only
 
 # Analyze structure (focus levels, relationships, branches)
-npx tsx scripts/space-cli.ts analyze $SPACE_ID
+npx tsx scripts/space-cli.ts analyze "Canada Journey Preparation"
 
-# View in dashboard
-echo "Dashboard: http://localhost:3000/?space=$SPACE_ID"
+# View in dashboard (need to use ID for URL)
+# Get ID from create output or list command
+npx tsx scripts/space-cli.ts list
 ```
 
 **Real-time updates:**
