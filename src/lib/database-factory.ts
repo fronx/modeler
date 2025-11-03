@@ -22,8 +22,8 @@ export interface DatabaseInterface {
  * Factory function to create database instance based on environment configuration.
  *
  * Use DATABASE_TYPE env var to select:
- * - 'turso' - Use Turso/libSQL (local file or remote)
- * - 'postgres' - Use PostgreSQL (default)
+ * - 'turso' - Use Turso/libSQL (local file or remote) - DEFAULT
+ * - 'postgres' - Use PostgreSQL (legacy)
  *
  * For Turso configuration:
  * - TURSO_DATABASE_URL - file:modeler.db or https://...
@@ -31,7 +31,7 @@ export interface DatabaseInterface {
  * - TURSO_SYNC_URL - Sync URL for embedded replica
  */
 export function createDatabase(): DatabaseInterface {
-  const dbType = process.env.DATABASE_TYPE || 'postgres';
+  const dbType = process.env.DATABASE_TYPE || 'turso';
 
   if (dbType === 'turso') {
     return new TursoDatabase();
