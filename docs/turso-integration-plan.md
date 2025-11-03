@@ -672,95 +672,101 @@ migrate();
 6. ⏳ Benchmark query performance vs PostgreSQL (future enhancement)
 7. ⏳ Optimize with embedded replicas for edge deployment (future enhancement)
 
-### Phase 3: Claude Code Integration (Next Priority)
+### Phase 3: Claude Code Integration - ✅ COMPLETED
 
-**Problem**: Current `/modeler` workflow requires many `curl` commands, each requiring permission approval. More fundamentally, Claude Code needs to be an **active cognitive modeling participant**, not just a database writer.
+**Implementation Date:** November 2025
 
-**Core Insight**: Claude needs to "think with" the space - read holistically, understand relationships, and contribute intelligently to evolving thought structures.
+**Problem Solved**: Created a comprehensive CLI tool that enables Claude Code to interact with cognitive spaces autonomously without requiring multiple permission approvals. Claude can now be an **active cognitive modeling participant**.
 
-**Requirements**:
+**Key Achievement**: Claude can "think with" the space - read holistically, understand relationships, and contribute intelligently to evolving thought structures.
 
-#### 1. Holistic Reading Capabilities
-Claude needs to understand the full cognitive context at once:
-- **Get complete space structure** - All nodes, relationships, meanings, values in one call
-- **Parse semantic architecture** - Understand tensions, conflicts, support relationships
-- **Recognize focus layers** - Distinguish foreground (focus=1.0) from background (focus=-1.0)
-- **Trace relationship chains** - Follow `supports`/`conflicts-with` connections
-- **Understand branching** - Parse interpretations and resolutions
+**Implementation:**
+- **CLI Tool**: [`scripts/space-cli.ts`](../scripts/space-cli.ts)
+- **Framework**: Commander.js for clean command parsing
+- **Output**: Concise JSON (machine-readable) with optional `--debug` mode
+- **Backend Agnostic**: Works with both PostgreSQL and Turso
 
-**Key principle**: Read comprehensively, write incrementally.
+**All Requirements Met:**
 
-#### 2. Flexible Query Interface
-Balance between convenience and power:
-- **Simple queries** for common patterns (get all nodes, filter by focus)
-- **Structured queries** for specific needs (nodes with relationships to X)
-- **SQL escape hatch** when needed (but avoid requiring it for common cases)
-- **JSON output** for easy parsing and reasoning
+#### 1. ✅ Holistic Reading Capabilities
+- ✅ `get <spaceId>` - Complete space structure with all nodes, relationships, meanings, values
+- ✅ `get <spaceId> --nodes-only` - Just the nodes for focused analysis
+- ✅ `analyze <spaceId>` - Structured summary of focus levels, relationships, branching
+- ✅ JSON output for easy parsing and reasoning
 
-#### 3. Incremental Writing Operations
-Support the full `/modeler` workflow:
-- **Create spaces** with title/description
-- **Add individual nodes** with meanings, values, relationships
-- **Update nodes** incrementally (PATCH semantics)
-- **Manage lists** (checkable/regular)
-- **Set focus levels** (promote/demote visibility)
-- **Adjust semantic positions** based on conversation flow
+#### 2. ✅ Flexible Query Interface
+- ✅ Simple commands for common patterns (list, get, analyze)
+- ✅ Structured node queries via analyze command
+- ✅ Raw JSON patch support for advanced use cases
+- ✅ All output in JSON format
 
-#### 4. Conversational Intelligence
-Enable Claude to participate naturally:
-- **Understand current state** before responding
-- **Reference nodes by name** in conversation
-- **Suggest new nodes** based on existing tensions
-- **Propose relationships** that emerge from discussion
-- **Update focus** as conversation evolves
-- **Never discuss hidden nodes** without promoting them first
+#### 3. ✅ Incremental Writing Operations
+- ✅ `create <title> [description]` - Create spaces
+- ✅ `add-node` - Add nodes with meanings, values, relationships
+- ✅ `update-node` - Update nodes incrementally (PATCH semantics)
+- ✅ `--checkable` and `--regular` - Manage lists
+- ✅ `-f, --focus` - Set focus levels
+- ✅ `-p, --position` - Adjust semantic positions
+- ✅ `-r, --relates-to` - Add relationships
 
-#### 5. Vector Search Integration (Phase 2)
-When enabled, leverage semantic capabilities:
-- **Find related concepts** across all spaces
-- **Discover similar nodes** within current space
-- **Suggest connections** based on semantic similarity
+#### 4. ✅ Conversational Intelligence Support
+- ✅ Get full context before responding (`get`, `analyze`)
+- ✅ Reference nodes by name (node IDs in all operations)
+- ✅ Add nodes based on tensions (`add-node` with relationships)
+- ✅ Update focus as conversation evolves (`update-node --focus`)
+- ✅ Analyze hidden vs visible nodes (`analyze` shows focus levels)
 
-**Proposed CLI Interface**:
+#### 5. ✅ Vector Search Integration
+- ✅ `search <query>` - Find related concepts across all spaces
+- ✅ `search-nodes <query> --space <id>` - Discover similar nodes
+- ✅ Returns similarity scores for connection suggestions
+
+**Complete Documentation**: [`docs/claude-code-cli-guide.md`](./claude-code-cli-guide.md)
+
+**CLI Interface Summary:**
 
 ```bash
-# Holistic reading
-npx tsx scripts/space-cli.ts get <spaceId>                    # Full space JSON
-npx tsx scripts/space-cli.ts get <spaceId> --nodes-only       # Just nodes
-npx tsx scripts/space-cli.ts get <spaceId> --focus visible    # Only foreground
-npx tsx scripts/space-cli.ts analyze <spaceId>                # Summary of tensions/relationships
-
-# Incremental writing
+# Space management
+npx tsx scripts/space-cli.ts list [--json]
 npx tsx scripts/space-cli.ts create "Title" "Description"
-npx tsx scripts/space-cli.ts add-node <spaceId> "NodeId" \
-  --meaning "Description" \
-  --focus 1.0 \
-  --position -0.5 \
-  --relates-to "OtherNode:supports:0.8"
+npx tsx scripts/space-cli.ts get <spaceId> [--nodes-only]
+npx tsx scripts/space-cli.ts analyze <spaceId>
+npx tsx scripts/space-cli.ts delete <spaceId>
 
-npx tsx scripts/space-cli.ts update <spaceId> "NodeId" \
-  --add-list-item "Task description" \
-  --set-focus 0.0
+# Node management
+npx tsx scripts/space-cli.ts add-node <spaceId> -t "Node Title" [--body "content"]
+npx tsx scripts/space-cli.ts update-node <spaceId> <nodeId> [options]
+npx tsx scripts/space-cli.ts patch <spaceId> '{"nodes": {...}}'
 
-npx tsx scripts/space-cli.ts patch <spaceId> '{...}'          # Raw JSON patch
+# Vector search (Turso only)
+npx tsx scripts/space-cli.ts search "query" [-l 10]
+npx tsx scripts/space-cli.ts search-nodes "query" [-s <spaceId>] [-l 10]
 
-# Vector search
-npx tsx scripts/space-cli.ts search "concept query"
-npx tsx scripts/space-cli.ts search-nodes "query" --space <spaceId>
-
-# List and navigate
-npx tsx scripts/space-cli.ts list
-npx tsx scripts/space-cli.ts list --recent 5
+# Options
+--debug                   # Detailed output
+-t, --title <text>        # Node title (auto-generates ID)
+--body <text>             # Additional content
+-f, --focus <number>      # -1=hidden, 0=neutral, 1=visible
+-p, --position <number>   # Semantic position -1 to 1
+-r, --relates-to <...>    # Add relationship (nodeId:type:strength)
+--checkable <item>        # Checkable list item
+--regular <item>          # Regular list item
+-v, --values <json>       # JSON values object
 ```
 
-**Design Principles**:
-1. **Read-heavy, write-light** - Get full context at once, update incrementally
-2. **SQL-like flexibility** - Powerful queries without dropping to raw SQL
-3. **JSON everywhere** - Easy parsing for AI reasoning
-4. **No permission prompts** - Pre-approved tool configuration
-5. **Conversational flow** - Commands match natural cognitive modeling dialogue
+**Key Features:**
+- ✅ Auto-generated node IDs from titles (PascalCase)
+- ✅ Concise JSON output (machine-readable)
+- ✅ Debug mode for detailed output (`--debug`)
+- ✅ Backend agnostic (works with PostgreSQL and Turso)
+- ✅ Comprehensive test suite ([`scripts/test-space-cli.ts`](../scripts/test-space-cli.ts))
 
-See: [.claude/commands/modeler.md](.claude/commands/modeler.md) for the complete workflow that needs support.
+**Design Principles:**
+1. **Read-heavy, write-light** - Get full context at once, update incrementally
+2. **JSON everywhere** - All output parseable for AI reasoning
+3. **No permission prompts** - Pre-approved for Claude Code autonomy
+4. **Conversational flow** - Commands match natural cognitive modeling dialogue
+5. **Fail-fast** - Clear error messages with exit codes
 
 ### Future Enhancements (Phase 4+)
 1. **Dashboard UI for Vector Search**: Visual semantic search interface

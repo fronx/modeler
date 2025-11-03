@@ -29,25 +29,24 @@ When multiple cognitive architectures share persistent thought structures, new f
 
 ## Step-by-Step: Creating Your First Cognitive Space
 
+**Note:** Use the Space CLI tool (`scripts/space-cli.ts`) for autonomous cognitive modeling. See [`docs/claude-code-cli-guide.md`](../docs/claude-code-cli-guide.md) for complete reference.
+
 ### 1. Create a New Space
 
 ```bash
-# Create via Next.js API
-curl -X POST http://localhost:3000/api/spaces \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Canada Journey Preparation",
-    "description": "Planning for upcoming travel to Canada - apartment, packing, and shopping"
-  }'
+# Create via CLI
+npx tsx scripts/space-cli.ts create "Canada Journey Preparation" "Planning for upcoming travel to Canada"
 
-# Returns: {"id": "canada-journey-prep-2025-09-18T10-33-52-3NZ", "title": "...", ...}
+# Returns: {"id": "2025-11-03T14-29-07-411Z"}
+# Save this ID for subsequent commands
+SPACE_ID="2025-11-03T14-29-07-411Z"
 ```
 
 **What happens:**
 - Generates unique timestamped space ID
-- Creates JSON document in PostgreSQL JSONB
+- Creates space in database (PostgreSQL or Turso based on DATABASE_TYPE env var)
 - Initializes empty thought space structure
-- Space immediately available via dashboard and API
+- Space immediately available via dashboard at `http://localhost:3000/?space=$SPACE_ID`
 
 ### 2. Define Your Space Purpose
 
@@ -71,113 +70,99 @@ Your generated JSON structure starts with metadata:
 Add the main conceptual structure - usually 3-5 core thoughts that capture the essential tensions or categories:
 
 ```bash
-# Add first thought
-curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ/thoughts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "Apartment prep",
-    "meanings": [{"content": "Getting home ready for departure and return", "confidence": 0.9, "timestamp": 1695123456789}],
-    "focus": 1.0,
-    "semanticPosition": -0.8
-  }'
+# Add first thought (ID auto-generated: "ApartmentPrep")
+npx tsx scripts/space-cli.ts add-node $SPACE_ID \
+  --title "Apartment prep" \
+  --body "Getting home ready for departure and return" \
+  --focus 1.0 \
+  --position -0.8
 
 # Add second thought
-curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ/thoughts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "Packing",
-    "meanings": [{"content": "Selecting and organizing what to bring", "confidence": 0.9, "timestamp": 1695123456789}],
-    "focus": 1.0,
-    "semanticPosition": 0.0
-  }'
+npx tsx scripts/space-cli.ts add-node $SPACE_ID \
+  --title "Packing" \
+  --body "Selecting and organizing what to bring" \
+  --focus 1.0 \
+  --position 0.0
 
 # Add third thought
-curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ/thoughts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "Shopping",
-    "meanings": [{"content": "Items to buy for the journey", "confidence": 0.9, "timestamp": 1695123456789}],
-    "focus": 1.0,
-    "semanticPosition": 0.8
-  }'
+npx tsx scripts/space-cli.ts add-node $SPACE_ID \
+  --title "Shopping" \
+  --body "Items to buy for the journey" \
+  --focus 1.0 \
+  --position 0.8
 ```
+
+**Parameters:**
+- `--title` - Node title (auto-generates PascalCase ID)
+- `--body` - Additional content (optional)
+- `--focus` - Visibility: 1.0 (visible), 0.0 (neutral), -1.0 (hidden)
+- `--position` - Semantic position: -1.0 (left) to 1.0 (right)
 
 ### 4. Add Properties and Lists
 
-Use PATCH to enhance existing thoughts with specific values and actionable items:
+Enhance existing thoughts with checkable lists, values, and other properties:
 
 ```bash
 # Add checkable list to apartment prep
-curl -X PATCH http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nodes": {
-      "Apartment prep": {
-        "checkableList": [
-          {"item": "Take down hanging plants without plates", "checked": false},
-          {"item": "Brief Susan on plant watering", "checked": true},
-          {"item": "Tidy up living spaces", "checked": false}
-        ]
-      }
-    }
-  }'
+npx tsx scripts/space-cli.ts update-node $SPACE_ID "ApartmentPrep" \
+  --checkable "Take down hanging plants without plates" \
+  --checkable "Brief Susan on plant watering" \
+  --checkable "Tidy up living spaces"
 
 # Add values and list to shopping
-curl -X PATCH http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nodes": {
-      "Shopping": {
-        "values": {"estimated_cost": [50, 100]},
-        "checkableList": [
-          {"item": "Travel shampoo", "checked": false},
-          {"item": "Contact lens solution (travel size)", "checked": false}
-        ]
-      }
-    }
-  }'
+npx tsx scripts/space-cli.ts update-node $SPACE_ID "Shopping" \
+  --values '{"estimated_cost": [50, 100]}' \
+  --checkable "Travel shampoo" \
+  --checkable "Contact lens solution (travel size)"
 ```
+
+**Parameters:**
+- `--checkable` - Add checkable list item (can repeat)
+- `--regular` - Add regular list item (can repeat)
+- `--values` - JSON object of values
 
 ### 5. Create Background Context
 
-Add supporting information with `focus: -1.0` (hidden from dashboard but available for AI reasoning):
+Add supporting information with `--focus -1.0` (hidden from dashboard but available for AI reasoning):
 
 ```bash
 # Add background context with relationships
-curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ/thoughts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "Trip duration",
-    "meanings": [{"content": "10 days in Canada", "confidence": 0.9, "timestamp": 1695123456789}],
-    "values": {"days": 10},
-    "relationships": [
-      {"type": "supports", "target": "Packing", "strength": 0.9},
-      {"type": "supports", "target": "Shopping", "strength": 0.7}
-    ],
-    "focus": -1.0,
-    "semanticPosition": 0.0
-  }'
+npx tsx scripts/space-cli.ts add-node $SPACE_ID \
+  --title "Trip duration" \
+  --body "10 days in Canada" \
+  --values '{"days": 10}' \
+  --relates-to "Packing:supports:0.9" \
+  --relates-to "Shopping:supports:0.7" \
+  --focus -1.0
 
 # Add budget constraints
-curl -X POST http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ/thoughts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "Budget constraint",
-    "meanings": [{"content": "Financial limits for the trip", "confidence": 0.9, "timestamp": 1695123456789}],
-    "values": {"max_total": 500},
-    "relationships": [
-      {"type": "conflicts-with", "target": "Shopping", "strength": 0.6}
-    ],
-    "focus": -1.0,
-    "semanticPosition": 0.0
-  }'
+npx tsx scripts/space-cli.ts add-node $SPACE_ID \
+  --title "Budget constraint" \
+  --body "Financial limits for the trip" \
+  --values '{"max_total": 500}' \
+  --relates-to "Shopping:conflicts-with:0.6" \
+  --focus -1.0
 ```
+
+**Parameters:**
+- `--relates-to` - Add relationship in format `TargetNode:type:strength` (can repeat)
+  - Types: `supports`, `conflicts-with`, or custom
+  - Strength: 0.0 to 1.0
 
 ### 6. View Your Space
 
 ```bash
-# Access via API
-curl http://localhost:3000/api/spaces/canada-journey-prep-2025-09-18T10-33-52-3NZ
+# Get full space JSON
+npx tsx scripts/space-cli.ts get $SPACE_ID
+
+# Get just the nodes
+npx tsx scripts/space-cli.ts get $SPACE_ID --nodes-only
+
+# Analyze structure (focus levels, relationships, branches)
+npx tsx scripts/space-cli.ts analyze $SPACE_ID
+
+# View in dashboard
+echo "Dashboard: http://localhost:3000/?space=$SPACE_ID"
 ```
 
 **Real-time updates:**

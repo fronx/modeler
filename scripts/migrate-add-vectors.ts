@@ -63,7 +63,7 @@ async function migrateAddVectors() {
 
     console.log('\n✓ Migration completed successfully!');
     console.log('\nNext steps:');
-    console.log('1. Set ENABLE_VECTOR_SEARCH=true in your environment');
+    console.log('1. Set ENABLE_VECTOR_SEARCH =true in your environment');
     console.log('2. Set OPENAI_API_KEY for embedding generation');
     console.log('3. Existing spaces will get embeddings on next update');
     console.log('4. Use /api/search/spaces and /api/search/nodes for semantic search\n');
