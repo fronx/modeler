@@ -58,7 +58,5 @@ export async function GET(request: NextRequest) {
       { error: error.message || 'Failed to search nodes' },
       { status: 500 }
     );
-  } finally {
-    await db.close();
   }
 }

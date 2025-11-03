@@ -47,7 +47,5 @@ export async function GET(request: NextRequest) {
       { error: error.message || 'Failed to search spaces' },
       { status: 500 }
     );
-  } finally {
-    await db.close();
   }
 }

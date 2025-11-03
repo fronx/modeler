@@ -62,7 +62,5 @@ export async function POST(
       error: 'Failed to update item',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }

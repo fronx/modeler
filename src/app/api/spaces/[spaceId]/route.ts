@@ -24,8 +24,6 @@ export async function GET(
   } catch (error) {
     console.error('Failed to load space:', error);
     return NextResponse.json({ error: 'Failed to load space' }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }
 
@@ -70,8 +68,6 @@ export async function PUT(
       error: 'Failed to update space',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }
 
@@ -194,8 +190,6 @@ export async function PATCH(
       error: 'Failed to patch space',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }
 
@@ -225,7 +219,5 @@ export async function DELETE(
       error: 'Failed to delete space',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }

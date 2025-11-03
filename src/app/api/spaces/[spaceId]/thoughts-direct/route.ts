@@ -29,7 +29,5 @@ export async function GET(
       error: 'Failed to load space data',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }

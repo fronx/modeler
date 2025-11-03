@@ -27,8 +27,6 @@ export async function GET() {
   } catch (error) {
     console.error('Failed to load spaces:', error);
     return NextResponse.json({ error: 'Failed to load spaces' }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }
 
@@ -75,8 +73,6 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Failed to create space:', error);
     return NextResponse.json({ error: 'Failed to create space' }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }
 
@@ -124,7 +120,5 @@ export async function PUT(request: Request) {
       error: 'Failed to update space',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }

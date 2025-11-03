@@ -23,7 +23,15 @@ export interface TursoDatabaseConfig {
   url?: string;              // file:local.db or https://...
   authToken?: string;        // For remote/replica
   syncUrl?: string;          // For embedded replica
+  syncInterval?: number;     // Auto-sync interval in seconds (0 = disabled)
   enableVectorSearch?: boolean;  // Whether to generate embeddings (requires OPENAI_API_KEY)
+}
+
+export interface SyncStats {
+  lastSyncedAt?: number;     // Timestamp of last successful sync
+  syncCount: number;         // Total number of syncs performed
+  isSyncing: boolean;        // Whether a sync is currently in progress
+  lastError?: string;        // Last sync error message
 }
 
 export interface SpaceSearchResult {
@@ -46,14 +54,55 @@ export class TursoDatabase {
   private client: Client;
   private initialized = false;
   private vectorSearchEnabled: boolean;
+  private syncIntervalId?: NodeJS.Timeout;
+  private syncStats: SyncStats = {
+    syncCount: 0,
+    isSyncing: false
+  };
+  private isEmbeddedReplica: boolean;
 
   constructor(config: TursoDatabaseConfig = {}) {
-    this.client = createClient({
-      url: config.url || process.env.TURSO_DATABASE_URL || "file:modeler.db",
-      authToken: config.authToken || process.env.TURSO_AUTH_TOKEN,
-      syncUrl: config.syncUrl || process.env.TURSO_SYNC_URL
-    });
+    const url = config.url || process.env.TURSO_DATABASE_URL || "file:modeler.db";
+    const syncUrl = config.syncUrl || process.env.TURSO_SYNC_URL;
+    const syncInterval = config.syncInterval ?? (process.env.TURSO_SYNC_INTERVAL ? parseInt(process.env.TURSO_SYNC_INTERVAL) : 0);
+
+    this.isEmbeddedReplica = !!syncUrl && url.startsWith('file:');
+
+    try {
+      this.client = createClient({
+        url,
+        authToken: config.authToken || process.env.TURSO_AUTH_TOKEN,
+        syncUrl
+      });
+    } catch (error) {
+      // Check for the specific "db file exists but metadata file does not" error
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('db file exists but metadata file does not')) {
+        const dbPath = url.replace('file:', '');
+        throw new Error(
+          `Invalid local state: Database file exists without sync metadata.\n\n` +
+          `This happens when you enable embedded replicas on an existing database.\n\n` +
+          `To fix this:\n` +
+          `1. Back up your current database:\n` +
+          `   mv ${dbPath} ${dbPath}.backup\n\n` +
+          `2. Restart your application - it will create a fresh replica and sync from remote\n\n` +
+          `If you haven't migrated your data yet:\n` +
+          `1. First migrate: npx tsx scripts/migrate-to-embedded-replica.ts\n` +
+          `2. Then back up and remove: mv ${dbPath} ${dbPath}.backup\n` +
+          `3. Restart your application\n\n` +
+          `See docs/EMBEDDED-REPLICAS.md for more details.`
+        );
+      }
+      // Re-throw other errors
+      throw error;
+    }
+
     this.vectorSearchEnabled = config.enableVectorSearch ?? (process.env.ENABLE_VECTOR_SEARCH === 'true');
+
+    // Set up automatic syncing if interval is specified and we're using embedded replica
+    if (this.isEmbeddedReplica && syncInterval > 0) {
+      this.startAutoSync(syncInterval);
+    }
   }
 
   private async ensureInitialized(): Promise<void> {
@@ -490,7 +539,102 @@ export class TursoDatabase {
       });
   }
 
+  // ============================================================================
+  // Embedded Replica Sync Methods
+  // ============================================================================
+
+  /**
+   * Manually trigger a sync between the local replica and remote database.
+   * Only works when using embedded replicas (file: URL with syncUrl).
+   *
+   * @returns Promise that resolves when sync completes
+   * @throws Error if not using embedded replica or if sync fails
+   */
+  async sync(): Promise<void> {
+    if (!this.isEmbeddedReplica) {
+      throw new Error('Sync is only available for embedded replicas (file: URL with syncUrl)');
+    }
+
+    if (this.syncStats.isSyncing) {
+      console.warn('Sync already in progress, skipping');
+      return;
+    }
+
+    this.syncStats.isSyncing = true;
+    this.syncStats.lastError = undefined;
+
+    try {
+      await this.client.sync();
+      this.syncStats.syncCount++;
+      this.syncStats.lastSyncedAt = Date.now();
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.syncStats.lastError = errorMsg;
+      throw new Error(`Sync failed: ${errorMsg}`);
+    } finally {
+      this.syncStats.isSyncing = false;
+    }
+  }
+
+  /**
+   * Start automatic background syncing at the specified interval.
+   *
+   * @param intervalSeconds - Seconds between syncs
+   */
+  private startAutoSync(intervalSeconds: number): void {
+    if (!this.isEmbeddedReplica) {
+      console.warn('Auto-sync is only available for embedded replicas');
+      return;
+    }
+
+    // Clear any existing interval
+    this.stopAutoSync();
+
+    console.log(`Starting auto-sync every ${intervalSeconds} seconds`);
+    this.syncIntervalId = setInterval(async () => {
+      try {
+        await this.sync();
+      } catch (error) {
+        console.error('Auto-sync failed:', error);
+      }
+    }, intervalSeconds * 1000);
+
+    // Perform initial sync in background (non-blocking)
+    // Use setImmediate to ensure it doesn't block construction
+    setImmediate(() => {
+      this.sync().catch(error => {
+        console.error('Initial sync failed:', error);
+      });
+    });
+  }
+
+  /**
+   * Stop automatic background syncing.
+   */
+  stopAutoSync(): void {
+    if (this.syncIntervalId) {
+      clearInterval(this.syncIntervalId);
+      this.syncIntervalId = undefined;
+      console.log('Auto-sync stopped');
+    }
+  }
+
+  /**
+   * Get current sync statistics.
+   */
+  getSyncStats(): Readonly<SyncStats> {
+    return { ...this.syncStats };
+  }
+
+  /**
+   * Check if this database is configured as an embedded replica.
+   */
+  isReplica(): boolean {
+    return this.isEmbeddedReplica;
+  }
+
   async close(): Promise<void> {
+    this.stopAutoSync();
     this.client.close();
   }
 }

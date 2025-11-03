@@ -162,9 +162,8 @@ export class ThoughtWebSocketServer {
     } catch (error) {
       console.error('Failed to load spaces from database:', error);
       return [];
-    } finally {
-      await db.close();
     }
+    // Don't close - database is now a singleton managed by database-factory
   }
 
   private async loadSpaceThoughts(spaceId: string): Promise<Record<string, any>> {
@@ -175,9 +174,8 @@ export class ThoughtWebSocketServer {
     } catch (error) {
       console.error(`Failed to load space thoughts for ${spaceId}:`, error);
       return {};
-    } finally {
-      await db.close();
     }
+    // Don't close - database is now a singleton managed by database-factory
   }
 
   public close(): void {

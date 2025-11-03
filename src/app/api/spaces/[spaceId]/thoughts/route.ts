@@ -26,8 +26,6 @@ export async function GET(
   } catch (error) {
     console.error('Failed to load space thoughts:', error);
     return NextResponse.json({ error: 'Failed to load space thoughts' }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }
 
@@ -103,7 +101,5 @@ export async function POST(
       error: 'Failed to add thought',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
-  } finally {
-    await db.close();
   }
 }
