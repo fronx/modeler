@@ -1,31 +1,25 @@
 /**
  * WebSocket server for real-time thought updates
- * Uses PostgreSQL LISTEN/NOTIFY for instant push notifications
+ * Uses explicit broadcast pattern after database writes
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
-import { DatabaseConfig } from './database';
 import { createDatabase } from './database-factory';
-import { Client } from 'pg';
 
 export class ThoughtWebSocketServer {
   private wss: WebSocketServer;
   private server: any;
   private clients = new Set<WebSocket>();
   private actualPort: number = 8080;
-  private notificationClient: Client | null = null;
-  private dbConfig: DatabaseConfig;
 
-  constructor(port = 8080, dbConfig: DatabaseConfig = {}) {
-    this.dbConfig = dbConfig;
+  constructor(port = 8080) {
 
     // Create HTTP server for WebSocket upgrade
     this.server = createServer();
     this.wss = new WebSocketServer({ server: this.server });
 
     this.setupWebSocketHandlers();
-    this.setupDatabaseNotifications();
 
     this.server.listen(port, () => {
       this.actualPort = port;
@@ -73,68 +67,6 @@ export class ThoughtWebSocketServer {
         this.clients.delete(ws);
       });
     });
-  }
-
-  private async setupDatabaseNotifications(): Promise<void> {
-    const dbType = process.env.DATABASE_TYPE || 'postgres';
-
-    // Only set up LISTEN/NOTIFY for PostgreSQL
-    if (dbType !== 'postgres') {
-      console.log('📡 Using update-then-reload pattern for real-time updates (Turso mode)');
-      console.log('   Broadcasts triggered explicitly after API writes');
-      return;
-    }
-
-    try {
-      // Create a dedicated client for notifications (must stay connected)
-      this.notificationClient = new Client({
-        host: this.dbConfig.host || '127.0.0.1',
-        port: this.dbConfig.port || 54322,
-        database: this.dbConfig.database || 'postgres',
-        user: this.dbConfig.user || 'postgres',
-        password: this.dbConfig.password || 'postgres'
-      });
-
-      await this.notificationClient.connect();
-
-      // Listen for space changes
-      await this.notificationClient.query('LISTEN space_changes');
-
-      // Handle notifications
-      this.notificationClient.on('notification', async (msg) => {
-        if (msg.channel === 'space_changes') {
-          try {
-            const payload = JSON.parse(msg.payload || '{}');
-            console.log('📢 Database notification:', payload);
-
-            // Broadcast updates to all connected clients
-            await this.handleSpaceChange(payload);
-          } catch (error) {
-            console.error('Failed to parse notification payload:', error);
-          }
-        }
-      });
-
-      console.log('👁️  PostgreSQL LISTEN/NOTIFY notifications started');
-
-    } catch (error) {
-      console.error('Failed to setup database notifications:', error);
-      throw new Error('Database notifications are required - cannot start WebSocket server without push notifications');
-    }
-  }
-
-  private async handleSpaceChange(payload: any): Promise<void> {
-    const { operation, space_id } = payload;
-
-    if (operation === 'INSERT' || operation === 'UPDATE' || operation === 'DELETE') {
-      // Broadcast updated space list to all clients
-      await this.broadcastSpaceList();
-
-      // If it's an update to a specific space, also broadcast its thoughts
-      if (operation === 'UPDATE' && space_id) {
-        await this.broadcastSpaceUpdate(space_id);
-      }
-    }
   }
 
 
@@ -249,9 +181,6 @@ export class ThoughtWebSocketServer {
   }
 
   public close(): void {
-    if (this.notificationClient) {
-      this.notificationClient.end();
-    }
     this.wss.close();
     this.server.close();
   }

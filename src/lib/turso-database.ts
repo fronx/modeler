@@ -1,5 +1,4 @@
 import { createClient, Client } from "@libsql/client";
-import type { CognitiveSpace } from './database';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
@@ -8,6 +7,17 @@ import {
   extractNodeSemantics,
   serializeEmbedding
 } from './embeddings';
+
+export interface CognitiveSpace {
+  metadata: {
+    id: string;
+    title: string;
+    description: string;
+    createdAt: number;
+  };
+  nodes: Record<string, any>;
+  globalHistory: string[];
+}
 
 export interface TursoDatabaseConfig {
   url?: string;              // file:local.db or https://...

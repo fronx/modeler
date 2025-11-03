@@ -7,14 +7,13 @@
  * 1. Run: npx tsx scripts/migrate-add-vectors.ts
  * 2. Set: ENABLE_VECTOR_SEARCH=true
  * 3. Set: OPENAI_API_KEY=your-key
- * 4. Set: DATABASE_TYPE=turso
  *
  * Usage:
  *   npx tsx test-vector-search.ts
  */
 
 import { TursoDatabase } from './src/lib/turso-database';
-import type { CognitiveSpace } from './src/lib/database';
+import type { CognitiveSpace } from './src/lib/turso-database';
 
 // Test data - sample cognitive spaces
 const testSpaces: CognitiveSpace[] = [

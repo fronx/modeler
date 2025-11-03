@@ -2,27 +2,30 @@
 
 ## 🚀 New Architecture: Real-Time Collaborative Cognitive Spaces
 
-**We're migrating to a database-driven, real-time collaborative system!**
+**We've built a database-driven, real-time collaborative system!**
 
-👉 **[See docs/DATABASE-ARCHITECTURE.md for the new vision](docs/DATABASE-ARCHITECTURE.md)**
-📚 **[Database Setup Guide](docs/DATABASE-SETUP.md)** - How to run the new system locally
+👉 **[See docs/DATABASE-ARCHITECTURE.md for the architecture](docs/DATABASE-ARCHITECTURE.md)**
+📚 **[Turso Usage Guide](docs/turso-usage.md)** - How to use the system with Turso
 
-The system described below (file-based cognitive spaces) remains functional and provides the foundation for understanding our approach. However, we're building toward real-time collaborative thinking where multiple minds can simultaneously shape persistent mental models.
+The system described below (file-based cognitive spaces) remains functional and provides the foundation for understanding our approach. However, we've evolved to support real-time collaborative thinking where multiple minds can simultaneously shape persistent mental models.
 
-**Key improvements coming:**
+**Key features:**
 - **Real-time collaboration**: Multiple users editing the same cognitive space
 - **Instant updates**: No compilation step - direct JSON editing with live dashboard sync
 - **Persistent shared context**: Mental models that survive and evolve across conversations
-- **Database storage**: PostgreSQL with JSONB for flexible, concurrent access
+- **Database storage**: Turso (libSQL) for flexible, concurrent access with edge replication
+- **Vector search**: Semantic search across spaces and thought nodes using OpenAI embeddings
 
-**🚀 Quick Start (New Database System):**
+**🚀 Quick Start:**
 ```bash
-# Start local database
-supabase start
-supabase db reset
+# Install dependencies
+npm install
 
-# Now you have PostgreSQL running with cognitive spaces schema
-# Connection: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+# Start the dashboard
+npm run dev
+
+# The system uses local file-based storage (file:modeler.db) by default
+# For remote Turso, set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
 ```
 
 ---

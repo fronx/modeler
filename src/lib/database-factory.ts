@@ -1,8 +1,7 @@
-import { Database } from './database';
 import { TursoDatabase } from './turso-database';
-import type { CognitiveSpace } from './database';
+import type { CognitiveSpace } from './turso-database';
 
-// Unified interface for both database implementations
+// Database interface for Turso operations
 export interface DatabaseInterface {
   insertSpace(space: CognitiveSpace): Promise<void>;
   getSpace(id: string): Promise<CognitiveSpace | null>;
@@ -19,23 +18,15 @@ export interface DatabaseInterface {
 }
 
 /**
- * Factory function to create database instance based on environment configuration.
+ * Factory function to create database instance.
  *
- * Use DATABASE_TYPE env var to select:
- * - 'turso' - Use Turso/libSQL (local file or remote) - DEFAULT
- * - 'postgres' - Use PostgreSQL (legacy)
+ * Uses Turso/libSQL as the database backend.
  *
- * For Turso configuration:
+ * Configuration via environment variables:
  * - TURSO_DATABASE_URL - file:modeler.db or https://...
  * - TURSO_AUTH_TOKEN - Auth token for remote/replica
  * - TURSO_SYNC_URL - Sync URL for embedded replica
  */
 export function createDatabase(): DatabaseInterface {
-  const dbType = process.env.DATABASE_TYPE || 'turso';
-
-  if (dbType === 'turso') {
-    return new TursoDatabase();
-  } else {
-    return new Database();
-  }
+  return new TursoDatabase();
 }

@@ -7,7 +7,7 @@
  */
 
 import { TursoDatabase } from './src/lib/turso-database';
-import type { CognitiveSpace } from './src/lib/database';
+import type { CognitiveSpace } from './src/lib/turso-database';
 
 async function runTests() {
   console.log('🧪 Testing Turso Database Implementation\n');

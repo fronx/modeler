@@ -11,7 +11,7 @@ All Phase 1 goals have been successfully implemented and tested:
 - ✅ TursoDatabase class with full CRUD support
 - ✅ Database factory for runtime backend selection
 - ✅ All API routes updated to use factory pattern
-- ✅ WebSocket broadcasts work with both PostgreSQL and Turso
+- ✅ WebSocket broadcasts work with explicit update pattern
 - ✅ Local file database tested and verified
 - ✅ Update-then-reload pattern for real-time updates
 
@@ -25,13 +25,11 @@ All Phase 1 goals have been successfully implemented and tested:
 
 **Usage:**
 ```bash
-# Switch to Turso
-export DATABASE_TYPE=turso
+# Start the system (uses Turso by default)
 npm run dev
 
-# Switch to PostgreSQL
-export DATABASE_TYPE=postgres
-npm run dev
+# Uses file:modeler.db for local storage
+# Or set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN for remote
 ```
 
 ---
