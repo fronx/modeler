@@ -25,6 +25,9 @@ export interface TursoDatabaseConfig {
   syncUrl?: string;          // For embedded replica
   syncInterval?: number;     // Auto-sync interval in seconds (0 = disabled)
   enableVectorSearch?: boolean;  // Whether to generate embeddings (requires OPENAI_API_KEY)
+  offline?: boolean;         // Enable offline mode for fast local writes (default: true for embedded replicas)
+                            // When true: writes are instant (1-2ms), synced in background
+                            // When false: writes wait for remote confirmation (100-3000ms+ depending on network)
 }
 
 export interface SyncStats {
@@ -69,10 +72,17 @@ export class TursoDatabase {
     this.isEmbeddedReplica = !!syncUrl && url.startsWith('file:');
 
     try {
+      // IMPORTANT: Enable offline mode for embedded replicas to get fast local writes.
+      // Without this, every write operation blocks waiting for network round-trip to remote Turso.
+      // Performance impact: offline:false = 3000ms+, offline:true = 1-2ms for typical writes.
+      // Trade-off: With offline:true, other replicas see changes after next sync interval (not immediately).
+      const useOfflineMode = config.offline ?? this.isEmbeddedReplica;
+
       this.client = createClient({
         url,
         authToken: config.authToken || process.env.TURSO_AUTH_TOKEN,
-        syncUrl
+        syncUrl,
+        offline: useOfflineMode
       });
     } catch (error) {
       // Check for the specific "db file exists but metadata file does not" error
@@ -213,6 +223,7 @@ export class TursoDatabase {
           space.metadata.title,
           space.metadata.description || space.metadata.title
         ]);
+
         await this.updateSpaceEmbeddings(space.metadata.id, titleEmb, descEmb);
 
         // Generate node embeddings in batches
@@ -229,12 +240,27 @@ export class TursoDatabase {
 
           const embeddings = await generateEmbeddingsBatch(nodeTexts);
 
-          // Update each node with its embeddings (title and full)
+          // Batch update all node embeddings in a single transaction
+          const nodeUpdateStatements = [];
           for (let i = 0; i < nodeKeys.length; i++) {
             const titleEmb = embeddings[i * 2];
             const fullEmb = embeddings[i * 2 + 1];
-            await this.updateNodeEmbeddings(space.metadata.id, nodeKeys[i], titleEmb, fullEmb);
+            nodeUpdateStatements.push({
+              sql: `
+                UPDATE nodes
+                SET title_embedding = vector32(?),
+                    full_embedding = vector32(?)
+                WHERE space_id = ? AND node_key = ?
+              `,
+              args: [
+                serializeEmbedding(titleEmb),
+                serializeEmbedding(fullEmb),
+                space.metadata.id,
+                nodeKeys[i]
+              ]
+            });
           }
+          await this.client.batch(nodeUpdateStatements, 'write');
         }
       } catch (error) {
         console.error('Failed to generate embeddings for space:', space.metadata.id, error);
@@ -360,34 +386,6 @@ export class TursoDatabase {
         serializeEmbedding(titleEmbedding),
         serializeEmbedding(descriptionEmbedding),
         spaceId
-      ]
-    });
-  }
-
-  /**
-   * Update embeddings for a node's title and full semantic content.
-   * Called automatically during insertSpace if vectorSearchEnabled is true.
-   */
-  async updateNodeEmbeddings(
-    spaceId: string,
-    nodeKey: string,
-    titleEmbedding: Float32Array,
-    fullEmbedding: Float32Array
-  ): Promise<void> {
-    await this.ensureInitialized();
-
-    await this.client.execute({
-      sql: `
-        UPDATE nodes
-        SET title_embedding = vector32(?),
-            full_embedding = vector32(?)
-        WHERE space_id = ? AND node_key = ?
-      `,
-      args: [
-        serializeEmbedding(titleEmbedding),
-        serializeEmbedding(fullEmbedding),
-        spaceId,
-        nodeKey
       ]
     });
   }
