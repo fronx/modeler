@@ -78,13 +78,16 @@ const CognitiveDataProviderInner: React.FC<{ children: ReactNode }> = ({ childre
 
     switch (message.type) {
       case 'spaces_update':
-        spacesContext.setSpaces(message.spaces);
-        thoughtsContext.setLastUpdate(new Date(message.timestamp));
+        // Only update spaces if WebSocket provides data (avoid clearing on empty messages)
+        if (message.spaces && message.spaces.length > 0) {
+          spacesContext.setSpaces(message.spaces);
+          thoughtsContext.setLastUpdate(new Date(message.timestamp));
 
-        // Auto-select the most recent space if none is selected
-        if (!currentSpace && message.spaces.length > 0) {
-          const mostRecentSpace = message.spaces[0].path;
-          handleSetCurrentSpaceId(mostRecentSpace);
+          // Auto-select the most recent space if none is selected
+          if (!currentSpace && message.spaces.length > 0) {
+            const mostRecentSpace = message.spaces[0].path;
+            handleSetCurrentSpaceId(mostRecentSpace);
+          }
         }
         break;
 
@@ -119,7 +122,19 @@ const CognitiveDataProviderInner: React.FC<{ children: ReactNode }> = ({ childre
     });
   };
 
-  // Request spaces when connected
+  // Load spaces initially via REST API (don't wait for WebSocket)
+  useEffect(() => {
+    const loadInitialSpaces = async () => {
+      try {
+        await spacesContext.refreshSpaces();
+      } catch (error) {
+        console.error('Failed to load initial spaces:', error);
+      }
+    };
+    loadInitialSpaces();
+  }, []);
+
+  // Request spaces when connected (for live updates)
   useEffect(() => {
     if (connectionStatus === 'connected') {
       wsClient.current?.requestSpaces();

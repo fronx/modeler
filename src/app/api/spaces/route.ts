@@ -26,8 +26,12 @@ export async function GET() {
 
   } catch (error) {
     console.error('Failed to load spaces:', error);
-    return NextResponse.json({ error: 'Failed to load spaces' }, { status: 500 });
+    return NextResponse.json({
+      error: 'Failed to load spaces',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
+  // Don't close database - it's a singleton
 }
 
 export async function POST(request: Request) {
