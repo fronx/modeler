@@ -5,7 +5,7 @@ import { ThoughtGraph } from '@/components/ThoughtGraph';
 import { SpaceSidebar } from '@/components/SpaceSidebar';
 import { NewSpaceDialog } from '@/components/NewSpaceDialog';
 import { InlineEdit } from '@/components/InlineEdit';
-import { ChatPanel } from '@/components/ChatPanel';
+import { ChatPanelWrapper } from '@/components/ChatPanelWrapper';
 import { useCognitiveData } from '@/lib/providers/cognitive-data-provider';
 
 export default function CognitiveDashboard() {
@@ -145,7 +145,7 @@ export default function CognitiveDashboard() {
       />
 
       {/* Chat Panel */}
-      <ChatPanel spaceId={currentSpaceId} />
+      <ChatPanelWrapper spaceId={currentSpaceId} />
     </div>
   );
 }

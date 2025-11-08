@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage, Message } from './ChatMessage';
+import React, { useState, useEffect } from 'react';
+import { Message } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ChangeProposal } from './ChangeProposal';
+import { ChatToggleButton } from './chat/ChatToggleButton';
+import { ChatHeader } from './chat/ChatHeader';
+import { ChatMessagesContainer } from './chat/ChatMessagesContainer';
 
 interface ChatPanelProps {
   spaceId?: string | null;
@@ -27,8 +30,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ spaceId }) => {
   const [isConfigured, setIsConfigured] = useState(true);
   const [pendingChanges, setPendingChanges] = useState<ProposedChange[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Check API configuration on mount
   useEffect(() => {
@@ -42,10 +43,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ spaceId }) => {
       });
   }, []);
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   const sendMessage = async (content: string) => {
     // Add user message immediately
@@ -219,32 +216,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ spaceId }) => {
 
   return (
     <>
-      {/* Toggle button - fixed position */}
-      <button
+      <ChatToggleButton
+        isOpen={isOpen}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 right-4 z-40 p-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
-        title={isOpen ? 'Close chat' : 'Open chat'}
-      >
-        {isOpen ? (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        ) : (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-            />
-          </svg>
-        )}
-      </button>
+        variant="blue"
+        label="AI Assistant"
+      />
 
       {/* Chat panel */}
       <div
@@ -255,65 +232,30 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ spaceId }) => {
       >
         {isOpen && (
           <>
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  AI Assistant
-                </h2>
-                {spaceId && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Context: Current space
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {messages.length > 0 && (
-                  <button
-                    onClick={clearChat}
-                    className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    title="Clear chat"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
+            <ChatHeader
+              title="AI Assistant"
+              subtitle={spaceId ? 'Context: Current space' : undefined}
+              onClear={clearChat}
+              showClearButton={messages.length > 0}
+            />
 
-            {/* Messages area */}
-            <div
-              ref={messagesContainerRef}
-              className="flex-1 overflow-y-auto p-4"
+            {!isConfigured && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 m-4 mb-0">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
+                  <strong>API Not Configured</strong>
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                  Set <code>OPENAI_API_KEY</code> or <code>ANTHROPIC_API_KEY</code> in your environment to enable chat.
+                </p>
+              </div>
+            )}
+
+            <ChatMessagesContainer
+              messages={messages}
+              isLoading={isLoading}
+              emptyStateTitle={isConfigured ? 'Start a conversation!' : ''}
+              emptyStateDescription={isConfigured ? 'Ask me about cognitive modeling, your spaces, or anything else.' : ''}
             >
-              {!isConfigured && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
-                    <strong>API Not Configured</strong>
-                  </p>
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                    Set <code>OPENAI_API_KEY</code> or <code>ANTHROPIC_API_KEY</code> in your environment to enable chat.
-                  </p>
-                </div>
-              )}
-
-              {messages.length === 0 && isConfigured && (
-                <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
-                  <p className="text-sm">Start a conversation!</p>
-                  <p className="text-xs mt-2">Ask me about cognitive modeling, your spaces, or anything else.</p>
-                </div>
-              )}
-
-              {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
-              ))}
-
               {pendingChanges.length > 0 && (
                 <div className="border-2 border-blue-500 dark:border-blue-400 rounded-lg p-3 mb-4 bg-blue-50 dark:bg-blue-900/20">
                   <div className="flex items-start gap-2 mb-3">
@@ -364,23 +306,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ spaceId }) => {
                   </div>
                 </div>
               )}
+            </ChatMessagesContainer>
 
-              {isLoading && (
-                <div className="flex justify-start mb-4">
-                  <div className="bg-gray-100 dark:bg-gray-700 rounded-lg px-4 py-2">
-                    <div className="flex space-x-2">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input area */}
             <ChatInput
               onSendMessage={sendMessage}
               disabled={isLoading || !isConfigured}

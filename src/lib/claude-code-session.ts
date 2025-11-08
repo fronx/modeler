@@ -1,0 +1,256 @@
+/**
+ * Claude Code Session Manager
+ * Manages a persistent Claude Agent SDK session with /modeler context loaded
+ * Uses AsyncIterable streaming for truly persistent sessions (VSCode-like performance)
+ */
+
+import { query, Query, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
+import { EventEmitter } from 'events';
+import { join } from 'path';
+import { readFileSync } from 'fs';
+
+export interface SessionConfig {
+  workingDir?: string;
+}
+
+/**
+ * Async generator that yields user messages on demand
+ * This enables continuous message streaming without creating new processes
+ */
+class MessageStream {
+  private resolveNext: ((msg: SDKUserMessage) => void) | null = null;
+  private messageQueue: SDKUserMessage[] = [];
+  private stopped = false;
+
+  async *generate(): AsyncGenerator<SDKUserMessage, void> {
+    while (!this.stopped) {
+      const msg = await this.nextMessage();
+      if (msg) {
+        yield msg;
+      }
+    }
+  }
+
+  private nextMessage(): Promise<SDKUserMessage | null> {
+    return new Promise((resolve) => {
+      if (this.messageQueue.length > 0) {
+        resolve(this.messageQueue.shift()!);
+      } else if (this.stopped) {
+        resolve(null);
+      } else {
+        this.resolveNext = (msg: SDKUserMessage) => resolve(msg);
+      }
+    });
+  }
+
+  pushMessage(content: string, sessionId: string): void {
+    const msg: SDKUserMessage = {
+      type: 'user',
+      message: {
+        role: 'user',
+        content: content
+      },
+      parent_tool_use_id: null,
+      session_id: sessionId
+    };
+
+    if (this.resolveNext) {
+      this.resolveNext(msg);
+      this.resolveNext = null;
+    } else {
+      this.messageQueue.push(msg);
+    }
+  }
+
+  stop(): void {
+    this.stopped = true;
+    this.resolveNext = null;
+  }
+}
+
+export class ClaudeCodeSession extends EventEmitter {
+  private currentQuery: Query | null = null;
+  private sessionId: string | null = null;
+  private isReady = false;
+  private config: SessionConfig;
+  private systemPrompt: string;
+  private messageStream: MessageStream | null = null;
+  private responseProcessor: Promise<void> | null = null;
+  private sessionInitialized: Promise<void> | null = null;
+  private resolveSessionInit: (() => void) | null = null;
+
+  constructor(config: SessionConfig = {}) {
+    super();
+    this.config = {
+      workingDir: config.workingDir || process.cwd()
+    };
+
+    // Load the modeler context file
+    const modelerPath = join(this.config.workingDir!, '.claude/commands/modeler.md');
+    this.systemPrompt = readFileSync(modelerPath, 'utf-8');
+  }
+
+  /**
+   * Start the Claude Code session with /modeler context
+   * Creates a persistent query that accepts streamed messages
+   */
+  async start(): Promise<void> {
+    if (this.isReady) {
+      throw new Error('Session already started');
+    }
+
+    // Create promise that resolves when session ID is captured
+    this.sessionInitialized = new Promise<void>((resolve) => {
+      this.resolveSessionInit = resolve;
+    });
+
+    // Create message stream for continuous communication
+    this.messageStream = new MessageStream();
+
+    // Create persistent query with message stream
+    const queryOptions: any = {
+      cwd: this.config.workingDir,
+      systemPrompt: this.systemPrompt,
+      includePartialMessages: true
+    };
+
+    this.currentQuery = query({
+      prompt: this.messageStream.generate(),
+      options: queryOptions
+    });
+
+    // Start processing responses in background
+    this.responseProcessor = this.processResponses();
+
+    this.isReady = true;
+
+    // Send an initial bootstrap message to trigger session initialization
+    // We use a temporary session ID that will be replaced with the real one
+    this.messageStream.pushMessage('Ready', 'bootstrap');
+
+    // Wait for session to be initialized (session ID received)
+    await this.sessionInitialized;
+  }
+
+  /**
+   * Process responses from the persistent query
+   */
+  private async processResponses(): Promise<void> {
+    if (!this.currentQuery) return;
+
+    try {
+      for await (const msg of this.currentQuery) {
+        if (msg.type === 'system' && msg.subtype === 'init' && msg.session_id) {
+          // Capture session ID and signal initialization complete
+          this.sessionId = msg.session_id;
+
+          if (this.resolveSessionInit) {
+            this.resolveSessionInit();
+            this.resolveSessionInit = null;
+          }
+        } else if (msg.type === 'assistant' && msg.message?.content) {
+          // Extract text from content blocks
+          for (const block of msg.message.content) {
+            if (block.type === 'text' && block.text) {
+              this.emit('data', block.text);
+            }
+          }
+        } else if (msg.type === 'result') {
+          // Message complete
+          this.emit('message_complete', msg);
+        }
+      }
+    } catch (error: any) {
+      this.emit('error', error.message);
+    }
+  }
+
+  /**
+   * Send a message to the Claude Code session
+   * Now simply pushes to the message stream (no new process!)
+   */
+  async sendMessage(message: string): Promise<void> {
+    if (!this.isReady) {
+      throw new Error('Session not ready. Call start() first.');
+    }
+
+    if (!this.messageStream || !this.sessionId) {
+      throw new Error('Session not properly initialized');
+    }
+
+    // Push message to the stream - no new process creation!
+    this.messageStream.pushMessage(message, this.sessionId);
+  }
+
+  /**
+   * Stop the session
+   */
+  stop(): void {
+    if (this.messageStream) {
+      this.messageStream.stop();
+      this.messageStream = null;
+    }
+
+    if (this.currentQuery) {
+      this.currentQuery.interrupt().catch(() => {
+        // Ignore interruption errors
+      });
+      this.currentQuery = null;
+    }
+
+    this.isReady = false;
+    this.sessionId = null;
+  }
+
+  /**
+   * Check if session is ready
+   */
+  ready(): boolean {
+    return this.isReady;
+  }
+
+  /**
+   * Reset the session (stop and start fresh)
+   */
+  async reset(): Promise<void> {
+    this.stop();
+    this.sessionId = null;
+    await this.start();
+  }
+}
+
+// Global session singleton
+let globalSession: ClaudeCodeSession | null = null;
+
+/**
+ * Get or create the global Claude Code session
+ */
+export async function getSession(): Promise<ClaudeCodeSession> {
+  if (!globalSession || !globalSession.ready()) {
+    globalSession = new ClaudeCodeSession();
+    await globalSession.start();
+  }
+  return globalSession;
+}
+
+/**
+ * Reset the global session
+ */
+export async function resetSession(): Promise<void> {
+  if (globalSession) {
+    await globalSession.reset();
+  } else {
+    globalSession = new ClaudeCodeSession();
+    await globalSession.start();
+  }
+}
+
+/**
+ * Stop the global session
+ */
+export function stopSession(): void {
+  if (globalSession) {
+    globalSession.stop();
+    globalSession = null;
+  }
+}
