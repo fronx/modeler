@@ -5,6 +5,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { createDatabase } from '@/lib/database-factory';
 
 const MODEL = process.env.LLM_MODEL || 'gpt-4o-mini';
@@ -20,23 +22,40 @@ function getClient() {
     baseURL: process.env.LLM_BASE_URL,
   });
 }
-const SYSTEM_PROMPT = `You are an AI assistant for Modeler, a cognitive modeling tool that helps users visualize and explore thought structures.
 
-You can help users:
-- Understand and work with their cognitive spaces
-- Create and modify thought nodes via function calls
-- Explore relationships between concepts
-- Navigate the cognitive dashboard
+// Load system prompt from modeler.md command file
+const SYSTEM_PROMPT = (() => {
+  try {
+    const modelerMd = readFileSync(
+      join(process.cwd(), '.claude/commands/modeler.md'),
+      'utf-8'
+    );
 
-When a space context is provided, use it to give relevant, context-aware responses.
+    const contextNote = `# Chat Interface Context
 
-You have access to functions to modify the cognitive space:
+You are working in the Modeler web chat interface, NOT the CLI. Your capabilities differ from the CLI instructions below:
+
+**Your Available Tools** (via function calling):
 - add_node: Add a new thought node to the current space
 - add_relationship: Add a relationship between two nodes
-- update_node: Update an existing node's properties
 
-When users ask you to add, create, or modify nodes, use these functions to propose changes.
-Always explain what you're doing before calling functions.`;
+**You CANNOT use**:
+- CLI commands (npx tsx scripts/space-cli.ts)
+- Direct file system operations
+- Bash commands
+
+When users ask you to modify the space, use the function calling tools provided. The CLI instructions below are for reference to understand the cognitive modeling concepts and principles, but use function calling instead of CLI commands to implement changes.
+
+---
+
+`;
+
+    return contextNote + modelerMd;
+  } catch (error) {
+    console.error('Failed to load modeler.md:', error);
+    throw new Error('System prompt configuration error');
+  }
+})();
 
 // Tool definitions for OpenAI tools API (supports streaming)
 const TOOLS = [
