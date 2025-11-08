@@ -29,6 +29,17 @@ npm run dev
 # For remote Turso, set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
 ```
 
+### 🤖 Claude Code Integration
+
+The dashboard includes a **persistent Claude Code session** for AI-assisted cognitive modeling:
+
+- **Interactive chat interface** with streaming responses
+- **Persistent session** - maintains context across messages (1.2-2.5s response time)
+- **Modeler context** - automatically loaded with cognitive space tools
+- **Test CLI**: `npx tsx test-interactive.ts` for command-line chat
+
+**Performance:** See [PERFORMANCE-INVESTIGATION.md](PERFORMANCE-INVESTIGATION.md) for details on how we achieved 5-10x improvement over standard approaches through AsyncIterable streaming.
+
 ---
 
 ## Original Vision: Code as Thinking Medium
