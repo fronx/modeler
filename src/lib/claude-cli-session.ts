@@ -10,9 +10,12 @@ import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import { join } from 'path';
 import { readFileSync } from 'fs';
+import { TursoDatabase } from './turso-database';
 
 export interface CLISessionConfig {
   workingDir?: string;
+  sessionId?: string;  // Resume from this session ID
+  spaceId?: string;    // Associate with a cognitive space
 }
 
 interface ToolUseBlock {
@@ -52,16 +55,23 @@ export class ClaudeCLISession extends EventEmitter {
   private isReady = false;
   private config: CLISessionConfig;
   private systemPrompt: string;
+  private db: TursoDatabase;
+  private messageCount = 0;
 
   constructor(config: CLISessionConfig = {}) {
     super();
     this.config = {
-      workingDir: config.workingDir || process.cwd()
+      workingDir: config.workingDir || process.cwd(),
+      sessionId: config.sessionId,
+      spaceId: config.spaceId
     };
 
     // Load the modeler context file
     const modelerPath = join(this.config.workingDir!, '.claude/commands/modeler.md');
     this.systemPrompt = readFileSync(modelerPath, 'utf-8');
+
+    // Initialize database connection
+    this.db = new TursoDatabase();
   }
 
   /**
@@ -74,15 +84,23 @@ export class ClaudeCLISession extends EventEmitter {
 
     console.log('[Claude CLI] Spawning process...');
 
-    // Spawn persistent Claude CLI process WITH --print for programmatic use
-    // But use stream-json input to stream multiple messages to one process
-    this.process = spawn('claude', [
+    // Build args array - add --resume if resuming from existing session
+    const args = [
       '--print',
       '--verbose',
       '--output-format', 'stream-json',
       '--input-format', 'stream-json',
       '--system-prompt', this.systemPrompt
-    ], {
+    ];
+
+    // Add resume flag if we have a session ID to resume from
+    if (this.config.sessionId) {
+      args.push('--resume', this.config.sessionId);
+      console.log(`[Claude CLI] Resuming session: ${this.config.sessionId}`);
+    }
+
+    // Spawn persistent Claude CLI process
+    this.process = spawn('claude', args, {
       cwd: this.config.workingDir,
       stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -140,6 +158,12 @@ export class ClaudeCLISession extends EventEmitter {
             console.log(`[Claude CLI] ⚠️  Session ID changed! ${previousSessionId} -> ${this.sessionId}`);
           } else if (!previousSessionId) {
             console.log(`[Claude CLI] Session ID: ${this.sessionId}`);
+            // Save new session to database
+            this.db.saveSession({
+              id: this.sessionId,
+              spaceId: this.config.spaceId,
+              messageCount: 0
+            }).catch(err => console.error('[Claude CLI] Failed to save session:', err));
             this.emit('session_ready');
           } else {
             console.log(`[Claude CLI] ✓ Same session: ${this.sessionId}`);
@@ -199,6 +223,14 @@ export class ClaudeCLISession extends EventEmitter {
 
     // Write to stdin
     this.process.stdin.write(message + '\n');
+
+    // Update session in database
+    if (this.sessionId) {
+      this.messageCount++;
+      this.db.touchSession(this.sessionId).catch(err =>
+        console.error('[Claude CLI] Failed to update session:', err)
+      );
+    }
   }
 
   /**
@@ -220,6 +252,13 @@ export class ClaudeCLISession extends EventEmitter {
    */
   ready(): boolean {
     return this.isReady && this.process !== null;
+  }
+
+  /**
+   * Get current session ID
+   */
+  getSessionId(): string | null {
+    return this.sessionId;
   }
 
   /**
@@ -296,4 +335,36 @@ export async function resetCLISession(): Promise<void> {
  */
 export function stopCLISession(): void {
   CLISessionManager.stop();
+}
+
+/**
+ * Resume from a specific session ID
+ */
+export async function resumeCLISession(sessionId: string, spaceId?: string): Promise<ClaudeCLISession> {
+  // Stop current session
+  CLISessionManager.stop();
+
+  // Create new session with resume config
+  const session = new ClaudeCLISession({ sessionId, spaceId });
+  await session.start();
+
+  // Store as global instance
+  (CLISessionManager as any).instance = session;
+
+  return session;
+}
+
+/**
+ * List all saved sessions from database
+ */
+export async function listCLISessions(): Promise<Array<{
+  id: string;
+  title: string | null;
+  spaceId: string | null;
+  messageCount: number;
+  createdAt: number;
+  lastUsedAt: number;
+}>> {
+  const db = new TursoDatabase();
+  return db.listSessions();
 }

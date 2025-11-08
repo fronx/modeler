@@ -6,6 +6,7 @@ import { ChatInput } from './ChatInput';
 import { ChatToggleButton } from './chat/ChatToggleButton';
 import { ChatHeader } from './chat/ChatHeader';
 import { ChatMessagesContainer } from './chat/ChatMessagesContainer';
+import { SessionBrowser } from './SessionBrowser';
 
 type ChatMode = 'llm' | 'claude-code';
 
@@ -21,6 +22,7 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [showSessionBrowser, setShowSessionBrowser] = useState(false);
 
   const sendMessage = async (content: string) => {
     // Add user message immediately
@@ -212,6 +214,42 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
     }
   };
 
+  const resumeSession = async (sessionId: string) => {
+    setIsResetting(true);
+    try {
+      const response = await fetch('/api/claude-code/sessions/resume', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId, spaceId }),
+      });
+
+      if (response.ok) {
+        setMessages([]);
+        const successMessage: Message = {
+          id: `system-${Date.now()}`,
+          role: 'assistant',
+          content: `Resumed session ${sessionId.substring(0, 8)}. Continue your conversation from where you left off.`,
+          timestamp: new Date(),
+        };
+        setMessages([successMessage]);
+      } else {
+        throw new Error('Failed to resume session');
+      }
+    } catch (error: any) {
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: `Failed to resume session: ${error.message}`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <>
       <ChatToggleButton
@@ -241,6 +279,19 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
               onModeChange={onModeChange}
             />
 
+            {/* Resume Session Button */}
+            <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setShowSessionBrowser(true)}
+                className="w-full px-3 py-2 text-sm bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Resume Past Session
+              </button>
+            </div>
+
             <ChatMessagesContainer
               messages={messages}
               isLoading={isLoading}
@@ -256,6 +307,13 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
           </>
         )}
       </div>
+
+      {/* Session Browser Modal */}
+      <SessionBrowser
+        isOpen={showSessionBrowser}
+        onClose={() => setShowSessionBrowser(false)}
+        onResumeSession={resumeSession}
+      />
     </>
   );
 };

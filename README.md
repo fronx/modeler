@@ -29,6 +29,15 @@ npm run dev
 # For remote Turso, set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
 ```
 
+**Database Migrations:**
+```bash
+# Run database migrations (when updating from earlier versions)
+npx tsx scripts/run-migration.ts 001-add-sessions-table.sql
+
+# Migration files are in scripts/migrations/
+# Each migration adds new features to the database schema
+```
+
 ### 🤖 Claude Code Integration
 
 The dashboard includes a **persistent Claude Code session** for AI-assisted cognitive modeling:
