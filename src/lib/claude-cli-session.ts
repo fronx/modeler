@@ -15,15 +15,34 @@ export interface CLISessionConfig {
   workingDir?: string;
 }
 
+interface ToolUseBlock {
+  type: 'tool_use';
+  id: string;
+  name: string;
+  input: any;
+}
+
+interface TextBlock {
+  type: 'text';
+  text: string;
+}
+
+type ContentBlock = TextBlock | ToolUseBlock;
+
 interface SDKMessage {
   type: string;
   message?: {
     role: string;
-    content: Array<{ type: string; text?: string }>;
+    content: Array<ContentBlock>;
   };
   subtype?: string;
   session_id?: string;
   result?: string;
+  permission_denials?: Array<{
+    tool_name: string;
+    tool_use_id: string;
+    tool_input: Record<string, unknown>;
+  }>;
   [key: string]: any;
 }
 
@@ -126,14 +145,32 @@ export class ClaudeCLISession extends EventEmitter {
             console.log(`[Claude CLI] ✓ Same session: ${this.sessionId}`);
           }
         } else if (msg.type === 'assistant' && msg.message?.content) {
-          // Extract text from content blocks
+          // Extract text and tool use from content blocks
           for (const block of msg.message.content) {
             if (block.type === 'text' && block.text) {
               this.emit('data', block.text);
+            } else if (block.type === 'tool_use') {
+              // Emit tool use event with tool details
+              this.emit('tool_use', {
+                id: block.id,
+                name: block.name,
+                input: block.input
+              });
+
+              // Log to console for server-side visibility
+              console.log('\n[Claude CLI Tool Use]', block.name, {
+                id: block.id,
+                input: block.input
+              });
             }
           }
         } else if (msg.type === 'result') {
-          // Message complete
+          // Message complete - emit permission denials if any
+          if (msg.permission_denials && msg.permission_denials.length > 0) {
+            console.error('\n[Claude CLI Tool Permission Denials]', msg.permission_denials);
+            this.emit('tool_denials', msg.permission_denials);
+          }
+
           this.emit('message_complete', msg);
         }
       } catch (e) {
