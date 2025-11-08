@@ -8,8 +8,14 @@ import { ChatToggleButton } from './chat/ChatToggleButton';
 import { ChatHeader } from './chat/ChatHeader';
 import { ChatMessagesContainer } from './chat/ChatMessagesContainer';
 
+type ChatMode = 'llm' | 'claude-code';
+
 interface ChatPanelProps {
   spaceId?: string | null;
+  mode?: ChatMode;
+  onModeChange?: (mode: ChatMode) => void;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
 interface ProposedChange {
@@ -23,8 +29,7 @@ interface BatchProposedChanges {
   spaceId: string;
 }
 
-export const ChatPanel: React.FC<ChatPanelProps> = ({ spaceId }) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const ChatPanel: React.FC<ChatPanelProps> = ({ spaceId, mode, onModeChange, isOpen, onToggle }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isConfigured, setIsConfigured] = useState(true);
@@ -218,7 +223,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ spaceId }) => {
     <>
       <ChatToggleButton
         isOpen={isOpen}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={onToggle}
         variant="blue"
         label="AI Assistant"
       />
@@ -237,6 +242,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ spaceId }) => {
               subtitle={spaceId ? 'Context: Current space' : undefined}
               onClear={clearChat}
               showClearButton={messages.length > 0}
+              mode={mode}
+              onModeChange={onModeChange}
             />
 
             {!isConfigured && (

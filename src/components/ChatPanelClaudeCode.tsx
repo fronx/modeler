@@ -7,12 +7,17 @@ import { ChatToggleButton } from './chat/ChatToggleButton';
 import { ChatHeader } from './chat/ChatHeader';
 import { ChatMessagesContainer } from './chat/ChatMessagesContainer';
 
+type ChatMode = 'llm' | 'claude-code';
+
 interface ChatPanelClaudeCodeProps {
   spaceId?: string | null;
+  mode?: ChatMode;
+  onModeChange?: (mode: ChatMode) => void;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
-export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceId }) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceId, mode, onModeChange, isOpen, onToggle }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -181,7 +186,7 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
     <>
       <ChatToggleButton
         isOpen={isOpen}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={onToggle}
         variant="purple"
         label="Claude Code"
       />
@@ -202,6 +207,8 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
               onReset={resetSession}
               showClearButton={messages.length > 0}
               isResetting={isResetting}
+              mode={mode}
+              onModeChange={onModeChange}
             />
 
             <ChatMessagesContainer
