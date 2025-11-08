@@ -6,6 +6,7 @@
 
 👉 **[See docs/DATABASE-ARCHITECTURE.md for the architecture](docs/DATABASE-ARCHITECTURE.md)**
 📚 **[Turso Usage Guide](docs/turso-usage.md)** - How to use the system with Turso
+🔄 **[Replicated Database Setup](docs/REPLICATED-DATABASE-SETUP.md)** - Set up local + cloud sync with optimal performance
 
 The system described below (file-based cognitive spaces) remains functional and provides the foundation for understanding our approach. However, we've evolved to support real-time collaborative thinking where multiple minds can simultaneously shape persistent mental models.
 
