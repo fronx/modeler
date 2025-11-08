@@ -92,8 +92,14 @@ export class ClaudeCLISession extends EventEmitter {
 
     this.isReady = true;
 
+    // Wait for session ID to arrive (async - don't block startup)
+    // Session ID comes from the first message response, not at startup
+    this.once('session_ready', () => {
+      console.log('[Claude CLI] ✓ Session fully initialized');
+    });
+
     // Give the process a moment to initialize
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   /**
@@ -115,6 +121,7 @@ export class ClaudeCLISession extends EventEmitter {
             console.log(`[Claude CLI] ⚠️  Session ID changed! ${previousSessionId} -> ${this.sessionId}`);
           } else if (!previousSessionId) {
             console.log(`[Claude CLI] Session ID: ${this.sessionId}`);
+            this.emit('session_ready');
           } else {
             console.log(`[Claude CLI] ✓ Same session: ${this.sessionId}`);
           }
@@ -175,7 +182,7 @@ export class ClaudeCLISession extends EventEmitter {
    * Check if session is ready
    */
   ready(): boolean {
-    return this.isReady && this.sessionId !== null;
+    return this.isReady && this.process !== null;
   }
 
   /**
@@ -188,38 +195,68 @@ export class ClaudeCLISession extends EventEmitter {
   }
 }
 
-// Global session singleton
-let globalCLISession: ClaudeCLISession | null = null;
+// Singleton manager - persists across Next.js module reloads
+class CLISessionManager {
+  private static readonly GLOBAL_KEY = Symbol.for('claudeCLISession');
+
+  private static get instance(): ClaudeCLISession | undefined {
+    return (global as any)[this.GLOBAL_KEY];
+  }
+
+  private static set instance(session: ClaudeCLISession | undefined) {
+    (global as any)[this.GLOBAL_KEY] = session;
+  }
+
+  static async get(): Promise<ClaudeCLISession> {
+    if (!this.instance) {
+      console.log('[getCLISession] No global session exists, creating new one');
+      this.instance = new ClaudeCLISession();
+      await this.instance.start();
+    } else if (!this.instance.ready()) {
+      console.log('[getCLISession] Session exists but not ready, creating new one');
+      console.log('[getCLISession] Debug - isReady:', (this.instance as any).isReady, 'process:', (this.instance as any).process !== null);
+      this.instance = new ClaudeCLISession();
+      await this.instance.start();
+    } else {
+      console.log('[getCLISession] ✓ Reusing existing session');
+    }
+    return this.instance;
+  }
+
+  static async reset(): Promise<void> {
+    if (this.instance) {
+      await this.instance.reset();
+    } else {
+      this.instance = new ClaudeCLISession();
+      await this.instance.start();
+    }
+  }
+
+  static stop(): void {
+    if (this.instance) {
+      this.instance.stop();
+      this.instance = undefined;
+    }
+  }
+}
 
 /**
  * Get or create the global Claude CLI session
  */
 export async function getCLISession(): Promise<ClaudeCLISession> {
-  if (!globalCLISession || !globalCLISession.ready()) {
-    globalCLISession = new ClaudeCLISession();
-    await globalCLISession.start();
-  }
-  return globalCLISession;
+  return CLISessionManager.get();
 }
 
 /**
  * Reset the global CLI session
  */
 export async function resetCLISession(): Promise<void> {
-  if (globalCLISession) {
-    await globalCLISession.reset();
-  } else {
-    globalCLISession = new ClaudeCLISession();
-    await globalCLISession.start();
-  }
+  return CLISessionManager.reset();
 }
 
 /**
  * Stop the global CLI session
  */
 export function stopCLISession(): void {
-  if (globalCLISession) {
-    globalCLISession.stop();
-    globalCLISession = null;
-  }
+  CLISessionManager.stop();
 }
