@@ -2,13 +2,19 @@
 /**
  * Interactive CLI client for testing Claude Code session
  *
- * Usage: npx tsx test-interactive.ts
+ * Usage:
+ *   npx tsx test-interactive.ts           # Use CLI (Max subscription) - default
+ *   USE_SDK=true npx tsx test-interactive.ts  # Use SDK (API key)
  */
 
 import * as readline from 'readline';
 import { ClaudeCodeSession } from './src/lib/claude-code-session';
+import { ClaudeCLISession } from './src/lib/claude-cli-session';
 
-const session = new ClaudeCodeSession();
+// Choose session type based on environment variable
+// Default to CLI mode (Max subscription) unless USE_SDK is explicitly set
+const USE_CLI = process.env.USE_SDK !== 'true';
+const session = USE_CLI ? new ClaudeCLISession() : new ClaudeCodeSession();
 
 // Create readline interface
 const rl = readline.createInterface({
@@ -88,8 +94,10 @@ rl.on('close', () => {
 
 // Start the session
 async function main() {
+  const mode = USE_CLI ? 'CLI (Max subscription)' : 'SDK (API key)';
   console.log('╔════════════════════════════════════════════════════════════╗');
   console.log('║  Claude Code Interactive Session                           ║');
+  console.log(`║  Mode: ${mode.padEnd(51)} ║`);
   console.log('║  Type /help for commands, /exit to quit                    ║');
   console.log('╚════════════════════════════════════════════════════════════╝');
 

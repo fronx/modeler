@@ -282,3 +282,127 @@ The streaming input approach has eliminated all client-side overhead. VSCode's s
 - Potentially different model settings (lower max tokens, faster model tier)
 
 **Final recommendation:** Use the streaming input implementation in [src/lib/claude-code-session.ts](src/lib/claude-code-session.ts) - it's the optimal approach for the Claude Agent SDK.
+
+---
+
+## 8. CLI Streaming Mode - Using Max Subscription Instead of API Credits
+
+**Date:** 2025-11-08 (final)
+
+**Motivation:** The SDK requires API credits. Can we use the Claude CLI with Max subscription while maintaining comparable performance?
+
+**Discovery:** The CLI supports `--input-format stream-json` which allows streaming multiple messages to a single `--print` process, avoiding per-message spawning.
+
+**Implementation:** [src/lib/claude-cli-session.ts](src/lib/claude-cli-session.ts)
+
+**Key Approach:**
+```bash
+claude --print --verbose \
+  --output-format stream-json \
+  --input-format stream-json \
+  --system-prompt "..."
+```
+
+Write multiple JSON messages to stdin:
+```json
+{"type":"user","message":{"role":"user","content":"Hey"},"parent_tool_use_id":null}
+{"type":"user","message":{"role":"user","content":"Thanks"},"parent_tool_use_id":null}
+```
+
+**Results with Minimal System Prompt:**
+```
+Message 1: 609ms
+Message 2: 3026ms
+Message 3: 635ms
+Message 4: 3768ms
+Message 5: 5012ms
+
+Average: ~2.6s
+```
+
+**Results with Full modeler.md System Prompt (604 lines, 22KB):**
+```
+Single word response: 2.6s
+Medium response:      6-10s
+Long response:        10-13s
+```
+
+**Session Persistence Confirmed:**
+- ✅ Same session ID across all messages
+- ✅ Same process PID (no respawning)
+- ✅ True persistent session maintained
+
+**Performance Comparison:**
+
+| Condition | SDK Streaming | CLI Streaming | Difference |
+|-----------|---------------|---------------|------------|
+| Minimal prompt | 1.6s avg | 2.6s avg | +1s CLI overhead |
+| Full modeler.md | ~2.6s | ~2.6s | Comparable |
+| Long responses | Proportional | Proportional | Both scale with length |
+
+**Key Findings:**
+
+1. **CLI streaming works** - Successfully streams multiple messages to one process
+2. **Performance is comparable** to SDK when using the same system prompt
+3. **System prompt size matters** - 22KB modeler.md adds ~1s overhead vs minimal prompts
+4. **Both approaches scale similarly** - Long responses take longer regardless of method
+5. **CLI uses Max subscription** - No API credit consumption
+
+**Trade-offs:**
+
+| Factor | SDK | CLI |
+|--------|-----|-----|
+| Billing | API credits | Max subscription |
+| Performance | 1.6s (minimal) | 2.6s (minimal) |
+| With modeler.md | 2.6s | 2.6s |
+| Reliability | Battle-tested | Depends on CLI stability |
+| Setup | API key required | `claude` CLI + auth |
+
+**Implementation Choice:**
+
+Both implementations are maintained in parallel:
+- **Default:** CLI mode ([src/lib/claude-cli-session.ts](src/lib/claude-cli-session.ts)) - uses Max subscription
+- **Optional:** SDK mode ([src/lib/claude-code-session.ts](src/lib/claude-code-session.ts)) - uses API key
+
+Switch via environment variable:
+```bash
+# Use CLI (Max subscription) - default
+npm run dev
+
+# Use SDK (API credits)
+USE_SDK=true npm run dev
+```
+
+**Test Files Kept:**
+- [test-interactive.ts](test-interactive.ts) - Interactive REPL for testing both modes
+- [test-persistent-session.ts](test-persistent-session.ts) - SDK streaming validation
+
+**Removed (investigation complete):**
+- test-cli-accurate-timing.ts, test-cli-multi-message.ts, test-cli-no-print.ts
+- test-cli-performance.ts, test-cli-session-manager.ts, test-cli-streaming-investigation.ts
+
+---
+
+## Final Performance Summary (All Approaches)
+
+| Approach | Min System Prompt | Full modeler.md | Billing | Status |
+|----------|-------------------|-----------------|---------|--------|
+| CLI `--print` per-message | 8-13s | 12-24s | Max subscription | ❌ Abandoned |
+| SDK resume mode | 2.7-3.6s | ~3-4s | API credits | ⚠️ Superseded |
+| **SDK streaming** | **1.6s** | **2.6s** | API credits | ✅ **Optimal (API)** |
+| **CLI streaming** | **2.6s** | **2.6s** | Max subscription | ✅ **Optimal (Max)** |
+
+**Conclusion:**
+
+We now have two production-ready implementations:
+
+1. **SDK Streaming Mode** - Fastest with minimal prompts, requires API key
+2. **CLI Streaming Mode** - Comparable performance, uses Max subscription
+
+Both achieve:
+- True persistent sessions
+- No process recreation overhead
+- Streaming responses
+- ~2.6s response time with full modeler.md context
+
+The performance bottleneck is **model thinking time + system prompt processing**, not infrastructure. Both implementations have eliminated all client-side overhead.

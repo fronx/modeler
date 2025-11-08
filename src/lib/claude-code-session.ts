@@ -200,18 +200,60 @@ All space-cli.ts commands are auto-approved. Other tools require explicit permis
             this.resolveSessionInit = null;
           }
         } else if (msg.type === 'assistant' && msg.message?.content) {
-          // Extract text from content blocks
+          // Extract text and tool use from content blocks
           for (const block of msg.message.content) {
             if (block.type === 'text' && block.text) {
               this.emit('data', block.text);
+            } else if (block.type === 'tool_use') {
+              // Emit tool use event with tool details
+              this.emit('tool_use', {
+                id: block.id,
+                name: block.name,
+                input: block.input
+              });
+
+              // Log to console for server-side visibility
+              console.log('\n[Tool Use]', block.name, {
+                id: block.id,
+                input: block.input
+              });
             }
           }
+        } else if (msg.type === 'stream_event') {
+          // Handle streaming events for tool results
+          const event = msg.event;
+          if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
+            // Tool use started during streaming
+            const toolBlock = event.content_block;
+            this.emit('tool_use_start', {
+              id: toolBlock.id,
+              name: toolBlock.name,
+              index: event.index
+            });
+          } else if (event.type === 'message_delta' && event.delta?.stop_reason) {
+            // Message complete with stop reason
+            this.emit('message_delta', event.delta);
+          }
         } else if (msg.type === 'result') {
-          // Message complete
+          // Message complete - emit permission denials if any
+          if (msg.permission_denials && msg.permission_denials.length > 0) {
+            console.error('\n[Tool Permission Denials]', msg.permission_denials);
+            this.emit('tool_denials', msg.permission_denials);
+          }
+
+          // Log result summary
+          console.log('\n[Session Result]', {
+            subtype: msg.subtype,
+            duration_ms: msg.duration_ms,
+            num_turns: msg.num_turns,
+            total_cost_usd: msg.total_cost_usd
+          });
+
           this.emit('message_complete', msg);
         }
       }
     } catch (error: any) {
+      console.error('\n[Session Error]', error);
       this.emit('error', error.message);
     }
   }

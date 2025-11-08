@@ -5,6 +5,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/claude-code-session';
+import { getCLISession } from '@/lib/claude-cli-session';
+
+// Choose session type based on environment variable
+// Default to CLI mode (Max subscription) unless USE_SDK is explicitly set
+// Set USE_SDK=true to use API key mode instead
+const USE_CLI_MODE = process.env.USE_SDK !== 'true';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +33,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create the persistent Claude Code session
-    const session = await getSession();
+    // Based on environment variable, use either CLI (Max subscription) or SDK (API key)
+    const session = USE_CLI_MODE ? await getCLISession() : await getSession();
 
     // Start streaming response
     const encoder = new TextEncoder();
@@ -49,6 +56,24 @@ export async function POST(request: NextRequest) {
             }
           };
 
+          const onToolUse = (toolUse: { id: string; name: string; input: any }) => {
+            if (!responseComplete) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'tool_use',
+                tool_use: toolUse
+              })}\n\n`));
+            }
+          };
+
+          const onToolDenials = (denials: any[]) => {
+            if (!responseComplete) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'tool_denials',
+                denials
+              })}\n\n`));
+            }
+          };
+
           const onClose = () => {
             if (!responseComplete) {
               responseComplete = true;
@@ -60,12 +85,16 @@ export async function POST(request: NextRequest) {
           const onMessageComplete = () => {
             session.off('data', onData);
             session.off('error', onError);
+            session.off('tool_use', onToolUse);
+            session.off('tool_denials', onToolDenials);
             session.off('message_complete', onMessageComplete);
             onClose();
           };
 
           session.on('data', onData);
           session.on('error', onError);
+          session.on('tool_use', onToolUse);
+          session.on('tool_denials', onToolDenials);
           session.on('message_complete', onMessageComplete);
 
           // Send the message to the session
@@ -76,6 +105,8 @@ export async function POST(request: NextRequest) {
             if (!responseComplete) {
               session.off('data', onData);
               session.off('error', onError);
+              session.off('tool_use', onToolUse);
+              session.off('tool_denials', onToolDenials);
               session.off('message_complete', onMessageComplete);
               onClose();
             }
@@ -114,10 +145,14 @@ export async function POST(request: NextRequest) {
 // GET endpoint to check Claude Code session status
 export async function GET() {
   try {
-    const session = await getSession();
+    const session = USE_CLI_MODE ? await getCLISession() : await getSession();
     return NextResponse.json({
       status: session.ready() ? 'ready' : 'starting',
-      hint: 'Set CLAUDE_CODE_PATH environment variable to specify custom Claude Code binary location'
+      mode: USE_CLI_MODE ? 'cli' : 'sdk',
+      billing: USE_CLI_MODE ? 'Max subscription' : 'API credits',
+      hint: USE_CLI_MODE
+        ? 'Using Claude CLI (Max subscription) - default. Set USE_SDK=true to use API key instead.'
+        : 'Using Agent SDK (API key). Remove USE_SDK=true to use Max subscription instead.'
     });
   } catch (error: any) {
     return NextResponse.json({

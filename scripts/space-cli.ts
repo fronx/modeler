@@ -33,23 +33,19 @@ function output(data: any, debugData?: any) {
 // Resolve space identifier (ID or title) to actual space
 async function resolveSpace(identifier: string): Promise<CognitiveSpace | null> {
   const db = createDatabase();
-  try {
-    // Try as ID first
-    let space = await db.getSpace(identifier);
-    if (space) return space;
+  // Try as ID first
+  let space = await db.getSpace(identifier);
+  if (space) return space;
 
-    // Try as title - search all spaces
-    const allSpaces = await db.listSpaces();
-    const matchingSpace = allSpaces.find(s => s.title === identifier);
-    if (matchingSpace) {
-      space = await db.getSpace(matchingSpace.id);
-      return space;
-    }
-
-    return null;
-  } finally {
-    await db.close();
+  // Try as title - search all spaces
+  const allSpaces = await db.listSpaces();
+  const matchingSpace = allSpaces.find(s => s.title === identifier);
+  if (matchingSpace) {
+    space = await db.getSpace(matchingSpace.id);
+    return space;
   }
+
+  return null;
 }
 
 // ============================================================================
@@ -61,18 +57,14 @@ program
   .option('--json', 'Output as JSON')
   .action(async (options: { json?: boolean }) => {
     const db = createDatabase();
-    try {
-      const spaces = await db.listSpaces();
+    const spaces = await db.listSpaces();
 
-      if (options.json) {
-        console.log(JSON.stringify(spaces, null, 2));
-      } else {
-        for (const space of spaces) {
-          console.log(`${space.id} | ${space.title} | ${space.nodeCount} nodes`);
-        }
+    if (options.json) {
+      console.log(JSON.stringify(spaces, null, 2));
+    } else {
+      for (const space of spaces) {
+        console.log(`${space.id} | ${space.title} | ${space.nodeCount} nodes`);
       }
-    } finally {
-      await db.close();
     }
   });
 
@@ -86,25 +78,21 @@ program
   .argument('[description]', 'Space description', '')
   .action(async (title: string, description: string) => {
     const db = createDatabase();
-    try {
-      const spaceId = new Date().toISOString().replace(/[:.]/g, '-');
-      const newSpace: CognitiveSpace = {
-        metadata: {
-          id: spaceId,
-          title,
-          description,
-          createdAt: Date.now()
-        },
-        nodes: {},
-        globalHistory: [`Space created: ${new Date().toISOString()}`]
-      };
+    const spaceId = new Date().toISOString().replace(/[:.]/g, '-');
+    const newSpace: CognitiveSpace = {
+      metadata: {
+        id: spaceId,
+        title,
+        description,
+        createdAt: Date.now()
+      },
+      nodes: {},
+      globalHistory: [`Space created: ${new Date().toISOString()}`]
+    };
 
-      await db.insertSpace(newSpace);
+    await db.insertSpace(newSpace);
 
-      output({ id: spaceId });
-    } finally {
-      await db.close();
-    }
+    output({ id: spaceId });
   });
 
 // ============================================================================
@@ -217,78 +205,74 @@ program
     }
 
     const db = createDatabase();
-    try {
 
-      // Generate nodeId from title (PascalCase)
-      const nodeId = options.title
-        .split(/\s+/)
-        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join('');
+    // Generate nodeId from title (PascalCase)
+    const nodeId = options.title
+      .split(/\s+/)
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join('');
 
-      if (space.nodes[nodeId]) {
-        console.error(`Node '${nodeId}' already exists (generated from title). Use update-node to modify.`);
-        process.exit(1);
-      }
-
-      // Build meanings array from title and optional body
-      const meanings = [];
-      if (options.title) {
-        meanings.push({
-          content: options.title,
-          confidence: options.confidence,
-          timestamp: Date.now()
-        });
-      }
-      if (options.body) {
-        meanings.push({
-          content: options.body,
-          confidence: options.confidence,
-          timestamp: Date.now()
-        });
-      }
-
-      const relationships = options.relatesTo.map((rel: string) => {
-        const [target, type, strengthStr] = rel.split(':');
-        return {
-          target,
-          type: type || 'supports',
-          strength: parseFloat(strengthStr) || 0.8
-        };
-      });
-
-      const newNode: any = {
-        meanings,
-        values: options.values ? JSON.parse(options.values) : {},
-        relationships,
-        focus: options.focus,
-        semanticPosition: options.position,
-        history: [`Node created: ${new Date().toISOString()}`]
-      };
-
-      if (options.checkable.length > 0) {
-        newNode.checkableList = options.checkable.map((item: string) => ({
-          item,
-          checked: false
-        }));
-      }
-
-      if (options.regular.length > 0) {
-        newNode.regularList = options.regular;
-      }
-
-      if (options.branches) {
-        newNode.branches = JSON.parse(options.branches);
-      }
-
-      space.nodes[nodeId] = newNode;
-      space.globalHistory.push(`Node added: ${nodeId}`);
-
-      await db.insertSpace(space);
-
-      output({ success: true, nodeId }, { spaceId: space.metadata.id, nodeId, node: newNode });
-    } finally {
-      await db.close();
+    if (space.nodes[nodeId]) {
+      console.error(`Node '${nodeId}' already exists (generated from title). Use update-node to modify.`);
+      process.exit(1);
     }
+
+    // Build meanings array from title and optional body
+    const meanings = [];
+    if (options.title) {
+      meanings.push({
+        content: options.title,
+        confidence: options.confidence,
+        timestamp: Date.now()
+      });
+    }
+    if (options.body) {
+      meanings.push({
+        content: options.body,
+        confidence: options.confidence,
+        timestamp: Date.now()
+      });
+    }
+
+    const relationships = options.relatesTo.map((rel: string) => {
+      const [target, type, strengthStr] = rel.split(':');
+      return {
+        target,
+        type: type || 'supports',
+        strength: parseFloat(strengthStr) || 0.8
+      };
+    });
+
+    const newNode: any = {
+      meanings,
+      values: options.values ? JSON.parse(options.values) : {},
+      relationships,
+      focus: options.focus,
+      semanticPosition: options.position,
+      history: [`Node created: ${new Date().toISOString()}`]
+    };
+
+    if (options.checkable.length > 0) {
+      newNode.checkableList = options.checkable.map((item: string) => ({
+        item,
+        checked: false
+      }));
+    }
+
+    if (options.regular.length > 0) {
+      newNode.regularList = options.regular;
+    }
+
+    if (options.branches) {
+      newNode.branches = JSON.parse(options.branches);
+    }
+
+    space.nodes[nodeId] = newNode;
+    space.globalHistory.push(`Node added: ${nodeId}`);
+
+    await db.insertSpace(space);
+
+    output({ success: true, nodeId }, { spaceId: space.metadata.id, nodeId, node: newNode });
   });
 
 // ============================================================================
@@ -320,60 +304,56 @@ program
     }
 
     const db = createDatabase();
-    try {
 
-      const node = space.nodes[nodeId];
+    const node = space.nodes[nodeId];
 
-      if (options.meaning) {
-        node.meanings = node.meanings || [];
-        node.meanings.push({
-          content: options.meaning,
-          confidence: options.confidence,
-          timestamp: Date.now()
-        });
-      }
-
-      if (options.focus !== undefined) node.focus = options.focus;
-      if (options.position !== undefined) node.semanticPosition = options.position;
-
-      if (options.values) {
-        node.values = { ...node.values, ...JSON.parse(options.values) };
-      }
-
-      if (options.relatesTo.length > 0) {
-        const newRels = options.relatesTo.map((rel: string) => {
-          const [target, type, strengthStr] = rel.split(':');
-          return {
-            target,
-            type: type || 'supports',
-            strength: parseFloat(strengthStr) || 0.8
-          };
-        });
-        node.relationships = [...(node.relationships || []), ...newRels];
-      }
-
-      if (options.checkable.length > 0) {
-        node.checkableList = node.checkableList || [];
-        options.checkable.forEach((item: string) => {
-          node.checkableList.push({ item, checked: false });
-        });
-      }
-
-      if (options.regular.length > 0) {
-        node.regularList = node.regularList || [];
-        node.regularList.push(...options.regular);
-      }
-
-      node.history = node.history || [];
-      node.history.push(`Node updated: ${new Date().toISOString()}`);
-      space.globalHistory.push(`Node updated: ${nodeId}`);
-
-      await db.insertSpace(space);
-
-      output({ success: true, nodeId }, { spaceId: space.metadata.id, nodeId, node });
-    } finally {
-      await db.close();
+    if (options.meaning) {
+      node.meanings = node.meanings || [];
+      node.meanings.push({
+        content: options.meaning,
+        confidence: options.confidence,
+        timestamp: Date.now()
+      });
     }
+
+    if (options.focus !== undefined) node.focus = options.focus;
+    if (options.position !== undefined) node.semanticPosition = options.position;
+
+    if (options.values) {
+      node.values = { ...node.values, ...JSON.parse(options.values) };
+    }
+
+    if (options.relatesTo.length > 0) {
+      const newRels = options.relatesTo.map((rel: string) => {
+        const [target, type, strengthStr] = rel.split(':');
+        return {
+          target,
+          type: type || 'supports',
+          strength: parseFloat(strengthStr) || 0.8
+        };
+      });
+      node.relationships = [...(node.relationships || []), ...newRels];
+    }
+
+    if (options.checkable.length > 0) {
+      node.checkableList = node.checkableList || [];
+      options.checkable.forEach((item: string) => {
+        node.checkableList.push({ item, checked: false });
+      });
+    }
+
+    if (options.regular.length > 0) {
+      node.regularList = node.regularList || [];
+      node.regularList.push(...options.regular);
+    }
+
+    node.history = node.history || [];
+    node.history.push(`Node updated: ${new Date().toISOString()}`);
+    space.globalHistory.push(`Node updated: ${nodeId}`);
+
+    await db.insertSpace(space);
+
+    output({ success: true, nodeId }, { spaceId: space.metadata.id, nodeId, node });
   });
 
 // ============================================================================
@@ -392,32 +372,28 @@ program
     }
 
     const db = createDatabase();
-    try {
 
-      const patch = JSON.parse(jsonPatch);
+    const patch = JSON.parse(jsonPatch);
 
-      if (patch.metadata) Object.assign(space.metadata, patch.metadata);
+    if (patch.metadata) Object.assign(space.metadata, patch.metadata);
 
-      if (patch.nodes) {
-        for (const [nodeKey, nodeData] of Object.entries(patch.nodes)) {
-          if (space.nodes[nodeKey]) {
-            Object.assign(space.nodes[nodeKey], nodeData);
-          } else {
-            space.nodes[nodeKey] = nodeData as any;
-          }
+    if (patch.nodes) {
+      for (const [nodeKey, nodeData] of Object.entries(patch.nodes)) {
+        if (space.nodes[nodeKey]) {
+          Object.assign(space.nodes[nodeKey], nodeData);
+        } else {
+          space.nodes[nodeKey] = nodeData as any;
         }
       }
-
-      if (patch.globalHistory) space.globalHistory.push(...patch.globalHistory);
-
-      space.globalHistory.push(`Space patched: ${new Date().toISOString()}`);
-
-      await db.insertSpace(space);
-
-      output({ success: true, spaceId: space.metadata.id });
-    } finally {
-      await db.close();
     }
+
+    if (patch.globalHistory) space.globalHistory.push(...patch.globalHistory);
+
+    space.globalHistory.push(`Space patched: ${new Date().toISOString()}`);
+
+    await db.insertSpace(space);
+
+    output({ success: true, spaceId: space.metadata.id });
   });
 
 // ============================================================================
@@ -435,12 +411,8 @@ program
     }
 
     const db = createDatabase();
-    try {
-      await db.deleteSpace(space.metadata.id);
-      output({ success: true, deleted: space.metadata.id });
-    } finally {
-      await db.close();
-    }
+    await db.deleteSpace(space.metadata.id);
+    output({ success: true, deleted: space.metadata.id });
   });
 
 // ============================================================================
@@ -459,12 +431,8 @@ program
       process.exit(1);
     }
 
-    try {
-      const results = await (db as any).searchSpaces(query, options.limit);
-      output(results);
-    } finally {
-      await db.close();
-    }
+    const results = await (db as any).searchSpaces(query, options.limit);
+    output(results);
   });
 
 // ============================================================================
@@ -484,15 +452,11 @@ program
       process.exit(1);
     }
 
-    try {
-      const results = options.space
-        ? await (db as any).searchNodesInSpace(options.space, query, options.limit)
-        : await (db as any).searchAllNodes(query, options.limit);
+    const results = options.space
+      ? await (db as any).searchNodesInSpace(options.space, query, options.limit)
+      : await (db as any).searchAllNodes(query, options.limit);
 
-      output(results);
-    } finally {
-      await db.close();
-    }
+    output(results);
   });
 
 // ============================================================================

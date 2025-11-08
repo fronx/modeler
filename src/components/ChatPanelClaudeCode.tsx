@@ -62,6 +62,8 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let assistantContent = '';
+      let toolUses: Array<{ id: string; name: string; input: any }> = [];
+      let toolDenials: Array<{ tool_name: string; tool_use_id: string; tool_input: Record<string, unknown> }> = [];
 
       // Create assistant message placeholder
       const assistantMessage: Message = {
@@ -69,6 +71,8 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
         role: 'assistant',
         content: '',
         timestamp: new Date(),
+        toolUses: [],
+        toolDenials: [],
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
@@ -97,6 +101,32 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
                     const lastMsg = newMessages[newMessages.length - 1];
                     if (lastMsg.role === 'assistant') {
                       lastMsg.content = assistantContent;
+                    }
+                    return newMessages;
+                  });
+                }
+
+                // Handle tool use
+                if (parsed.type === 'tool_use' && parsed.tool_use) {
+                  toolUses.push(parsed.tool_use);
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    const lastMsg = newMessages[newMessages.length - 1];
+                    if (lastMsg.role === 'assistant') {
+                      lastMsg.toolUses = [...toolUses];
+                    }
+                    return newMessages;
+                  });
+                }
+
+                // Handle tool denials
+                if (parsed.type === 'tool_denials' && parsed.denials) {
+                  toolDenials.push(...parsed.denials);
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    const lastMsg = newMessages[newMessages.length - 1];
+                    if (lastMsg.role === 'assistant') {
+                      lastMsg.toolDenials = [...toolDenials];
                     }
                     return newMessages;
                   });
