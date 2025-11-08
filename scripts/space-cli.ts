@@ -495,6 +495,99 @@ program
     }
   });
 
+// ============================================================================
+// Chat with AI
+// ============================================================================
+program
+  .command('chat')
+  .description('Chat with AI assistant (context-aware if space provided)')
+  .argument('<message>', 'Your message to the AI')
+  .option('-s, --space <identifier>', 'Space ID or title for context')
+  .option('--no-stream', 'Disable streaming (wait for complete response)')
+  .action(async (message: string, options: { space?: string; stream: boolean }) => {
+    try {
+      // Resolve space if provided
+      let spaceId: string | undefined;
+      if (options.space) {
+        const space = await resolveSpace(options.space);
+        if (!space) {
+          console.error(`Error: Space "${options.space}" not found`);
+          process.exit(1);
+        }
+        spaceId = space.metadata.id;
+      }
+
+      // Determine API URL
+      const apiUrl = process.env.MODELER_API_URL || 'http://localhost:3000';
+      const endpoint = `${apiUrl}/api/chat`;
+
+      // Make request
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': options.stream ? 'text/event-stream' : 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          spaceId,
+          history: [], // CLI doesn't maintain conversation history
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error(`Error: ${error.error}`);
+        if (error.hint) {
+          console.error(`Hint: ${error.hint}`);
+        }
+        process.exit(1);
+      }
+
+      if (options.stream && response.body) {
+        // Handle streaming response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') {
+                console.log(); // New line after streaming
+                break;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  process.stdout.write(parsed.content);
+                }
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+      } else {
+        // Handle single response
+        const data = await response.json();
+        console.log(data.message);
+      }
+    } catch (error: any) {
+      console.error(`Error: ${error.message}`);
+      process.exit(1);
+    }
+  });
+
 // Helper function for collecting repeated options
 function collect(value: string, previous: string[]) {
   return previous.concat([value]);
