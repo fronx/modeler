@@ -202,7 +202,7 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
           <>
             <ChatHeader
               title="Claude Code"
-              subtitle={spaceId ? 'Context: Current space' : undefined}
+              subtitle={spaceId ? 'Context: Current space • space-cli auto-approved' : 'space-cli auto-approved'}
               onClear={clearChat}
               onReset={resetSession}
               showClearButton={messages.length > 0}

@@ -87,7 +87,23 @@ export class ClaudeCodeSession extends EventEmitter {
 
     // Load the modeler context file
     const modelerPath = join(this.config.workingDir!, '.claude/commands/modeler.md');
-    this.systemPrompt = readFileSync(modelerPath, 'utf-8');
+    const basePrompt = readFileSync(modelerPath, 'utf-8');
+
+    // Add space-cli tool usage guidance
+    this.systemPrompt = `${basePrompt}
+
+## Tool Usage for This Session
+
+You are running in a web-based Claude Code session. You have access to the space-cli.ts tool for working with cognitive spaces.
+
+**IMPORTANT**: Use the \`scripts/space-cli.ts\` tool for all cognitive space operations:
+- Reading spaces: \`npx tsx scripts/space-cli.ts get <spaceId>\`
+- Listing spaces: \`npx tsx scripts/space-cli.ts list\`
+- Creating spaces: \`npx tsx scripts/space-cli.ts create "title" "description"\`
+- Adding nodes: \`npx tsx scripts/space-cli.ts add-node <spaceId> --title "..." --body "..."\`
+- Analyzing: \`npx tsx scripts/space-cli.ts analyze <spaceId>\`
+
+All space-cli.ts commands are auto-approved. Other tools require explicit permission.`;
   }
 
   /**
@@ -111,7 +127,42 @@ export class ClaudeCodeSession extends EventEmitter {
     const queryOptions: any = {
       cwd: this.config.workingDir,
       systemPrompt: this.systemPrompt,
-      includePartialMessages: true
+      includePartialMessages: true,
+      // Auto-approve safe read operations and space-cli.ts commands
+      // Signature: canUseTool(toolName, input, options)
+      canUseTool: async (toolName: string, input: Record<string, unknown>) => {
+        // Auto-approve safe read-only tools
+        if (['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch'].includes(toolName)) {
+          return {
+            behavior: 'allow',
+            updatedInput: input
+          };
+        }
+
+        // Auto-approve Bash commands that run space-cli.ts
+        if (toolName === 'Bash' && input.command) {
+          const command = input.command as string;
+          // Check if command runs space-cli.ts
+          if (command.includes('scripts/space-cli.ts') || command.includes('space-cli.ts')) {
+            return {
+              behavior: 'allow',
+              updatedInput: input
+            };
+          }
+
+          // Deny other Bash commands
+          return {
+            behavior: 'deny',
+            reason: 'Only scripts/space-cli.ts commands are auto-approved. Please use the space-cli.ts tool to work with cognitive spaces.'
+          };
+        }
+
+        // Deny write operations and other tools
+        return {
+          behavior: 'deny',
+          reason: 'This session only has permission for read operations and space-cli.ts commands.'
+        };
+      }
     };
 
     this.currentQuery = query({
