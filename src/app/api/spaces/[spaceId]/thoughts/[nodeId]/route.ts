@@ -12,17 +12,25 @@ export async function DELETE(
     const { spaceId, nodeId } = await params;
 
     // Delete the node directly from the database
+    const t0 = Date.now();
     const deleted = await db.deleteNode(spaceId, nodeId);
+    const t1 = Date.now();
+    console.log(`[DELETE] deleteNode took ${t1 - t0}ms`);
 
     if (!deleted) {
       return NextResponse.json({ error: 'Node not found' }, { status: 404 });
     }
 
-    // Trigger WebSocket broadcast
+    // Trigger WebSocket broadcast (fire-and-forget for better response time)
     const wsServer = getThoughtWebSocketServer();
     if (wsServer) {
-      await wsServer.broadcastSpaceUpdate(spaceId);
+      wsServer.broadcastSpaceUpdate(spaceId).catch(error => {
+        console.error('[DELETE] WebSocket broadcast failed:', error);
+      });
     }
+
+    const t4 = Date.now();
+    console.log(`[DELETE] Total request time: ${t4 - t0}ms`);
 
     return NextResponse.json({
       success: true,

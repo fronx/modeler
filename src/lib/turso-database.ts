@@ -120,8 +120,12 @@ export class TursoDatabase {
   }
 
   private async ensureInitialized(): Promise<void> {
-    if (this.initialized) return;
+    if (this.initialized) {
+      console.log('[DB] Already initialized, skipping');
+      return;
+    }
 
+    console.log('[DB] Running initialization...');
     // Read and execute schema initialization
     const schemaPath = join(process.cwd(), 'scripts', 'init-turso-schema.sql');
     const schema = readFileSync(schemaPath, 'utf-8');
@@ -173,8 +177,6 @@ export class TursoDatabase {
       }
     }
 
-    this.initialized = true;
-
     // Perform startup sync if enabled and using embedded replica
     if (this.syncOnStartup && this.isEmbeddedReplica && !this.synced) {
       console.log('Performing startup sync to ensure database is up to date...');
@@ -187,6 +189,9 @@ export class TursoDatabase {
         throw new Error(`Database initialization failed: unable to sync with remote. ${error}`);
       }
     }
+
+    // Set initialized flag at the very end, after everything (including sync) completes
+    this.initialized = true;
   }
 
   /**
@@ -289,6 +294,9 @@ export class TursoDatabase {
     }
 
     await this.client.batch(statements, 'write');
+
+    // Sync immediately after write (Option 1: Aggressive Immediate Sync)
+    this.syncAfterWrite();
 
     // Generate embeddings if enabled (Phase 2: Vector Search)
     if (this.vectorSearchEnabled) {
@@ -432,17 +440,31 @@ export class TursoDatabase {
       sql: "DELETE FROM spaces WHERE id = ?",
       args: [id]
     });
+
+    // Sync immediately after write (Option 1: Aggressive Immediate Sync)
+    this.syncAfterWrite(result.rowsAffected > 0);
+
     return result.rowsAffected > 0;
   }
 
   async deleteNode(spaceId: string, nodeKey: string): Promise<boolean> {
+    const t0 = Date.now();
     await this.ensureInitialized();
+    const t1 = Date.now();
+    console.log(`[DB] ensureInitialized took ${t1 - t0}ms`);
 
     const nodeId = `${spaceId}:${nodeKey}`;
+    const t2 = Date.now();
     const result = await this.client.execute({
       sql: "DELETE FROM nodes WHERE id = ?",
       args: [nodeId]
     });
+    const t3 = Date.now();
+    console.log(`[DB] SQL DELETE took ${t3 - t2}ms`);
+
+    // Sync immediately after write (Option 1: Aggressive Immediate Sync)
+    this.syncAfterWrite(result.rowsAffected > 0);
+
     return result.rowsAffected > 0;
   }
 
@@ -461,7 +483,7 @@ export class TursoDatabase {
   ): Promise<void> {
     await this.ensureInitialized();
 
-    await this.client.execute({
+    const result = await this.client.execute({
       sql: `
         UPDATE spaces
         SET title_embedding = vector32(?),
@@ -474,6 +496,9 @@ export class TursoDatabase {
         spaceId
       ]
     });
+
+    // Sync immediately after write (Option 1: Aggressive Immediate Sync)
+    this.syncAfterWrite(result.rowsAffected > 0);
   }
 
   /**
@@ -628,6 +653,34 @@ export class TursoDatabase {
   // ============================================================================
 
   /**
+   * Helper method to sync after write operations (fire-and-forget).
+   * Only syncs if using embedded replica and a change was actually made.
+   * This ensures local changes are pushed to remote immediately (Option 1: Aggressive Immediate Sync).
+   *
+   * Runs async without blocking the caller - errors are logged but don't fail the operation.
+   *
+   * @param changed - Whether the operation actually modified data (default: true)
+   */
+  private syncAfterWrite(changed: boolean = true): void {
+    if (changed && this.isEmbeddedReplica) {
+      // Use setImmediate to ensure sync runs truly asynchronously without blocking
+      setImmediate(() => {
+        const t0 = Date.now();
+        console.log('[SYNC] Starting background sync...');
+        this.sync()
+          .then(() => {
+            const t1 = Date.now();
+            console.log(`[SYNC] Background sync completed in ${t1 - t0}ms`);
+          })
+          .catch(error => {
+            const t1 = Date.now();
+            console.error(`[SYNC] Background sync failed after ${t1 - t0}ms:`, error);
+          });
+      });
+    }
+  }
+
+  /**
    * Manually trigger a sync between the local replica and remote database.
    * Only works when using embedded replicas (file: URL with syncUrl).
    *
@@ -657,19 +710,21 @@ export class TursoDatabase {
 
       // Check for frame mismatch error indicating local DB is behind
       if (errorMsg.includes('InvalidPushFrameNoHigh')) {
-        console.error('Local database is out of sync with remote. Frame mismatch detected.');
-        console.error('This happens when the local database is behind the remote.');
-        console.error('Attempting to resync from remote...');
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('SYNC CONFLICT: Local database is behind remote');
+        console.error('This indicates the local and remote databases have diverged.');
+        console.error('');
+        console.error('To recover:');
+        console.error('  1. Stop the server');
+        console.error('  2. Run: npx tsx scripts/force-resync.ts');
+        console.error('  3. Restart the server');
+        console.error('');
+        console.error('Error:', errorMsg);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-        // Try to recover by forcing a resync
-        try {
-          await this.resync();
-          console.log('Resync completed successfully');
-          return;
-        } catch (resyncError) {
-          console.error('Resync failed:', resyncError);
-          throw new Error(`Sync failed with frame mismatch. Manual resync required: ${errorMsg}`);
-        }
+        // Don't try automatic resync - it's too destructive and may fail anyway
+        // Let the error propagate so the operation fails visibly
+        throw new Error(`Sync conflict: Local database behind remote. Manual resync required. ${errorMsg}`);
       }
 
       throw new Error(`Sync failed: ${errorMsg}`);
@@ -733,6 +788,13 @@ export class TursoDatabase {
       const walPath = `${dbPath}-wal`;
       if (fs.existsSync(walPath)) {
         fs.unlinkSync(walPath);
+      }
+
+      // Delete info file (contains libsql metadata)
+      const infoPath = `${dbPath}-info`;
+      if (fs.existsSync(infoPath)) {
+        fs.unlinkSync(infoPath);
+        console.log(`Removed info file`);
       }
 
       // Delete database file last
@@ -866,6 +928,9 @@ export class TursoDatabase {
         now
       ]
     });
+
+    // Sync immediately after write (Option 1: Aggressive Immediate Sync)
+    this.syncAfterWrite();
   }
 
   /**
@@ -874,7 +939,7 @@ export class TursoDatabase {
   async touchSession(sessionId: string): Promise<void> {
     await this.ensureInitialized();
 
-    await this.client.execute({
+    const result = await this.client.execute({
       sql: `
         UPDATE sessions
         SET last_used_at = ?,
@@ -883,6 +948,9 @@ export class TursoDatabase {
       `,
       args: [Date.now(), sessionId]
     });
+
+    // Sync immediately after write (Option 1: Aggressive Immediate Sync)
+    this.syncAfterWrite(result.rowsAffected > 0);
   }
 
   /**
@@ -924,6 +992,9 @@ export class TursoDatabase {
       sql: 'DELETE FROM sessions WHERE id = ?',
       args: [sessionId]
     });
+
+    // Sync immediately after write (Option 1: Aggressive Immediate Sync)
+    this.syncAfterWrite(result.rowsAffected > 0);
 
     return result.rowsAffected > 0;
   }
