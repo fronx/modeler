@@ -1,31 +1,27 @@
-import { NextResponse } from 'next/server';
-import { createDatabase } from '@/lib/database-factory';
-import { getThoughtWebSocketServer } from '@/lib/websocket-server';
+import { db, saveSpace, ok, err } from '@/lib/api-utils';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
-  const db = createDatabase();
-
   try {
     const { spaceId } = await params;
-    const space = await db.getSpace(spaceId);
+    const space = await db().getSpace(spaceId);
 
     if (!space) {
-      return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+      return err('Space not found', 404);
     }
 
-    return NextResponse.json({
+    return ok({
       nodes: space.nodes,
-      spaceId: spaceId,
+      spaceId,
       loadedAt: new Date().toISOString(),
       count: Object.keys(space.nodes).length
     });
 
   } catch (error) {
     console.error('Failed to load space thoughts:', error);
-    return NextResponse.json({ error: 'Failed to load space thoughts' }, { status: 500 });
+    return err('Failed to load space thoughts', 500);
   }
 }
 
@@ -33,24 +29,19 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
-  const db = createDatabase();
-
   try {
     const { spaceId } = await params;
     const thoughtData = await request.json();
 
-    // Get existing space
-    const existingSpace = await db.getSpace(spaceId);
+    const existingSpace = await db().getSpace(spaceId);
     if (!existingSpace) {
-      return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+      return err('Space not found', 404);
     }
 
-    // Validate thought data
     if (!thoughtData.id) {
-      return NextResponse.json({ error: 'Thought ID required' }, { status: 400 });
+      return err('Thought ID required', 400);
     }
 
-    // Create new thought with defaults
     const newThought = {
       id: thoughtData.id,
       meanings: thoughtData.meanings || [],
@@ -66,7 +57,6 @@ export async function POST(
       ...(thoughtData.checkableList && { checkableList: thoughtData.checkableList })
     };
 
-    // Add thought to space
     const updatedSpace = {
       ...existingSpace,
       nodes: {
@@ -79,27 +69,17 @@ export async function POST(
       ]
     };
 
-    // Save updated space
-    await db.insertSpace(updatedSpace);
+    await saveSpace(updatedSpace);
 
-    // Trigger WebSocket broadcast (required for Turso, redundant but harmless for PostgreSQL)
-    const wsServer = getThoughtWebSocketServer();
-    if (wsServer) {
-      await wsServer.broadcastSpaceUpdate(spaceId);
-    }
-
-    return NextResponse.json({
+    return ok({
       success: true,
       message: `Thought '${thoughtData.id}' added to space ${spaceId}`,
       thoughtId: thoughtData.id,
-      spaceId: spaceId
+      spaceId
     });
 
   } catch (error) {
     console.error('Failed to add thought:', error);
-    return NextResponse.json({
-      error: 'Failed to add thought',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return err('Failed to add thought', 500);
   }
 }

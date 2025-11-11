@@ -1,29 +1,25 @@
-import { NextResponse } from 'next/server';
-import { createDatabase } from '@/lib/database-factory';
-import { getThoughtWebSocketServer } from '@/lib/websocket-server';
+import { db, saveSpace, ok, err } from '@/lib/api-utils';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
-  const db = createDatabase();
-
   try {
     const { spaceId } = await params;
-    const space = await db.getSpace(spaceId);
+    const space = await db().getSpace(spaceId);
 
     if (!space) {
-      return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+      return err('Space not found', 404);
     }
 
-    return NextResponse.json({
+    return ok({
       ...space,
       loadedAt: new Date().toISOString()
     });
 
   } catch (error) {
     console.error('Failed to load space:', error);
-    return NextResponse.json({ error: 'Failed to load space' }, { status: 500 });
+    return err('Failed to load space', 500);
   }
 }
 
@@ -31,43 +27,26 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
-  const db = createDatabase();
-
   try {
     const { spaceId } = await params;
     const spaceData = await request.json();
 
-    // Validate basic structure
     if (!spaceData.metadata || !spaceData.nodes || !spaceData.globalHistory) {
-      return NextResponse.json({
-        error: 'Invalid space structure. Must have metadata, nodes, and globalHistory'
-      }, { status: 400 });
+      return err('Invalid space structure. Must have metadata, nodes, and globalHistory', 400);
     }
 
-    // Ensure the ID matches
     spaceData.metadata.id = spaceId;
+    await saveSpace(spaceData);
 
-    // Update the space (upsert)
-    await db.insertSpace(spaceData);
-
-    // Trigger WebSocket broadcast (required for Turso, redundant but harmless for PostgreSQL)
-    const wsServer = getThoughtWebSocketServer();
-    if (wsServer) {
-      await wsServer.broadcastSpaceUpdate(spaceId);
-    }
-
-    return NextResponse.json({
+    return ok({
       success: true,
       message: `Space ${spaceId} updated successfully`,
-      spaceId: spaceId
+      spaceId
     });
 
   } catch (error) {
     console.error('Failed to update space:', error);
-    return NextResponse.json({
-      error: 'Failed to update space',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return err('Failed to update space', 500);
   }
 }
 
@@ -75,19 +54,15 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
-  const db = createDatabase();
-
   try {
     const { spaceId } = await params;
     const updates = await request.json();
 
-    // Get existing space
-    const existingSpace = await db.getSpace(spaceId);
+    const existingSpace = await db().getSpace(spaceId);
     if (!existingSpace) {
-      return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+      return err('Space not found', 404);
     }
 
-    // Handle simple title update
     if (updates.title && typeof updates.title === 'string') {
       const updatedSpace = {
         ...existingSpace,
@@ -98,16 +73,15 @@ export async function PATCH(
         }
       };
 
-      await db.insertSpace(updatedSpace);
+      await saveSpace(updatedSpace);
 
-      return NextResponse.json({
+      return ok({
         success: true,
         message: `Space title updated to "${updates.title}"`,
-        spaceId: spaceId
+        spaceId
       });
     }
 
-    // Handle simple description update
     if (updates.description && typeof updates.description === 'string') {
       const updatedSpace = {
         ...existingSpace,
@@ -118,42 +92,35 @@ export async function PATCH(
         }
       };
 
-      await db.insertSpace(updatedSpace);
+      await saveSpace(updatedSpace);
 
-      return NextResponse.json({
+      return ok({
         success: true,
         message: `Space description updated`,
-        spaceId: spaceId
+        spaceId
       });
     }
 
-    // Apply updates - deep merge with proper node merging
     const updatedNodes = { ...existingSpace.nodes };
 
-    // Deep merge individual nodes
     if (updates.nodes) {
       for (const [nodeId, nodeUpdates] of Object.entries(updates.nodes)) {
         if (updatedNodes[nodeId]) {
-          // Merge with existing node
           updatedNodes[nodeId] = {
             ...updatedNodes[nodeId],
             ...nodeUpdates,
-            // Preserve core fields if not explicitly updated
-            id: nodeUpdates.id || updatedNodes[nodeId].id,
-            // Merge values object
+            id: (nodeUpdates as any).id || updatedNodes[nodeId].id,
             values: {
               ...(updatedNodes[nodeId].values || {}),
-              ...(nodeUpdates.values || {})
+              ...((nodeUpdates as any).values || {})
             },
-            // Merge history arrays
             history: [
               ...(updatedNodes[nodeId].history || []),
-              ...(nodeUpdates.history || [])
+              ...((nodeUpdates as any).history || [])
             ]
           };
         } else {
-          // New node
-          updatedNodes[nodeId] = nodeUpdates;
+          updatedNodes[nodeId] = nodeUpdates as any;
         }
       }
     }
@@ -168,56 +135,41 @@ export async function PATCH(
       globalHistory: updates.globalHistory || existingSpace.globalHistory
     };
 
-    // Update the space
-    await db.insertSpace(updatedSpace);
+    await saveSpace(updatedSpace);
 
-    // Trigger WebSocket broadcast (required for Turso, redundant but harmless for PostgreSQL)
-    const wsServer = getThoughtWebSocketServer();
-    if (wsServer) {
-      await wsServer.broadcastSpaceUpdate(spaceId);
-    }
-
-    return NextResponse.json({
+    return ok({
       success: true,
       message: `Space ${spaceId} partially updated`,
-      spaceId: spaceId,
+      spaceId,
       updatedFields: Object.keys(updates)
     });
 
   } catch (error) {
     console.error('Failed to patch space:', error);
-    return NextResponse.json({
-      error: 'Failed to patch space',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return err('Failed to patch space', 500);
   }
 }
 
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
-  const db = createDatabase();
-
   try {
     const { spaceId } = await params;
-    const deleted = await db.deleteSpace(spaceId);
+    const deleted = await db().deleteSpace(spaceId);
 
     if (!deleted) {
-      return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+      return err('Space not found', 404);
     }
 
-    return NextResponse.json({
+    return ok({
       success: true,
       message: `Space ${spaceId} deleted successfully`,
-      spaceId: spaceId
+      spaceId
     });
 
   } catch (error) {
     console.error('Failed to delete space:', error);
-    return NextResponse.json({
-      error: 'Failed to delete space',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return err('Failed to delete space', 500);
   }
 }

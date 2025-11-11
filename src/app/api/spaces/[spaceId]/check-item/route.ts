@@ -1,54 +1,40 @@
-import { NextResponse } from 'next/server';
-import { createDatabase } from '@/lib/database-factory';
-import { getThoughtWebSocketServer } from '@/lib/websocket-server';
+import { db, saveSpace, ok, err } from '@/lib/api-utils';
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ spaceId: string }> }
 ) {
-  const db = createDatabase();
-
   try {
     const { spaceId } = await params;
     const { nodeId, itemIndex, checked } = await request.json();
 
     if (typeof nodeId !== 'string' || typeof itemIndex !== 'number' || typeof checked !== 'boolean') {
-      return NextResponse.json({
-        error: 'Invalid request. Required: nodeId (string), itemIndex (number), checked (boolean)'
-      }, { status: 400 });
+      return err('Invalid request. Required: nodeId (string), itemIndex (number), checked (boolean)', 400);
     }
 
-    const space = await db.getSpace(spaceId);
+    const space = await db().getSpace(spaceId);
     if (!space) {
-      return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+      return err('Space not found', 404);
     }
 
     const node = space.nodes[nodeId];
     if (!node) {
-      return NextResponse.json({ error: 'Node not found' }, { status: 404 });
+      return err('Node not found', 404);
     }
 
     if (!node.checkableList || !Array.isArray(node.checkableList)) {
-      return NextResponse.json({ error: 'Node does not have a checkable list' }, { status: 400 });
+      return err('Node does not have a checkable list', 400);
     }
 
     if (itemIndex < 0 || itemIndex >= node.checkableList.length) {
-      return NextResponse.json({ error: 'Item index out of bounds' }, { status: 400 });
+      return err('Item index out of bounds', 400);
     }
 
-    // Update the item
     node.checkableList[itemIndex].checked = checked;
 
-    // Save back to database
-    await db.insertSpace(space);
+    await saveSpace(space);
 
-    // Trigger WebSocket broadcast (required for Turso, redundant but harmless for PostgreSQL)
-    const wsServer = getThoughtWebSocketServer();
-    if (wsServer) {
-      await wsServer.broadcastSpaceUpdate(spaceId);
-    }
-
-    return NextResponse.json({
+    return ok({
       success: true,
       item: node.checkableList[itemIndex],
       nodeId,
@@ -58,9 +44,6 @@ export async function POST(
 
   } catch (error) {
     console.error('Failed to update item:', error);
-    return NextResponse.json({
-      error: 'Failed to update item',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return err('Failed to update item', 500);
   }
 }

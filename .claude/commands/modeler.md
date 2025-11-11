@@ -29,16 +29,20 @@ When multiple cognitive architectures share persistent thought structures, new f
 
 ## Step-by-Step: Creating Your First Cognitive Space
 
-**Note:** Use the Space CLI tool (`scripts/space-cli.ts`) for autonomous cognitive modeling. See [`docs/claude-code-cli-guide.md`](../docs/claude-code-cli-guide.md) for complete reference.
+**Note:** Use HTTP API endpoints for all cognitive space operations. All examples use `curl` for direct API access.
 
 ### 1. Create a New Space
 
 ```bash
-# Create via CLI
-npx tsx scripts/space-cli.ts create "Canada Journey Preparation" "Planning for upcoming travel to Canada"
+# Create via HTTP API
+curl -X POST http://localhost:3000/api/spaces \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Canada Journey Preparation",
+    "description": "Planning for upcoming travel to Canada"
+  }'
 
-# Returns: {"id": "2025-11-03T14-29-07-411Z"}
-# You can now reference this space by either ID OR title in all subsequent commands
+# Returns: {"space": {"id": "2025-11-03T14-29-07-411Z", ...}, "message": "Space created successfully"}
 ```
 
 **What happens:**
@@ -46,7 +50,7 @@ npx tsx scripts/space-cli.ts create "Canada Journey Preparation" "Planning for u
 - Creates space in database (Turso or PostgreSQL based on DATABASE_TYPE env var)
 - Initializes empty thought space structure
 - Space immediately available via dashboard at `http://localhost:3000/?space=<ID>`
-- **All commands accept either the space ID or the space title as identifier**
+- WebSocket broadcast notifies all connected clients
 
 ### 2. Define Your Space Purpose
 
