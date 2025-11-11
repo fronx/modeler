@@ -568,10 +568,123 @@ export class TursoDatabase {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.syncStats.lastError = errorMsg;
+
+      // Check for frame mismatch error indicating local DB is behind
+      if (errorMsg.includes('InvalidPushFrameNoHigh')) {
+        console.error('Local database is out of sync with remote. Frame mismatch detected.');
+        console.error('This happens when the local database is behind the remote.');
+        console.error('Attempting to resync from remote...');
+
+        // Try to recover by forcing a resync
+        try {
+          await this.resync();
+          console.log('Resync completed successfully');
+          return;
+        } catch (resyncError) {
+          console.error('Resync failed:', resyncError);
+          throw new Error(`Sync failed with frame mismatch. Manual resync required: ${errorMsg}`);
+        }
+      }
+
       throw new Error(`Sync failed: ${errorMsg}`);
     } finally {
       this.syncStats.isSyncing = false;
     }
+  }
+
+  /**
+   * Force a complete resync from remote Turso database.
+   * This rebuilds the local database from scratch.
+   *
+   * WARNING: This will discard any local changes that haven't been synced.
+   * A timestamped backup is created before deletion.
+   * Only use this when the local database is corrupted or out of sync.
+   *
+   * @returns Path to the backup file created
+   */
+  async resync(): Promise<string | null> {
+    if (!this.isEmbeddedReplica) {
+      throw new Error('Resync is only available for embedded replicas');
+    }
+
+    console.log('Starting full resync from remote...');
+
+    // Close the current client
+    this.client.close();
+
+    // Backup and delete local database files
+    const dbPath = (process.env.TURSO_DATABASE_URL || 'file:modeler.db').replace('file:', '');
+    const fs = await import('fs');
+    const path = await import('path');
+
+    let backupPath: string | null = null;
+
+    try {
+      // Create timestamped backup if database exists
+      if (fs.existsSync(dbPath)) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const dir = path.dirname(dbPath);
+        const basename = path.basename(dbPath);
+        backupPath = path.join(dir, `${basename}.backup-${timestamp}`);
+
+        fs.copyFileSync(dbPath, backupPath);
+        console.log(`Created backup: ${backupPath}`);
+
+        // Also backup metadata if it exists
+        const metadataPath = `${dbPath}-sync-metadata`;
+        if (fs.existsSync(metadataPath)) {
+          fs.copyFileSync(metadataPath, `${backupPath}-sync-metadata`);
+        }
+
+        // Now remove the original files
+        fs.unlinkSync(dbPath);
+        console.log(`Removed local database: ${dbPath}`);
+
+        if (fs.existsSync(metadataPath)) {
+          fs.unlinkSync(metadataPath);
+          console.log(`Removed sync metadata: ${metadataPath}`);
+        }
+
+        // Clean up WAL files
+        const shmPath = `${dbPath}-shm`;
+        if (fs.existsSync(shmPath)) {
+          fs.unlinkSync(shmPath);
+        }
+
+        const walPath = `${dbPath}-wal`;
+        if (fs.existsSync(walPath)) {
+          fs.unlinkSync(walPath);
+        }
+      }
+    } catch (error) {
+      console.error('Error during resync file operations:', error);
+      throw new Error('Failed to backup/remove local database files for resync');
+    }
+
+    // Recreate client - this will trigger a fresh sync from remote
+    const syncUrl = process.env.TURSO_SYNC_URL;
+    const useOfflineMode = this.isEmbeddedReplica;
+
+    this.client = createClient({
+      url: process.env.TURSO_DATABASE_URL || 'file:modeler.db',
+      authToken: process.env.TURSO_AUTH_TOKEN,
+      syncUrl,
+      offline: useOfflineMode
+    });
+
+    // Reset initialized flag to re-run schema init
+    this.initialized = false;
+    await this.ensureInitialized();
+
+    // Trigger initial sync to pull all data from remote
+    await this.client.sync();
+
+    console.log('Resync completed - local database rebuilt from remote');
+    if (backupPath) {
+      console.log(`Old database backed up to: ${backupPath}`);
+    }
+
+    return backupPath;
   }
 
   /**
