@@ -24,6 +24,7 @@ export interface TursoDatabaseConfig {
   authToken?: string;        // For remote/replica
   syncUrl?: string;          // For embedded replica
   syncInterval?: number;     // Auto-sync interval in seconds (0 = disabled)
+  syncOnStartup?: boolean;   // Sync before database is ready (default: true). Blocks initialization until sync succeeds.
   enableVectorSearch?: boolean;  // Whether to generate embeddings (requires OPENAI_API_KEY)
   offline?: boolean;         // Enable offline mode for fast local writes (default: true for embedded replicas)
                             // When true: writes are instant (1-2ms), synced in background
@@ -56,6 +57,7 @@ export interface NodeSearchResult {
 export class TursoDatabase {
   private client: Client;
   private initialized = false;
+  private synced = false;
   private vectorSearchEnabled: boolean;
   private syncIntervalId?: NodeJS.Timeout;
   private syncStats: SyncStats = {
@@ -63,11 +65,13 @@ export class TursoDatabase {
     isSyncing: false
   };
   private isEmbeddedReplica: boolean;
+  private syncOnStartup: boolean;
 
   constructor(config: TursoDatabaseConfig = {}) {
     const url = config.url || process.env.TURSO_DATABASE_URL || "file:modeler.db";
     const syncUrl = config.syncUrl || process.env.TURSO_SYNC_URL;
     const syncInterval = config.syncInterval ?? (process.env.TURSO_SYNC_INTERVAL ? parseInt(process.env.TURSO_SYNC_INTERVAL) : 0);
+    this.syncOnStartup = config.syncOnStartup ?? true;
 
     this.isEmbeddedReplica = !!syncUrl && url.startsWith('file:');
 
@@ -139,6 +143,19 @@ export class TursoDatabase {
     }
 
     this.initialized = true;
+
+    // Perform startup sync if enabled and using embedded replica
+    if (this.syncOnStartup && this.isEmbeddedReplica && !this.synced) {
+      console.log('Performing startup sync to ensure database is up to date...');
+      try {
+        await this.sync();
+        this.synced = true;
+        console.log('Startup sync completed successfully');
+      } catch (error) {
+        console.error('Startup sync failed:', error);
+        throw new Error(`Database initialization failed: unable to sync with remote. ${error}`);
+      }
+    }
   }
 
   async insertSpace(space: CognitiveSpace): Promise<void> {
@@ -678,6 +695,7 @@ export class TursoDatabase {
 
     // Trigger initial sync to pull all data from remote
     await this.client.sync();
+    this.synced = true;
 
     console.log('Resync completed - local database rebuilt from remote');
     if (backupPath) {
