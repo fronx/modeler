@@ -10,7 +10,8 @@ import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import { join } from 'path';
 import { readFileSync } from 'fs';
-import { TursoDatabase } from './turso-database';
+import { createDatabase } from './database-factory';
+import type { DatabaseInterface } from './database-factory';
 
 export interface CLISessionConfig {
   workingDir?: string;
@@ -55,7 +56,7 @@ export class ClaudeCLISession extends EventEmitter {
   private isReady = false;
   private config: CLISessionConfig;
   private systemPrompt: string;
-  private db: TursoDatabase;
+  private db: DatabaseInterface;
   private messageCount = 0;
 
   constructor(config: CLISessionConfig = {}) {
@@ -70,8 +71,8 @@ export class ClaudeCLISession extends EventEmitter {
     const modelerPath = join(this.config.workingDir!, '.claude/commands/modeler.md');
     this.systemPrompt = readFileSync(modelerPath, 'utf-8');
 
-    // Initialize database connection
-    this.db = new TursoDatabase();
+    // Use singleton database connection
+    this.db = createDatabase();
   }
 
   /**
@@ -100,9 +101,14 @@ export class ClaudeCLISession extends EventEmitter {
     }
 
     // Spawn persistent Claude CLI process
+    // IMPORTANT: Remove ANTHROPIC_API_KEY from env to use Max subscription instead of API credits
+    const env = { ...process.env };
+    delete env.ANTHROPIC_API_KEY;
+
     this.process = spawn('claude', args, {
       cwd: this.config.workingDir,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env
     });
 
     console.log(`[Claude CLI] Process PID: ${this.process.pid}`);
@@ -161,9 +167,9 @@ export class ClaudeCLISession extends EventEmitter {
             // Save new session to database
             this.db.saveSession({
               id: this.sessionId,
-              spaceId: this.config.spaceId,
+              spaceId: this.config.spaceId || null,
               messageCount: 0
-            }).catch(err => console.error('[Claude CLI] Failed to save session:', err));
+            }).catch((err: unknown) => console.error('[Claude CLI] Failed to save session:', err));
             this.emit('session_ready');
           } else {
             console.log(`[Claude CLI] ✓ Same session: ${this.sessionId}`);
@@ -189,13 +195,22 @@ export class ClaudeCLISession extends EventEmitter {
             }
           }
         } else if (msg.type === 'result') {
-          // Message complete - emit permission denials if any
+          // Result event signals conversation is complete for this turn
+          console.log('\n[Claude CLI Result Event]', {
+            result: msg.result?.substring(0, 100) + '...',
+            is_error: msg.is_error,
+            duration_ms: msg.duration_ms
+          });
+
           if (msg.permission_denials && msg.permission_denials.length > 0) {
             console.error('\n[Claude CLI Tool Permission Denials]', msg.permission_denials);
             this.emit('tool_denials', msg.permission_denials);
           }
 
+          // Emit both events - message_complete for backward compat, result for proper handling
           this.emit('message_complete', msg);
+          this.emit('result', msg);
+          console.log('[Claude CLI] Result event emitted, listeners:', this.listenerCount('result'));
         }
       } catch (e) {
         // Non-JSON output, ignore
@@ -227,7 +242,7 @@ export class ClaudeCLISession extends EventEmitter {
     // Update session in database
     if (this.sessionId) {
       this.messageCount++;
-      this.db.touchSession(this.sessionId).catch(err =>
+      this.db.touchSession(this.sessionId).catch((err: unknown) =>
         console.error('[Claude CLI] Failed to update session:', err)
       );
     }
@@ -365,6 +380,6 @@ export async function listCLISessions(): Promise<Array<{
   createdAt: number;
   lastUsedAt: number;
 }>> {
-  const db = new TursoDatabase();
+  const db = createDatabase();
   return db.listSessions();
 }

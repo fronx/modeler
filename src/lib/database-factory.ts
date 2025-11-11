@@ -1,5 +1,5 @@
 import { TursoDatabase } from './turso-database';
-import type { CognitiveSpace } from './turso-database';
+import type { CognitiveSpace, SpaceSearchResult, NodeSearchResult } from './turso-database';
 
 // Database interface for Turso operations
 export interface DatabaseInterface {
@@ -14,6 +14,25 @@ export interface DatabaseInterface {
     nodeCount: number;
   }>>;
   deleteSpace(id: string): Promise<boolean>;
+  saveSession(session: {
+    id: string;
+    title?: string;
+    spaceId?: string | null;
+    messageCount: number;
+  }): Promise<void>;
+  touchSession(sessionId: string): Promise<void>;
+  listSessions(): Promise<Array<{
+    id: string;
+    title: string | null;
+    spaceId: string | null;
+    messageCount: number;
+    createdAt: number;
+    lastUsedAt: number;
+  }>>;
+  searchSpaces?(query: string, limit?: number): Promise<SpaceSearchResult[]>;
+  searchNodesInSpace?(spaceId: string, query: string, limit?: number, threshold?: number): Promise<NodeSearchResult[]>;
+  searchAllNodes?(query: string, limit?: number, threshold?: number): Promise<NodeSearchResult[]>;
+  updateNode?(spaceId: string, nodeKey: string, updates: any): Promise<void>;
   close(): Promise<void>;
 }
 

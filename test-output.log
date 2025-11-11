@@ -1,0 +1,206 @@
+
+
+📝 TEST 1: Simple prompt - stdin CLOSED after message (original)
+
+================================================================================
+Testing Claude CLI with prompt: Say "hello" in one word
+Keep stdin open: false
+================================================================================
+
+[11.28s] Message #1:
+  Type: system (init)
+  Session ID: dbcdd6c4-2379-4052-bdcd-1d31989956c7
+  Raw: {"type":"system","subtype":"init","cwd":"/Users/fnx/code/modeler","session_id":"dbcdd6c4-2379-4052-bdcd-1d31989956c7","tools":["Task","Bash","Glob","G
+
+[14.00s] Message #2:
+  Type: assistant
+  Text: Hello...
+  Raw: {"type":"assistant","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_01UTxjChUhavzZPPPDj4gARw","type":"message","role":"assistant","content":
+
+[14.02s] Message #3:
+  Type: result (success)
+  Result #1: Hello
+  Raw: {"type":"result","subtype":"success","is_error":false,"duration_ms":2786,"duration_api_ms":9880,"num_turns":1,"result":"Hello","session_id":"dbcdd6c4-
+
+✅ RESULT EVENT RECEIVED
+
+================================================================================
+SUMMARY:
+  Exit Code: 0
+  Total Time: 14.12s
+  Messages Received: 3
+  Tool Uses: 0
+  Results: 1
+  Result Event Received: true
+================================================================================
+
+
+📝 TEST 2: Simple prompt - stdin KEPT OPEN (web integration)
+
+================================================================================
+Testing Claude CLI with prompt: Say "hello" in one word
+Keep stdin open: true
+================================================================================
+
+[11.31s] Message #1:
+  Type: system (init)
+  Session ID: 0ca911a8-4300-41d4-a577-119f721639ac
+  Raw: {"type":"system","subtype":"init","cwd":"/Users/fnx/code/modeler","session_id":"0ca911a8-4300-41d4-a577-119f721639ac","tools":["Task","Bash","Glob","G
+
+[14.06s] Message #2:
+  Type: assistant
+  Text: Hello...
+  Raw: {"type":"assistant","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_01KZN4SFM6PfW5nbCeC932oB","type":"message","role":"assistant","content":
+
+[14.06s] Message #3:
+  Type: result (success)
+  Result #1: Hello
+  Raw: {"type":"result","subtype":"success","is_error":false,"duration_ms":2795,"duration_api_ms":9979,"num_turns":1,"result":"Hello","session_id":"0ca911a8-
+
+✅ RESULT EVENT RECEIVED
+Closing stdin after result event...
+
+================================================================================
+SUMMARY:
+  Exit Code: 0
+  Total Time: 14.16s
+  Messages Received: 3
+  Tool Uses: 0
+  Results: 1
+  Result Event Received: true
+================================================================================
+
+
+📝 TEST 3: Tool use - stdin CLOSED (original)
+
+================================================================================
+Testing Claude CLI with prompt: List files in the current directory using ls
+Keep stdin open: false
+================================================================================
+
+[11.15s] Message #1:
+  Type: system (init)
+  Session ID: 13be391d-6867-4e5c-9de4-fce6a7b5dfec
+  Raw: {"type":"system","subtype":"init","cwd":"/Users/fnx/code/modeler","session_id":"13be391d-6867-4e5c-9de4-fce6a7b5dfec","tools":["Task","Bash","Glob","G
+
+[13.64s] Message #2:
+  Type: assistant
+  Text: I'll list the files in the current directory for you....
+  Raw: {"type":"assistant","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_01CjHKmiTdnLB2ev8n1JwsbQ","type":"message","role":"assistant","content":
+
+[13.92s] Message #3:
+  Type: assistant
+  Tool Use #1: Bash
+    ID: toolu_01PPTLXHMt3BaukUkuuNr6zc
+    Input: {"command":"ls -la","description":"List all files in current directory"}
+  Raw: {"type":"assistant","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_01CjHKmiTdnLB2ev8n1JwsbQ","type":"message","role":"assistant","content":
+  [Non-JSON]: {"type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_01PPTLXHMt3BaukUkuuNr6zc","
+  [Non-JSON]: lica.db-wal\n-rw-r--r--    1 fnx  75805902      1867 Nov  8 20:36 test-session-resume.ts\n-rw-r--r--
+
+[24.24s] Message #4:
+  Type: assistant
+  Text: The current directory contains:
+
+**Key Project Files:**
+- `package.json` - Node.js project configura...
+  Raw: {"type":"assistant","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_01KYEqJdet15SN76nHvtm5DT","type":"message","role":"assistant","content":
+  [Non-JSON]: {"type":"result","subtype":"success","is_error":false,"duration_ms":13141,"duration_api_ms":19608,"n
+  [Non-JSON]: equests":0,"costUSD":0.0039299999999999995,"contextWindow":200000},"claude-sonnet-4-5-20250929":{"in
+
+================================================================================
+SUMMARY:
+  Exit Code: 0
+  Total Time: 24.34s
+  Messages Received: 4
+  Tool Uses: 1
+  Results: 0
+  Result Event Received: false
+================================================================================
+
+
+📝 TEST 4: Tool use - stdin KEPT OPEN (web integration) ⚠️
+
+================================================================================
+Testing Claude CLI with prompt: List files in the current directory using ls
+Keep stdin open: true
+================================================================================
+
+[11.17s] Message #1:
+  Type: system (init)
+  Session ID: 10bd4fdc-8de4-4106-884b-3aa62b446b9b
+  Raw: {"type":"system","subtype":"init","cwd":"/Users/fnx/code/modeler","session_id":"10bd4fdc-8de4-4106-884b-3aa62b446b9b","tools":["Task","Bash","Glob","G
+
+[14.23s] Message #2:
+  Type: assistant
+  Text: I'll list the files in the current directory for you....
+  Raw: {"type":"assistant","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_012KzrqnHQWMemgPxBv2dv1s","type":"message","role":"assistant","content":
+
+[14.60s] Message #3:
+  Type: assistant
+  Tool Use #1: Bash
+    ID: toolu_01T5WtBjkMyXkaTvgJgq6JDx
+    Input: {"command":"ls -la","description":"List all files in current directory"}
+  Raw: {"type":"assistant","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_012KzrqnHQWMemgPxBv2dv1s","type":"message","role":"assistant","content":
+
+[15.53s] Message #4:
+  Type: user
+  Raw: {"type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_01T5WtBjkMyXkaTvgJgq6JDx","type":"tool_result","content":"total 64432\ndrwxr-
+
+[23.70s] Message #5:
+  Type: assistant
+  Text: The current directory contains the Modeler project. Here are the key items:
+
+**Configuration Files:*...
+  Raw: {"type":"assistant","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_01BFVrezBhNNBpdsLUTUSjoo","type":"message","role":"assistant","content":
+
+[23.71s] Message #6:
+  Type: result (success)
+  Result #1: The current directory contains the Modeler project. Here are the key items:
+
+**Configuration Files:**
+- `package.json`, `next.config.ts`, `tsconfig.json` - Project configuration
+- `.env`, `.env.example` - Environment variables
+- `eslint.config.mjs`, `postcss.config.mjs` - Linting and styling config
+
+**Source Code:**
+- `src/` - Main application source (Next.js 15 with App Router)
+- `artifacts/` - AI-generated content and cognitive modeling tools
+- `data/` - Data storage directory
+- `scripts/` - Utility scripts
+
+**Documentation:**
+- `README.md` - Main project documentation
+- `CLAUDE.md` - Project instructions for AI assistants
+- `MESSAGE-TO-AI.md` - Messages from previous AI collaborators
+- Several debug/integration markdown files
+
+**Cognitive Space Tools:**
+- `create-cognitive-space.sh` - Script to create cognitive spaces
+- `execute-space.ts` - Execute space thoughts
+- `update-space.js`, `validate-schema.ts` - Space management tools
+
+**Database:**
+- `modeler.db*` - SQLite database files with WAL mode
+
+**Test Files:**
+- Various `test-*.ts` files for testing different features
+
+**Build Artifacts:**
+- `.next/` - Next.js build output
+- `node_modules/` - Dependencies
+
+The project is a Next.js application exploring "code-as-gesture" - giving AI systems persistent, addressable thought structures through executable code.
+  Raw: {"type":"result","subtype":"success","is_error":false,"duration_ms":12588,"duration_api_ms":21745,"num_turns":2,"result":"The current directory contai
+
+✅ RESULT EVENT RECEIVED
+Closing stdin after result event...
+
+================================================================================
+SUMMARY:
+  Exit Code: 0
+  Total Time: 23.81s
+  Messages Received: 6
+  Tool Uses: 1
+  Results: 1
+  Result Event Received: true
+================================================================================

@@ -74,43 +74,83 @@ export async function POST(request: NextRequest) {
             }
           };
 
-          const onClose = () => {
-            if (!responseComplete) {
-              responseComplete = true;
-              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-              controller.close();
-            }
-          };
+          let timeoutId: NodeJS.Timeout | null = null;
 
-          const onMessageComplete = () => {
+          const cleanup = () => {
+            // Clear timeout
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+            }
+            // Remove event listeners
             session.off('data', onData);
             session.off('error', onError);
             session.off('tool_use', onToolUse);
             session.off('tool_denials', onToolDenials);
-            session.off('message_complete', onMessageComplete);
-            onClose();
+            session.off('result', onResult);
+          };
+
+          const onResult = (msg: any) => {
+            // 'result' event means THIS conversation turn is complete (all tools executed)
+            // Close THIS request's stream, but the persistent session stays alive
+            console.log('[Claude Code API] Result event received, closing stream');
+
+            // Always cleanup listeners, even if responseComplete is true (timeout fired)
+            cleanup();
+
+            if (!responseComplete) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'result',
+                result: msg.result,
+                is_error: msg.is_error
+              })}\n\n`));
+              // Close this HTTP response stream (not the persistent session)
+              responseComplete = true;
+              try {
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                controller.close();
+              } catch (e) {
+                // Controller already closed - ignore
+              }
+            }
           };
 
           session.on('data', onData);
           session.on('error', onError);
           session.on('tool_use', onToolUse);
           session.on('tool_denials', onToolDenials);
-          session.on('message_complete', onMessageComplete);
+          session.on('result', onResult);
+          console.log('[Claude Code API] Event listeners attached, result listeners:', session.listenerCount('result'));
 
           // Send the message to the session
           await session.sendMessage(fullPrompt);
 
-          // Set a timeout as backup
-          setTimeout(() => {
+          // Safety timeout - close HTTP stream for frontend but keep listeners attached
+          // Result will arrive soon after and cleanup will happen in onResult()
+          timeoutId = setTimeout(() => {
             if (!responseComplete) {
-              session.off('data', onData);
-              session.off('error', onError);
-              session.off('tool_use', onToolUse);
-              session.off('tool_denials', onToolDenials);
-              session.off('message_complete', onMessageComplete);
-              onClose();
+              console.warn('[Claude Code API] Stream timeout - closing HTTP stream only');
+              responseComplete = true;
+
+              // Clear this timeout
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+              }
+
+              // Close HTTP stream for frontend
+              try {
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                controller.close();
+              } catch (e) {
+                // Controller already closed
+              }
+
+              // DON'T call cleanup() - keep listeners attached
+              // Result will arrive soon and cleanup will happen in onResult()
+              // This prevents the 2.2x delay caused by removing listeners
             }
-          }, 60000); // 60 second timeout for response
+          }, 60000); // 60 second timeout
 
         } catch (error: any) {
           console.error('Streaming error:', error);
