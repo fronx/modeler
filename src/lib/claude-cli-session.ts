@@ -91,7 +91,9 @@ export class ClaudeCLISession extends EventEmitter {
       '--verbose',
       '--output-format', 'stream-json',
       '--input-format', 'stream-json',
-      '--system-prompt', this.systemPrompt
+      '--system-prompt', this.systemPrompt,
+      '--permission-mode', 'bypassPermissions',
+      '--allowed-tools', 'Bash(curl:*)'
     ];
 
     // Add resume flag if we have a session ID to resume from
@@ -154,6 +156,9 @@ export class ClaudeCLISession extends EventEmitter {
     for (const line of lines) {
       try {
         const msg: SDKMessage = JSON.parse(line);
+
+        // Debug: log all message types we receive
+        console.log('[Claude CLI stdout]', msg.type, msg.subtype || '');
 
         if (msg.type === 'system' && msg.subtype === 'init' && msg.session_id) {
           // Capture session ID

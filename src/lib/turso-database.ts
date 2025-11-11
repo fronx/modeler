@@ -138,8 +138,39 @@ export class TursoDatabase {
       .map(s => s.trim())
       .filter(s => s.length > 0);
 
+    // Separate vector indices from other statements
+    const vectorIndexStatements: string[] = [];
+    const regularStatements: string[] = [];
+
     for (const statement of statements) {
+      if (statement.includes('libsql_vector_idx')) {
+        vectorIndexStatements.push(statement);
+      } else {
+        regularStatements.push(statement);
+      }
+    }
+
+    // Execute regular statements first (tables and non-vector indices)
+    for (const statement of regularStatements) {
       await this.client.execute(statement);
+    }
+
+    // Run column migrations for existing tables (add missing columns)
+    // These will fail silently if columns already exist
+    await this.runColumnMigrations();
+
+    // Now execute vector index creation (depends on columns existing)
+    for (const statement of vectorIndexStatements) {
+      try {
+        await this.client.execute(statement);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        // Only warn if it's not a "column doesn't exist" error
+        // (which happens if vector search is disabled)
+        if (!errorMsg.includes('no such column')) {
+          console.warn(`Vector index creation warning: ${errorMsg}`);
+        }
+      }
     }
 
     this.initialized = true;
@@ -154,6 +185,33 @@ export class TursoDatabase {
       } catch (error) {
         console.error('Startup sync failed:', error);
         throw new Error(`Database initialization failed: unable to sync with remote. ${error}`);
+      }
+    }
+  }
+
+  /**
+   * Run column migrations to add missing columns to existing tables.
+   * Silently ignores errors if columns already exist (duplicate column errors).
+   */
+  private async runColumnMigrations(): Promise<void> {
+    const migrations = [
+      // Add vector embedding columns to spaces table (if they don't exist)
+      'ALTER TABLE spaces ADD COLUMN title_embedding F32_BLOB(768)',
+      'ALTER TABLE spaces ADD COLUMN description_embedding F32_BLOB(768)',
+      // Add vector embedding columns to nodes table (if they don't exist)
+      'ALTER TABLE nodes ADD COLUMN title_embedding F32_BLOB(768)',
+      'ALTER TABLE nodes ADD COLUMN full_embedding F32_BLOB(768)',
+    ];
+
+    for (const migration of migrations) {
+      try {
+        await this.client.execute(migration);
+      } catch (error) {
+        // Ignore "duplicate column" errors - column already exists
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (!errorMsg.includes('duplicate column')) {
+          console.warn(`Migration warning: ${errorMsg}`);
+        }
       }
     }
   }
@@ -637,7 +695,7 @@ export class TursoDatabase {
     let backupPath: string | null = null;
 
     try {
-      // Create timestamped backup if database exists
+      // Backup database file only (metadata is just sync state, not user data)
       if (fs.existsSync(dbPath)) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const dir = path.dirname(dbPath);
@@ -646,32 +704,30 @@ export class TursoDatabase {
 
         fs.copyFileSync(dbPath, backupPath);
         console.log(`Created backup: ${backupPath}`);
+      }
 
-        // Also backup metadata if it exists
-        const metadataPath = `${dbPath}-sync-metadata`;
-        if (fs.existsSync(metadataPath)) {
-          fs.copyFileSync(metadataPath, `${backupPath}-sync-metadata`);
-        }
+      // CRITICAL: Delete metadata FIRST to avoid "metadata exists but db doesn't" error
+      const metadataPath = `${dbPath}-sync-metadata`;
+      if (fs.existsSync(metadataPath)) {
+        fs.unlinkSync(metadataPath);
+        console.log(`Removed sync metadata`);
+      }
 
-        // Now remove the original files
+      // Delete WAL files
+      const shmPath = `${dbPath}-shm`;
+      if (fs.existsSync(shmPath)) {
+        fs.unlinkSync(shmPath);
+      }
+
+      const walPath = `${dbPath}-wal`;
+      if (fs.existsSync(walPath)) {
+        fs.unlinkSync(walPath);
+      }
+
+      // Delete database file last
+      if (fs.existsSync(dbPath)) {
         fs.unlinkSync(dbPath);
-        console.log(`Removed local database: ${dbPath}`);
-
-        if (fs.existsSync(metadataPath)) {
-          fs.unlinkSync(metadataPath);
-          console.log(`Removed sync metadata: ${metadataPath}`);
-        }
-
-        // Clean up WAL files
-        const shmPath = `${dbPath}-shm`;
-        if (fs.existsSync(shmPath)) {
-          fs.unlinkSync(shmPath);
-        }
-
-        const walPath = `${dbPath}-wal`;
-        if (fs.existsSync(walPath)) {
-          fs.unlinkSync(walPath);
-        }
+        console.log(`Removed local database`);
       }
     } catch (error) {
       console.error('Error during resync file operations:', error);
@@ -689,13 +745,14 @@ export class TursoDatabase {
       offline: useOfflineMode
     });
 
-    // Reset initialized flag to re-run schema init
-    this.initialized = false;
-    await this.ensureInitialized();
-
-    // Trigger initial sync to pull all data from remote
+    // Pull all data from remote FIRST
     await this.client.sync();
     this.synced = true;
+
+    // THEN ensure schema exists (in case Turso doesn't have it or it's outdated)
+    // Reset initialized flag to force schema init
+    this.initialized = false;
+    await this.ensureInitialized();
 
     console.log('Resync completed - local database rebuilt from remote');
     if (backupPath) {

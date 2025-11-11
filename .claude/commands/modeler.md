@@ -70,107 +70,159 @@ Your generated JSON structure starts with metadata:
 Add the main conceptual structure - usually 3-5 core thoughts that capture the essential tensions or categories:
 
 ```bash
-# Add first thought (ID auto-generated: "ApartmentPrep")
-# Use space title instead of ID - much cleaner!
-npx tsx scripts/space-cli.ts add-node "Canada Journey Preparation" \
-  --title "Apartment prep" \
-  --body "Getting home ready for departure and return" \
-  --focus 1.0 \
-  --position -0.8
-
-# Add second thought
-npx tsx scripts/space-cli.ts add-node "Canada Journey Preparation" \
-  --title "Packing" \
-  --body "Selecting and organizing what to bring" \
-  --focus 1.0 \
-  --position 0.0
-
-# Add third thought
-npx tsx scripts/space-cli.ts add-node "Canada Journey Preparation" \
-  --title "Shopping" \
-  --body "Items to buy for the journey" \
-  --focus 1.0 \
-  --position 0.8
+# Add thoughts via PATCH (adds/merges nodes into existing space)
+curl -s -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nodes": {
+      "ApartmentPrep": {
+        "meanings": [
+          {"content": "Apartment prep", "confidence": 0.9, "timestamp": '$(date +%s000)'},
+          {"content": "Getting home ready for departure and return", "confidence": 0.9, "timestamp": '$(date +%s000)'}
+        ],
+        "focus": 1.0,
+        "semanticPosition": -0.8,
+        "history": ["Node created: '$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'"]
+      },
+      "Packing": {
+        "meanings": [
+          {"content": "Packing", "confidence": 0.9, "timestamp": '$(date +%s000)'},
+          {"content": "Selecting and organizing what to bring", "confidence": 0.9, "timestamp": '$(date +%s000)'}
+        ],
+        "focus": 1.0,
+        "semanticPosition": 0.0,
+        "history": ["Node created: '$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'"]
+      },
+      "Shopping": {
+        "meanings": [
+          {"content": "Shopping", "confidence": 0.9, "timestamp": '$(date +%s000)'},
+          {"content": "Items to buy for the journey", "confidence": 0.9, "timestamp": '$(date +%s000)'}
+        ],
+        "focus": 1.0,
+        "semanticPosition": 0.8,
+        "history": ["Node created: '$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'"]
+      }
+    }
+  }' | jq .
 ```
 
-**Parameters:**
-- `--title` - Node title (auto-generates PascalCase ID)
-- `--body` - Additional content (optional)
-- `--focus` - Visibility: 1.0 (visible), 0.0 (neutral), -1.0 (hidden)
-- `--position` - Semantic position: -1.0 (left) to 1.0 (right)
+**Node Structure:**
+- `meanings` - Array of content with confidence and timestamp
+- `focus` - Visibility: 1.0 (visible), 0.0 (neutral), -1.0 (hidden)
+- `semanticPosition` - Position: -1.0 (left) to 1.0 (right)
+- `history` - Array of timestamped changes
 
 ### 4. Add Properties and Lists
 
 Enhance existing thoughts with checkable lists, values, and other properties:
 
 ```bash
-# Add checkable list to apartment prep
-npx tsx scripts/space-cli.ts update-node "Canada Journey Preparation" "ApartmentPrep" \
-  --checkable "Take down hanging plants without plates" \
-  --checkable "Brief Susan on plant watering" \
-  --checkable "Tidy up living spaces"
-
-# Add values and list to shopping
-npx tsx scripts/space-cli.ts update-node "Canada Journey Preparation" "Shopping" \
-  --values '{"estimated_cost": [50, 100]}' \
-  --checkable "Travel shampoo" \
-  --checkable "Contact lens solution (travel size)"
+# Update nodes with checkable lists and values via PATCH
+curl -s -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nodes": {
+      "ApartmentPrep": {
+        "checkableList": [
+          {"item": "Take down hanging plants without plates", "checked": false},
+          {"item": "Brief Susan on plant watering", "checked": false},
+          {"item": "Tidy up living spaces", "checked": false}
+        ]
+      },
+      "Shopping": {
+        "values": {"estimated_cost": [50, 100]},
+        "checkableList": [
+          {"item": "Travel shampoo", "checked": false},
+          {"item": "Contact lens solution (travel size)", "checked": false}
+        ]
+      }
+    }
+  }' | jq .
 ```
 
-**Parameters:**
-- `--checkable` - Add checkable list item (can repeat)
-- `--regular` - Add regular list item (can repeat)
-- `--values` - JSON object of values
+**Node Properties:**
+- `checkableList` - Array of `{"item": "text", "checked": bool}` for tasks
+- `regularList` - Array of strings for information items
+- `values` - JSON object for any key-value data
 
 ### 5. Create Background Context
 
-Add supporting information with `--focus -1.0` (hidden from dashboard but available for AI reasoning):
+Add supporting information with `focus: -1.0` (hidden from dashboard but available for AI reasoning):
 
 ```bash
-# Add background context with relationships
-npx tsx scripts/space-cli.ts add-node "Canada Journey Preparation" \
-  --title "Trip duration" \
-  --body "10 days in Canada" \
-  --values '{"days": 10}' \
-  --relates-to "Packing:supports:0.9" \
-  --relates-to "Shopping:supports:0.7" \
-  --focus -1.0
-
-# Add budget constraints
-npx tsx scripts/space-cli.ts add-node "Canada Journey Preparation" \
-  --title "Budget constraint" \
-  --body "Financial limits for the trip" \
-  --values '{"max_total": 500}' \
-  --relates-to "Shopping:conflicts-with:0.6" \
-  --focus -1.0
+# Add background context nodes with relationships
+curl -s -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nodes": {
+      "TripDuration": {
+        "meanings": [
+          {"content": "Trip duration", "confidence": 0.9, "timestamp": '$(date +%s000)'},
+          {"content": "10 days in Canada", "confidence": 0.9, "timestamp": '$(date +%s000)'}
+        ],
+        "values": {"days": 10},
+        "relationships": [
+          {"type": "supports", "target": "Packing", "strength": 0.9},
+          {"type": "supports", "target": "Shopping", "strength": 0.7}
+        ],
+        "focus": -1.0,
+        "history": ["Node created: '$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'"]
+      },
+      "BudgetConstraint": {
+        "meanings": [
+          {"content": "Budget constraint", "confidence": 0.9, "timestamp": '$(date +%s000)'},
+          {"content": "Financial limits for the trip", "confidence": 0.9, "timestamp": '$(date +%s000)'}
+        ],
+        "values": {"max_total": 500},
+        "relationships": [
+          {"type": "conflicts-with", "target": "Shopping", "strength": 0.6}
+        ],
+        "focus": -1.0,
+        "history": ["Node created: '$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'"]
+      }
+    }
+  }' | jq .
 ```
 
-**Parameters:**
-- `--relates-to` - Add relationship in format `TargetNode:type:strength` (can repeat)
-  - Types: `supports`, `conflicts-with`, or custom
-  - Strength: 0.0 to 1.0
+**Relationships:**
+- `relationships` - Array of `{"type": "...", "target": "NodeId", "strength": 0.0-1.0}`
+  - Common types: `supports`, `conflicts-with`, or custom
+  - Strength: 0.0 (weak) to 1.0 (strong)
 
 ### 6. View Your Space
 
 ```bash
-# Get full space JSON (by title or ID)
-npx tsx scripts/space-cli.ts get "Canada Journey Preparation"
+# List all spaces
+curl -s http://localhost:3000/api/spaces | jq .
+
+# Get full space JSON
+curl -s http://localhost:3000/api/spaces/SPACE_ID | jq .
 
 # Get just the nodes
-npx tsx scripts/space-cli.ts get "Canada Journey Preparation" --nodes-only
+curl -s http://localhost:3000/api/spaces/SPACE_ID/thoughts | jq .nodes
 
-# Analyze structure (focus levels, relationships, branches)
-npx tsx scripts/space-cli.ts analyze "Canada Journey Preparation"
+# Analyze structure (fetch space and process with jq)
+curl -s http://localhost:3000/api/spaces/SPACE_ID | jq '{
+  title: .metadata.title,
+  totalNodes: (.nodes | length),
+  focusLevels: {
+    visible: [.nodes | to_entries[] | select(.value.focus > 0.5) | .key],
+    hidden: [.nodes | to_entries[] | select(.value.focus < -0.5) | .key]
+  }
+}'
 
-# View in dashboard (need to use ID for URL)
-# Get ID from create output or list command
-npx tsx scripts/space-cli.ts list
+# Search spaces semantically
+curl -s "http://localhost:3000/api/search/spaces?q=travel+planning&limit=5" | jq .
+
+# Search nodes within a space
+curl -s "http://localhost:3000/api/search/nodes?q=budget&spaceId=SPACE_ID" | jq .
 ```
 
 **Real-time updates:**
-- Changes save automatically to PostgreSQL
+- Changes save automatically to database
 - Dashboard updates instantly via WebSocket
 - Multiple participants can collaborate simultaneously
+- All operations share the same database connection
 
 ## Essential Workflow Patterns
 
