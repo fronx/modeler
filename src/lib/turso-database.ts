@@ -435,6 +435,17 @@ export class TursoDatabase {
     return result.rowsAffected > 0;
   }
 
+  async deleteNode(spaceId: string, nodeKey: string): Promise<boolean> {
+    await this.ensureInitialized();
+
+    const nodeId = `${spaceId}:${nodeKey}`;
+    const result = await this.client.execute({
+      sql: "DELETE FROM nodes WHERE id = ?",
+      args: [nodeId]
+    });
+    return result.rowsAffected > 0;
+  }
+
   // ============================================================================
   // Vector Search Methods (Phase 2)
   // ============================================================================

@@ -70,7 +70,8 @@ Your generated JSON structure starts with metadata:
 Add the main conceptual structure - usually 3-5 core thoughts that capture the essential tensions or categories:
 
 ```bash
-# Add thoughts via PATCH (adds/merges nodes into existing space)
+# Add multiple thoughts via PATCH (bulk operation - adds/merges nodes)
+# For single nodes, prefer POST to /thoughts endpoint (see API reference below)
 curl -s -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
   -H "Content-Type: application/json" \
   -d '{
@@ -518,6 +519,12 @@ curl -X POST http://localhost:3000/api/spaces/SPACE_ID/thoughts \
   }'
 ```
 
+**Delete individual thoughts:**
+```bash
+curl -X DELETE http://localhost:3000/api/spaces/SPACE_ID/thoughts/NODE_ID
+# Returns: {"success": true, "message": "Node 'NODE_ID' deleted from space SPACE_ID", ...}
+```
+
 **Add thoughts with lists:**
 ```bash
 curl -X POST http://localhost:3000/api/spaces/SPACE_ID/thoughts \
@@ -551,12 +558,21 @@ curl -X PUT http://localhost:3000/api/spaces/SPACE_ID \
 
 **Partial space update (merge changes):**
 ```bash
+# Update metadata only
 curl -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
   -H "Content-Type: application/json" \
   -d '{
-    "metadata": {"description": "Updated description only"},
-    "nodes": {"NewThought": {...}}
+    "title": "Updated Title"
   }'
+
+# Or update description only
+curl -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Updated description"
+  }'
+
+# Note: Use POST to add new nodes, DELETE to remove nodes, not PATCH
 ```
 
 #### Reading Data

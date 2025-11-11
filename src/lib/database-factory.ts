@@ -14,6 +14,7 @@ export interface DatabaseInterface {
     nodeCount: number;
   }>>;
   deleteSpace(id: string): Promise<boolean>;
+  deleteNode(spaceId: string, nodeKey: string): Promise<boolean>;
   saveSession(session: {
     id: string;
     title?: string;

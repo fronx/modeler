@@ -92,8 +92,13 @@ export class ClaudeCLISession extends EventEmitter {
       '--output-format', 'stream-json',
       '--input-format', 'stream-json',
       '--system-prompt', this.systemPrompt,
-      '--permission-mode', 'bypassPermissions',
-      '--allowed-tools', 'Bash(curl:*)'
+      // Allow safe read-only operations without confirmation
+      '--allowed-tools', 'Bash(curl -s -X GET:*)',
+      '--allowed-tools', 'Bash(jq:*)',
+      '--allowed-tools', 'Bash(ls:*)',
+      '--allowed-tools', 'Read',
+      '--allowed-tools', 'Grep',
+      '--allowed-tools', 'Glob'
     ];
 
     // Add resume flag if we have a session ID to resume from
