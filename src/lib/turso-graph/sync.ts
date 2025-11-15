@@ -51,8 +51,10 @@ export class SyncManager {
    * Manually trigger a sync between the local replica and remote database.
    * Only works when using embedded replicas (file: URL with syncUrl).
    *
+   * Automatically retries on transient lock errors with exponential backoff.
+   *
    * @returns Promise that resolves when sync completes
-   * @throws Error if not using embedded replica or if sync fails
+   * @throws Error if not using embedded replica or if sync fails after retries
    */
   async sync(): Promise<void> {
     if (!this.isEmbeddedReplica) {
@@ -67,34 +69,57 @@ export class SyncManager {
     this.syncStats.isSyncing = true;
     this.syncStats.lastError = undefined;
 
+    const maxRetries = 3;
+    const baseDelay = 100; // Start with 100ms
+
     try {
-      await this.client.sync();
-      this.syncStats.syncCount++;
-      this.syncStats.lastSyncedAt = Date.now();
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.syncStats.lastError = errorMsg;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          await this.client.sync();
+          this.syncStats.syncCount++;
+          this.syncStats.lastSyncedAt = Date.now();
+          return; // Success
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          this.syncStats.lastError = errorMsg;
 
-      // Check for frame mismatch error indicating local DB is behind
-      if (errorMsg.includes('InvalidPushFrameNoHigh')) {
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.error('SYNC CONFLICT: Local database is behind remote');
-        console.error('This indicates the local and remote databases have diverged.');
-        console.error('');
-        console.error('To recover:');
-        console.error('  1. Stop the server');
-        console.error('  2. Run: npx tsx scripts/force-resync.ts');
-        console.error('  3. Restart the server');
-        console.error('');
-        console.error('Error:', errorMsg);
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          // Check for frame mismatch error indicating local DB is behind
+          if (errorMsg.includes('InvalidPushFrameNoHigh')) {
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('SYNC CONFLICT: Local database is behind remote');
+            console.error('This indicates the local and remote databases have diverged.');
+            console.error('');
+            console.error('To recover:');
+            console.error('  1. Stop the server');
+            console.error('  2. Run: npx tsx scripts/force-resync.ts');
+            console.error('  3. Restart the server');
+            console.error('');
+            console.error('Error:', errorMsg);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-        // Don't try automatic resync - it's too destructive and may fail anyway
-        // Let the error propagate so the operation fails visibly
-        throw new Error(`Sync conflict: Local database behind remote. Manual resync required. ${errorMsg}`);
+            // Don't try automatic resync - it's too destructive and may fail anyway
+            // Let the error propagate so the operation fails visibly
+            throw new Error(`Sync conflict: Local database behind remote. Manual resync required. ${errorMsg}`);
+          }
+
+          // Check for transient lock errors that can be retried
+          const isLockError = errorMsg.includes('database is locked') || errorMsg.includes('SQLITE_BUSY');
+
+          if (isLockError && attempt < maxRetries) {
+            const delay = baseDelay * Math.pow(2, attempt); // Exponential backoff: 100ms, 200ms, 400ms
+            console.warn(`[Sync] Database locked (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue; // Retry
+          }
+
+          // Non-retryable error or max retries exceeded
+          if (isLockError) {
+            throw new Error(`Sync failed after ${maxRetries + 1} attempts: ${errorMsg}`);
+          }
+
+          throw new Error(`Sync failed: ${errorMsg}`);
+        }
       }
-
-      throw new Error(`Sync failed: ${errorMsg}`);
     } finally {
       this.syncStats.isSyncing = false;
     }
