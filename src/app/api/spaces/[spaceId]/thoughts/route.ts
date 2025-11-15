@@ -1,4 +1,4 @@
-import { db, ok, err } from '@/lib/api-utils';
+import { db, broadcast, ok, err } from '@/lib/api-utils';
 
 export async function GET(
   request: Request,
@@ -65,6 +65,8 @@ export async function POST(
 
     // Use granular node upsert instead of rewriting entire space
     await db().upsertNode(spaceId, thoughtData.id, newThought);
+
+    await broadcast(spaceId);
 
     return ok({
       success: true,
