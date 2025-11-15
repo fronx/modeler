@@ -57,12 +57,20 @@ See [docs/edges-table-migration.md](docs/edges-table-migration.md) for a detaile
 
 ### 🤖 Claude Code Integration
 
-The dashboard includes a **persistent Claude Code session** for AI-assisted cognitive modeling:
+The dashboard includes a **persistent Claude CLI session** (wrapped Claude Code) for AI-assisted cognitive modeling:
 
-- **Interactive chat interface** with streaming responses
-- **Persistent session** - maintains context across messages (1.2-2.5s response time)
-- **Modeler context** - automatically loaded with cognitive space tools
+- **Interactive web chat interface** with streaming responses
+- **Persistent sessions** - maintains context across messages (~1.6s avg response time)
+- **MCP native tools** - direct integration with cognitive space operations via MCP server
+- **Modeler context** - automatically loaded with cognitive space guide and tools
+- **Session management** - resume previous conversations, track message history
 - **Test CLI**: `npx tsx test-interactive.ts` for command-line chat
+
+**Key Features:**
+- Uses Claude CLI with `--mcp-config .mcp.json` for native MCP tool access
+- Persistent process with stream-json format for optimal performance
+- Singleton session manager survives Next.js hot reloads
+- Database-backed session storage with resume capability
 
 **Performance:** See [PERFORMANCE-INVESTIGATION.md](PERFORMANCE-INVESTIGATION.md) for details on how we achieved 5-10x improvement over standard approaches through AsyncIterable streaming.
 
@@ -143,7 +151,7 @@ npm run dev
 
 **For AI Systems:**
 
-If curl requests fail, ask the user to start the server.
+The web dashboard includes an embedded Claude CLI session with MCP tool access. External AI systems can use the HTTP API or integrate via MCP server (see [MCP-SETUP.md](MCP-SETUP.md)).
 
 ### 🤖 **Installing the Cognitive-Modeler Agent**
 
