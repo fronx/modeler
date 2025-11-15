@@ -1,11 +1,15 @@
 /**
  * WebSocket server for real-time thought updates
  * Uses explicit broadcast pattern after database writes
+ *
+ * Runs on fixed port 8080 with HTTP API for cross-process broadcasts
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
-import { createServer } from 'http';
+import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { createDatabase } from './database-factory';
+
+export const WEBSOCKET_PORT = 3002;
 
 export class ThoughtWebSocketServer {
   private wss: WebSocketServer;
@@ -14,21 +18,98 @@ export class ThoughtWebSocketServer {
   private actualPort: number = 0;
 
   constructor() {
-    // Create HTTP server for WebSocket upgrade
-    this.server = createServer();
+    // Create HTTP server for WebSocket upgrade AND broadcast API
+    this.server = createServer((req, res) => this.handleHttpRequest(req, res));
     this.wss = new WebSocketServer({ server: this.server });
 
     this.setupWebSocketHandlers();
 
-    // Listen on port 0 to let OS assign a free port
-    this.server.listen(0, () => {
+    // Listen on fixed port
+    this.server.listen(WEBSOCKET_PORT, () => {
       this.actualPort = this.server.address().port;
       console.log(`🔗 ThoughtWebSocket server running on port ${this.actualPort}`);
+      console.log(`   - WebSocket: ws://localhost:${this.actualPort}`);
+      console.log(`   - HTTP API: http://localhost:${this.actualPort}/broadcast`);
     });
 
     this.server.on('error', (err: any) => {
-      console.error('WebSocket server error:', err);
+      if ((err as any).code === 'EADDRINUSE') {
+        console.log(`⚠️  Port ${WEBSOCKET_PORT} already in use (server already running)`);
+        // Store the port even if we couldn't bind - another process is serving it
+        this.actualPort = WEBSOCKET_PORT;
+      } else {
+        console.error('WebSocket server error:', err);
+      }
     });
+  }
+
+  /**
+   * Handle HTTP requests for cross-process broadcast API
+   */
+  private handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
+    // Enable CORS for local development
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      res.end();
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/broadcast') {
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk.toString();
+      });
+      req.on('end', async () => {
+        try {
+          const { type, spaceId } = JSON.parse(body);
+
+          switch (type) {
+            case 'space_update':
+              await this.broadcastSpaceUpdate(spaceId);
+              break;
+            case 'space_created':
+              this.broadcastSpaceCreated(spaceId);
+              await this.broadcastSpaceUpdate(spaceId);
+              await this.broadcastSpaceList();
+              break;
+            case 'space_list':
+              await this.broadcastSpaceList();
+              break;
+            default:
+              throw new Error(`Unknown broadcast type: ${type}`);
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+        } catch (error) {
+          console.error('Broadcast error:', error);
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }));
+        }
+      });
+      return;
+    }
+
+    // Health check endpoint
+    if (req.method === 'GET' && req.url === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        status: 'ok',
+        port: this.actualPort,
+        clients: this.clients.size
+      }));
+      return;
+    }
+
+    // Not found
+    res.writeHead(404);
+    res.end();
   }
 
   public getPort(): number {

@@ -5,6 +5,10 @@
  *
  * Exposes cognitive space operations as MCP tools and resources
  * for seamless integration with Claude Code
+ *
+ * ARCHITECTURE: This server uses HTTP API calls to the Next.js server.
+ * This ensures single-process database ownership - only the Next.js server
+ * handles database writes and replication, preventing sync conflicts.
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -15,12 +19,8 @@ import {
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { createDatabase } from './src/lib/database-factory.js';
 
 const BASE_URL = process.env.MODELER_URL || 'http://localhost:3000';
-
-// Initialize database
-const db = createDatabase();
 
 // Create MCP server
 const server = new Server(
@@ -178,6 +178,60 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ['spaceId'],
         },
       },
+      {
+        name: 'create_edge',
+        description: 'Create an edge between two nodes in a cognitive space',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            spaceId: {
+              type: 'string',
+              description: 'ID of the space containing the nodes',
+            },
+            sourceNode: {
+              type: 'string',
+              description: 'ID of the source node',
+            },
+            targetNode: {
+              type: 'string',
+              description: 'ID of the target node',
+            },
+            type: {
+              type: 'string',
+              description: 'Type of relationship (e.g., "depends on", "relates to")',
+            },
+            strength: {
+              type: 'number',
+              description: 'Strength of the relationship (0.0 to 1.0)',
+              minimum: 0,
+              maximum: 1,
+            },
+            gloss: {
+              type: 'string',
+              description: 'Optional description of the relationship',
+            },
+          },
+          required: ['spaceId', 'sourceNode', 'targetNode', 'type'],
+        },
+      },
+      {
+        name: 'delete_edge',
+        description: 'Delete an edge between two nodes in a cognitive space',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            spaceId: {
+              type: 'string',
+              description: 'ID of the space containing the edge',
+            },
+            edgeId: {
+              type: 'string',
+              description: 'ID of the edge (format: spaceId:sourceNode:targetNode)',
+            },
+          },
+          required: ['spaceId', 'edgeId'],
+        },
+      },
     ],
   };
 });
@@ -231,7 +285,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: `✓ Created node: ${nodeData.id}\n  Space: ${spaceId}\n  Dashboard updated via WebSocket`,
+              text: `✓ Created node: ${nodeData.id}\n  Space: ${spaceId}`,
             },
           ],
         };
@@ -276,7 +330,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: `Cognitive Spaces (${result.count}):\n${spaceList}`,
+              text: `Cognitive Spaces (${result.count}):\n${spaceList || '(no spaces yet)'}`,
             },
           ],
         };
@@ -297,6 +351,61 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'create_edge': {
+        const { spaceId, sourceNode, targetNode, type, strength, gloss } = args as {
+          spaceId: string;
+          sourceNode: string;
+          targetNode: string;
+          type: string;
+          strength?: number;
+          gloss?: string;
+        };
+
+        const response = await fetch(`${BASE_URL}/api/spaces/${spaceId}/edges`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sourceNode, targetNode, type, strength, gloss }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(`Failed to create edge: ${JSON.stringify(result)}`);
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✓ Created edge: ${sourceNode} --[${type}]--> ${targetNode}\n  Space: ${spaceId}`,
+            },
+          ],
+        };
+      }
+
+      case 'delete_edge': {
+        const { spaceId, edgeId } = args as { spaceId: string; edgeId: string };
+
+        const response = await fetch(`${BASE_URL}/api/spaces/${spaceId}/edges/${edgeId}`, {
+          method: 'DELETE',
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(`Failed to delete edge: ${JSON.stringify(result)}`);
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✓ Deleted edge: ${edgeId}\n  Space: ${spaceId}`,
             },
           ],
         };
@@ -324,10 +433,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
   try {
-    const spaces = await db.listSpaces();
+    const response = await fetch(`${BASE_URL}/api/spaces`);
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('Failed to list resources:', result);
+      return { resources: [] };
+    }
 
     return {
-      resources: spaces.map((space) => ({
+      resources: result.spaces.map((space: any) => ({
         uri: `cognitive-space:///${space.id}`,
         name: space.title,
         description: space.description,
@@ -351,9 +466,10 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const spaceId = match[1];
 
   try {
-    const space = await db.getSpace(spaceId);
+    const response = await fetch(`${BASE_URL}/api/spaces/${spaceId}`);
+    const result = await response.json();
 
-    if (!space) {
+    if (!response.ok) {
       throw new Error(`Space not found: ${spaceId}`);
     }
 
@@ -362,7 +478,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
         {
           uri,
           mimeType: 'application/json',
-          text: JSON.stringify(space, null, 2),
+          text: JSON.stringify(result.space, null, 2),
         },
       ],
     };

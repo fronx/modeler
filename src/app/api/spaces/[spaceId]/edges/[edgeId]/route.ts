@@ -1,17 +1,14 @@
-import { db, ok, err } from '@/lib/api-utils';
+import { createEdge, deleteEdge as deleteEdgeShared, ok, err } from '@/lib/api-utils';
 
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ spaceId: string; edgeId: string }> }
 ) {
   try {
-    const { edgeId } = await params;
+    const { spaceId, edgeId } = await params;
 
-    const deleted = await db().deleteEdge(edgeId);
-
-    if (!deleted) {
-      return err('Edge not found', 404);
-    }
+    // Use shared deleteEdge (validates edge exists, broadcasts)
+    await deleteEdgeShared(spaceId, edgeId);
 
     return ok({
       success: true,
@@ -42,15 +39,15 @@ export async function PUT(
     const sourceNode = parts[1];
     const targetNode = parts.slice(2).join(':'); // Handle node keys with colons
 
-    // Update edge (using insert with ON CONFLICT)
-    await db().insertEdge({
+    // Use shared createEdge (inserts edge with ON CONFLICT, broadcasts)
+    await createEdge(
       spaceId,
       sourceNode,
       targetNode,
-      type: edgeData.type,
-      strength: edgeData.strength ?? 0.7,
-      gloss: edgeData.gloss
-    });
+      edgeData.type,
+      edgeData.strength,
+      edgeData.gloss
+    );
 
     return ok({
       success: true,

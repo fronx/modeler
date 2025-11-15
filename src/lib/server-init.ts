@@ -1,9 +1,10 @@
 /**
- * Server initialization - starts Claude Code session when server starts
+ * Server initialization - starts Claude Code session and WebSocket server when server starts
  */
 
 import { getSession } from './claude-code-session';
 import { getCLISession } from './claude-cli-session';
+import { startThoughtWebSocketServer } from './websocket-server';
 
 let initialized = false;
 
@@ -22,6 +23,11 @@ export async function initializeServer() {
   console.log(`[Server Init] Mode: ${isCliMode ? 'CLI' : 'SDK (Max subscription)'}`);
 
   try {
+    // Start WebSocket server first (doesn't require async)
+    console.log('[Server Init] Starting WebSocket server...');
+    startThoughtWebSocketServer();
+    console.log('[Server Init] ✓ WebSocket server started');
+
     // Initialize Claude Code session with /modeler
     console.log('[Server Init] Starting Claude Code session...');
     const session = isCliMode ? await getCLISession() : await getSession();

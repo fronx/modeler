@@ -1,4 +1,4 @@
-import { db, broadcast, ok, err } from '@/lib/api-utils';
+import { deleteNode, ok, err } from '@/lib/api-utils';
 
 export async function DELETE(
   _request: Request,
@@ -7,13 +7,8 @@ export async function DELETE(
   try {
     const { spaceId, nodeId } = await params;
 
-    const deleted = await db().deleteNode(spaceId, nodeId);
-
-    if (!deleted) {
-      return err('Node not found', 404);
-    }
-
-    await broadcast(spaceId);
+    // Use shared deleteNode (validates node exists, broadcasts)
+    await deleteNode(spaceId, nodeId);
 
     return ok({
       success: true,

@@ -116,7 +116,7 @@ export function createDatabase(): DatabaseInterface {
       });
     }
   } else {
-    console.log('[DB Factory] Reusing existing global database instance');
+    // console.log('[DB Factory] Reusing existing global database instance');
   }
 
   return globalAny[GLOBAL_DB_KEY];

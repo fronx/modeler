@@ -73,6 +73,28 @@ export const ThoughtsProvider: React.FC<ThoughtsProviderProps> = ({ children }) 
           hasChanges = true;
         } else {
           // Update existing node's content but keep the same object if possible
+
+          // Check for relationship changes (edges)
+          const oldRelCount = existingNode.relationships?.length || 0;
+          const newRelCount = newNode.relationships?.length || 0;
+          if (oldRelCount !== newRelCount) {
+            existingNode.relationships = [...newNode.relationships];
+            hasChanges = true;
+          } else if (newRelCount > 0) {
+            // Same count but check if content changed
+            const relChanged = newNode.relationships.some((newRel, i) => {
+              const oldRel = existingNode.relationships[i];
+              return !oldRel ||
+                     oldRel.type !== newRel.type ||
+                     oldRel.target !== newRel.target ||
+                     oldRel.strength !== newRel.strength;
+            });
+            if (relChanged) {
+              existingNode.relationships = [...newNode.relationships];
+              hasChanges = true;
+            }
+          }
+
           if (newNode.checkableList && existingNode.checkableList) {
             // If list lengths differ, replace the entire list
             if (newNode.checkableList.length !== existingNode.checkableList.length) {

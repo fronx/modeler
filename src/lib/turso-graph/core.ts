@@ -11,11 +11,11 @@ export class DatabaseCore {
     private isEmbeddedReplica: boolean,
     private syncOnStartup: boolean,
     private syncFn: () => Promise<void>
-  ) {}
+  ) { }
 
   async ensureInitialized(): Promise<void> {
     if (this.initialized) {
-      console.log('[DB] Already initialized, skipping');
+      // console.log('[DB] Already initialized, skipping');
       return;
     }
 

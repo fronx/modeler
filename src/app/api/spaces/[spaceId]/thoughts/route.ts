@@ -1,4 +1,4 @@
-import { db, broadcast, ok, err } from '@/lib/api-utils';
+import { db, upsertNode, ok, err } from '@/lib/api-utils';
 
 export async function GET(
   request: Request,
@@ -33,40 +33,8 @@ export async function POST(
     const { spaceId } = await params;
     const thoughtData = await request.json();
 
-    const existingSpace = await db().getSpace(spaceId);
-    if (!existingSpace) {
-      return err('Space not found', 404);
-    }
-
-    if (!thoughtData.id) {
-      return err('Thought ID required', 400);
-    }
-
-    const now = Date.now();
-    const processedMeanings = (thoughtData.meanings || []).map((meaning: any) => ({
-      ...meaning,
-      timestamp: meaning.timestamp ?? now
-    }));
-
-    const newThought = {
-      id: thoughtData.id,
-      meanings: processedMeanings,
-      values: thoughtData.values || {},
-      relationships: thoughtData.relationships || [],
-      resolutions: thoughtData.resolutions || [],
-      focus: thoughtData.focus !== undefined ? thoughtData.focus : 0.0,
-      semanticPosition: thoughtData.semanticPosition !== undefined ? thoughtData.semanticPosition : 0.0,
-      history: thoughtData.history || [`Created node: ${thoughtData.id}`],
-      ...(thoughtData.branches && { branches: thoughtData.branches }),
-      ...(thoughtData.tension && { tension: thoughtData.tension }),
-      ...(thoughtData.regularList && { regularList: thoughtData.regularList }),
-      ...(thoughtData.checkableList && { checkableList: thoughtData.checkableList })
-    };
-
-    // Use granular node upsert instead of rewriting entire space
-    await db().upsertNode(spaceId, thoughtData.id, newThought);
-
-    await broadcast(spaceId);
+    // Use shared upsertNode (validates space, processes node, broadcasts)
+    await upsertNode(spaceId, thoughtData);
 
     return ok({
       success: true,

@@ -1,4 +1,4 @@
-import { db, saveSpace, ok, err } from '@/lib/api-utils';
+import { db, saveSpace, upsertNode, ok, err } from '@/lib/api-utils';
 
 export async function GET(
   request: Request,
@@ -100,28 +100,17 @@ export async function PATCH(
 
     // Handle node updates granularly
     if (updates.nodes) {
-      const now = Date.now();
-
       for (const [nodeId, nodeUpdates] of Object.entries(updates.nodes)) {
         const typedUpdates = nodeUpdates as any;
 
-        // Get existing node or create new one
+        // Get existing node for merging
         const existingNode = existingSpace.nodes[nodeId];
 
-        // Process meanings to add timestamps if missing
-        const processedMeanings = typedUpdates.meanings
-          ? typedUpdates.meanings.map((meaning: any) => ({
-              ...meaning,
-              timestamp: meaning.timestamp ?? now
-            }))
-          : undefined;
-
-        const updatedNode = existingNode
+        const mergedNode = existingNode
           ? {
               ...existingNode,
               ...typedUpdates,
               id: typedUpdates.id || existingNode.id,
-              ...(processedMeanings && { meanings: processedMeanings }),
               values: {
                 ...(existingNode.values || {}),
                 ...(typedUpdates.values || {})
@@ -131,12 +120,10 @@ export async function PATCH(
                 ...(typedUpdates.history || [])
               ]
             }
-          : {
-              ...typedUpdates,
-              ...(processedMeanings && { meanings: processedMeanings })
-            };
+          : typedUpdates;
 
-        await db().upsertNode(spaceId, nodeId, updatedNode);
+        // Use shared upsertNode (processes data with defaults, broadcasts)
+        await upsertNode(spaceId, mergedNode);
       }
       updatedFields.push('nodes');
     }

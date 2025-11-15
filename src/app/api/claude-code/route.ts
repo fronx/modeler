@@ -106,18 +106,16 @@ export async function POST(request: NextRequest) {
                 result: msg.result,
                 is_error: msg.is_error
               })}\n\n`));
-              // Close this HTTP response stream (not the persistent session)
-              responseComplete = true;
-              try {
-                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-                controller.close();
-              } catch (e) {
-                // Controller already closed - ignore
-              }
-            }
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
 
-            // Always cleanup listeners after sending result
-            cleanup();
+              // Mark complete and cleanup listeners BEFORE closing controller
+              // This prevents race condition where error events fire after close
+              responseComplete = true;
+              cleanup();
+
+              // Now safe to close controller - no more events can fire
+              controller.close();
+            }
           };
 
           session.on('data', onData);
@@ -135,21 +133,17 @@ export async function POST(request: NextRequest) {
           timeoutId = setTimeout(() => {
             if (!responseComplete) {
               console.warn('[Claude Code API] Stream timeout - closing HTTP stream only');
-              responseComplete = true;
 
-              // Clear this timeout
+              // Mark complete and clear timeout BEFORE closing controller
+              responseComplete = true;
               if (timeoutId) {
                 clearTimeout(timeoutId);
                 timeoutId = null;
               }
 
-              // Close HTTP stream for frontend
-              try {
-                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-                controller.close();
-              } catch (e) {
-                // Controller already closed
-              }
+              // Send final message and close
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+              controller.close();
 
               // DON'T call cleanup() - keep listeners attached
               // Result will arrive soon and cleanup will happen in onResult()

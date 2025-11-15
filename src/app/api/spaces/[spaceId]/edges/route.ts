@@ -1,4 +1,4 @@
-import { db, ok, err } from '@/lib/api-utils';
+import { db, createEdge, ok, err } from '@/lib/api-utils';
 
 export async function GET(
   request: Request,
@@ -34,15 +34,15 @@ export async function POST(
       return err('sourceNode, targetNode, and type are required', 400);
     }
 
-    // Insert edge
-    await db().insertEdge({
+    // Use shared createEdge (inserts edge, broadcasts)
+    await createEdge(
       spaceId,
-      sourceNode: edgeData.sourceNode,
-      targetNode: edgeData.targetNode,
-      type: edgeData.type,
-      strength: edgeData.strength ?? 0.7,
-      gloss: edgeData.gloss
-    });
+      edgeData.sourceNode,
+      edgeData.targetNode,
+      edgeData.type,
+      edgeData.strength,
+      edgeData.gloss
+    );
 
     return ok({
       success: true,
