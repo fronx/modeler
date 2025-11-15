@@ -35,7 +35,25 @@ export async function PUT(
       return err('Invalid space structure. Must have metadata, nodes, and globalHistory', 400);
     }
 
+    // Process all node meanings to add timestamps if missing
+    const now = Date.now();
+    const processedNodes: Record<string, any> = {};
+
+    for (const [nodeId, node] of Object.entries(spaceData.nodes)) {
+      const typedNode = node as any;
+      processedNodes[nodeId] = {
+        ...typedNode,
+        meanings: typedNode.meanings
+          ? typedNode.meanings.map((meaning: any) => ({
+              ...meaning,
+              timestamp: meaning.timestamp ?? now
+            }))
+          : []
+      };
+    }
+
     spaceData.metadata.id = spaceId;
+    spaceData.nodes = processedNodes;
     await saveSpace(spaceData);
 
     return ok({
@@ -104,23 +122,39 @@ export async function PATCH(
     const updatedNodes = { ...existingSpace.nodes };
 
     if (updates.nodes) {
+      const now = Date.now();
+
       for (const [nodeId, nodeUpdates] of Object.entries(updates.nodes)) {
+        const typedUpdates = nodeUpdates as any;
+
+        // Process meanings to add timestamps if missing
+        const processedMeanings = typedUpdates.meanings
+          ? typedUpdates.meanings.map((meaning: any) => ({
+              ...meaning,
+              timestamp: meaning.timestamp ?? now
+            }))
+          : undefined;
+
         if (updatedNodes[nodeId]) {
           updatedNodes[nodeId] = {
             ...updatedNodes[nodeId],
-            ...nodeUpdates,
-            id: (nodeUpdates as any).id || updatedNodes[nodeId].id,
+            ...typedUpdates,
+            id: typedUpdates.id || updatedNodes[nodeId].id,
+            ...(processedMeanings && { meanings: processedMeanings }),
             values: {
               ...(updatedNodes[nodeId].values || {}),
-              ...((nodeUpdates as any).values || {})
+              ...(typedUpdates.values || {})
             },
             history: [
               ...(updatedNodes[nodeId].history || []),
-              ...((nodeUpdates as any).history || [])
+              ...(typedUpdates.history || [])
             ]
           };
         } else {
-          updatedNodes[nodeId] = nodeUpdates as any;
+          updatedNodes[nodeId] = {
+            ...typedUpdates,
+            ...(processedMeanings && { meanings: processedMeanings })
+          };
         }
       }
     }

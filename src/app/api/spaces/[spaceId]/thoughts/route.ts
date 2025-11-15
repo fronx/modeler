@@ -42,9 +42,15 @@ export async function POST(
       return err('Thought ID required', 400);
     }
 
+    const now = Date.now();
+    const processedMeanings = (thoughtData.meanings || []).map((meaning: any) => ({
+      ...meaning,
+      timestamp: meaning.timestamp ?? now
+    }));
+
     const newThought = {
       id: thoughtData.id,
-      meanings: thoughtData.meanings || [],
+      meanings: processedMeanings,
       values: thoughtData.values || {},
       relationships: thoughtData.relationships || [],
       resolutions: thoughtData.resolutions || [],
