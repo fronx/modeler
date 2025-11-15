@@ -10,9 +10,24 @@ export async function broadcast(spaceId: string) {
   ws?.broadcastSpaceUpdate(spaceId).catch(console.error);
 }
 
+export async function broadcastSpaceList() {
+  const ws = getThoughtWebSocketServer();
+  await ws?.broadcastSpaceList();
+}
+
 export async function saveSpace(space: CognitiveSpace) {
   await db().insertSpace(space);
+
+  const ws = getThoughtWebSocketServer();
+
+  // Notify UI that a new space was created (triggers auto-switch)
+  ws?.broadcastSpaceCreated(space.metadata.id);
+
+  // Broadcast empty thoughts for the new space
   await broadcast(space.metadata.id);
+
+  // Update the space list
+  await broadcastSpaceList();
 }
 
 export const ok = (data: any) => NextResponse.json(data);

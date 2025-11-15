@@ -44,15 +44,7 @@ export async function POST(request: Request) {
     await saveSpace(newSpace);
 
     return ok({
-      space: {
-        id: spaceId,
-        title: newSpace.metadata.title,
-        description: newSpace.metadata.description,
-        created: new Date(newSpace.metadata.createdAt).toISOString(),
-        lastModified: new Date(newSpace.metadata.createdAt).toISOString(),
-        thoughtCount: 0,
-        path: spaceId
-      },
+      space: newSpace,
       message: 'Space created successfully'
     });
 

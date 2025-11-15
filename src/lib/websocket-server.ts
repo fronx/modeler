@@ -110,11 +110,21 @@ export class ThoughtWebSocketServer {
     }
   }
 
-  private async broadcastSpaceList(): Promise<void> {
+  public async broadcastSpaceList(): Promise<void> {
     const spaces = await this.loadSpaces();
     const message = JSON.stringify({
       type: 'spaces_update',
       spaces,
+      timestamp: new Date().toISOString()
+    });
+
+    this.broadcast(message);
+  }
+
+  public broadcastSpaceCreated(spaceId: string): void {
+    const message = JSON.stringify({
+      type: 'space_created',
+      spaceId,
       timestamp: new Date().toISOString()
     });
 

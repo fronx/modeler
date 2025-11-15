@@ -92,6 +92,13 @@ const CognitiveDataProviderInner: React.FC<{ children: ReactNode }> = ({ childre
         }
         break;
 
+      case 'space_created':
+        // A new space was just created - switch to it immediately
+        if (message.spaceId) {
+          handleSetCurrentSpaceId(message.spaceId);
+        }
+        break;
+
       case 'space_thoughts_update':
         // Only update if this is for the currently selected space
         if (message.spaceId === currentSpace) {
