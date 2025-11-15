@@ -75,8 +75,12 @@ export async function POST(request: NextRequest) {
           };
 
           let timeoutId: NodeJS.Timeout | null = null;
+          let cleanedUp = false;
 
           const cleanup = () => {
+            if (cleanedUp) return;
+            cleanedUp = true;
+
             // Clear timeout
             if (timeoutId) {
               clearTimeout(timeoutId);
@@ -95,9 +99,6 @@ export async function POST(request: NextRequest) {
             // Close THIS request's stream, but the persistent session stays alive
             console.log('[Claude Code API] Result event received, closing stream');
 
-            // Always cleanup listeners, even if responseComplete is true (timeout fired)
-            cleanup();
-
             if (!responseComplete) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'result',
@@ -113,6 +114,9 @@ export async function POST(request: NextRequest) {
                 // Controller already closed - ignore
               }
             }
+
+            // Always cleanup listeners after sending result
+            cleanup();
           };
 
           session.on('data', onData);

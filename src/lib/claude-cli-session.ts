@@ -65,6 +65,7 @@ export class ClaudeCLISession extends EventEmitter {
   private systemPrompt: string;
   private db: DatabaseInterface;
   private messageCount = 0;
+  private isProcessing = false; // Track if we're currently processing a message
 
   constructor(config: CLISessionConfig = {}) {
     super();
@@ -244,6 +245,9 @@ export class ClaudeCLISession extends EventEmitter {
             this.emit('tool_denials', msg.permission_denials);
           }
 
+          // Mark that we're no longer processing
+          this.isProcessing = false;
+
           // Emit both events - message_complete for backward compat, result for proper handling
           this.emit('message_complete', msg);
           this.emit('result', msg);
@@ -263,6 +267,14 @@ export class ClaudeCLISession extends EventEmitter {
       throw new Error('Session not ready. Call start() first.');
     }
 
+    // Check if we're already processing a message
+    if (this.isProcessing) {
+      throw new Error('Session is currently processing a message. Wait for the result event before sending another message.');
+    }
+
+    // Mark as processing
+    this.isProcessing = true;
+
     // Format message as stream-json
     const message = JSON.stringify({
       type: 'user',
@@ -273,8 +285,15 @@ export class ClaudeCLISession extends EventEmitter {
       parent_tool_use_id: null
     });
 
-    // Write to stdin
-    this.process.stdin.write(message + '\n');
+    // Write to stdin and handle backpressure
+    const canContinue = this.process.stdin.write(message + '\n');
+
+    if (!canContinue) {
+      // Wait for drain event if buffer is full
+      await new Promise<void>((resolve) => {
+        this.process!.stdin!.once('drain', () => resolve());
+      });
+    }
 
     // Update session in database
     if (this.sessionId) {
@@ -297,6 +316,7 @@ export class ClaudeCLISession extends EventEmitter {
 
     this.isReady = false;
     this.sessionId = null;
+    this.isProcessing = false;
   }
 
   /**
