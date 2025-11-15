@@ -67,7 +67,7 @@ const TOOLS = [
         properties: {
           id: {
             type: 'string',
-            description: 'Unique identifier for the node (PascalCase, e.g., "UserPrivacy")',
+            description: 'Unique identifier for the node (use natural spacing, e.g., "User privacy" or "AI cost burden")',
           },
           meaning: {
             type: 'string',

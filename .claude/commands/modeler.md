@@ -81,7 +81,7 @@ curl -s -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
   -H "Content-Type: application/json" \
   -d '{
     "nodes": {
-      "ApartmentPrep": {
+      "Apartment prep": {
         "meanings": [
           {"content": "Apartment prep", "confidence": 0.9},
           {"content": "Getting home ready for departure and return", "confidence": 0.9}
@@ -128,7 +128,7 @@ curl -s -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
   -H "Content-Type: application/json" \
   -d '{
     "nodes": {
-      "ApartmentPrep": {
+      "Apartment prep": {
         "checkableList": [
           {"item": "Take down hanging plants without plates", "checked": false},
           {"item": "Brief Susan on plant watering", "checked": false},
@@ -161,7 +161,7 @@ curl -s -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
   -H "Content-Type: application/json" \
   -d '{
     "nodes": {
-      "TripDuration": {
+      "Trip duration": {
         "meanings": [
           {"content": "Trip duration", "confidence": 0.9},
           {"content": "10 days in Canada", "confidence": 0.9}
@@ -174,7 +174,7 @@ curl -s -X PATCH http://localhost:3000/api/spaces/SPACE_ID \
         "focus": -1.0,
         "history": ["Node created"]
       },
-      "BudgetConstraint": {
+      "Budget constraint": {
         "meanings": [
           {"content": "Budget constraint", "confidence": 0.9},
           {"content": "Financial limits for the trip", "confidence": 0.9}
