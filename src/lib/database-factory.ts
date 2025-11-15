@@ -1,5 +1,5 @@
-import { TursoDatabase } from './turso-database';
-import type { CognitiveSpace, SpaceSearchResult, NodeSearchResult } from './turso-database';
+import { TursoDatabase } from './turso-graph';
+import type { CognitiveSpace, SpaceSearchResult, NodeSearchResult } from './turso-graph';
 
 // Database interface for Turso operations
 export interface DatabaseInterface {
@@ -15,6 +15,27 @@ export interface DatabaseInterface {
   }>>;
   deleteSpace(id: string): Promise<boolean>;
   deleteNode(spaceId: string, nodeKey: string): Promise<boolean>;
+  upsertNode(spaceId: string, nodeKey: string, nodeData: any): Promise<void>;
+  updateSpaceMetadata(spaceId: string, updates: { title?: string; description?: string }): Promise<void>;
+  appendGlobalHistory(spaceId: string, entry: string): Promise<void>;
+  updateNodeField(spaceId: string, nodeKey: string, field: string, value: any): Promise<void>;
+  insertEdge(edge: {
+    spaceId: string;
+    sourceNode: string;
+    targetNode: string;
+    type: string;
+    strength: number;
+    gloss?: string;
+  }): Promise<void>;
+  listEdges(spaceId: string): Promise<Array<{
+    id: string;
+    sourceNode: string;
+    targetNode: string;
+    type: string;
+    strength: number;
+    gloss?: string;
+  }>>;
+  deleteEdge(edgeId: string): Promise<boolean>;
   saveSession(session: {
     id: string;
     title?: string;

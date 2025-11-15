@@ -278,6 +278,12 @@ export class TursoDatabase {
       }
     ];
 
+    // Delete existing edges for this space (for clean upsert)
+    statements.push({
+      sql: 'DELETE FROM edges WHERE space_id = ?',
+      args: [space.metadata.id]
+    });
+
     // Insert all nodes
     for (const [nodeKey, nodeData] of Object.entries(space.nodes)) {
       statements.push({
@@ -294,6 +300,30 @@ export class TursoDatabase {
           now
         ]
       });
+
+      // Insert edges for this node (if relationships exist)
+      if (nodeData.relationships && Array.isArray(nodeData.relationships)) {
+        for (const rel of nodeData.relationships) {
+          const edgeId = `${space.metadata.id}:${nodeKey}:${rel.target}`;
+          statements.push({
+            sql: `
+              INSERT INTO edges (id, space_id, source_node, target_node, type, strength, gloss, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            args: [
+              edgeId,
+              space.metadata.id,
+              nodeKey,
+              rel.target,
+              rel.type,
+              rel.strength,
+              rel.gloss || null,
+              now,
+              now
+            ]
+          });
+        }
+      }
     }
 
     // Insert all history entries
@@ -398,6 +428,30 @@ export class TursoDatabase {
       nodes[nodeKey] = nodeData;
     }
 
+    // Fetch all edges for this space and attach to nodes
+    const edgesResult = await this.client.execute({
+      sql: "SELECT source_node, target_node, type, strength, gloss FROM edges WHERE space_id = ?",
+      args: [id]
+    });
+
+    // Group edges by source node
+    for (const row of edgesResult.rows) {
+      const sourceNode = row.source_node as string;
+      if (nodes[sourceNode]) {
+        // Initialize relationships array if it doesn't exist
+        if (!nodes[sourceNode].relationships) {
+          nodes[sourceNode].relationships = [];
+        }
+        // Add edge to node's relationships
+        nodes[sourceNode].relationships.push({
+          type: row.type as string,
+          target: row.target_node as string,
+          strength: row.strength as number,
+          gloss: row.gloss ? (row.gloss as string) : undefined
+        });
+      }
+    }
+
     // Fetch all history for this space
     const historyResult = await this.client.execute({
       sql: "SELECT entry FROM history WHERE space_id = ? ORDER BY created_at",
@@ -486,6 +540,177 @@ export class TursoDatabase {
     await this.syncAfterWrite(result.rowsAffected > 0);
 
     return result.rowsAffected > 0;
+  }
+
+  /**
+   * Insert or update a single node in a space.
+   * Also handles upserting the node's edges.
+   */
+  async upsertNode(spaceId: string, nodeKey: string, nodeData: any): Promise<void> {
+    await this.ensureInitialized();
+
+    const now = Date.now();
+    const nodeId = `${spaceId}:${nodeKey}`;
+
+    const statements = [
+      // Upsert the node
+      {
+        sql: `
+          INSERT INTO nodes (id, space_id, node_key, data, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            data = excluded.data,
+            updated_at = excluded.updated_at
+        `,
+        args: [
+          nodeId,
+          spaceId,
+          nodeKey,
+          JSON.stringify(nodeData),
+          now,
+          now
+        ]
+      },
+      // Delete existing edges for this node
+      {
+        sql: 'DELETE FROM edges WHERE space_id = ? AND source_node = ?',
+        args: [spaceId, nodeKey]
+      }
+    ];
+
+    // Insert edges for this node
+    if (nodeData.relationships && Array.isArray(nodeData.relationships)) {
+      for (const rel of nodeData.relationships) {
+        const edgeId = `${spaceId}:${nodeKey}:${rel.target}`;
+        statements.push({
+          sql: `
+            INSERT INTO edges (id, space_id, source_node, target_node, type, strength, gloss, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          args: [
+            edgeId,
+            spaceId,
+            nodeKey,
+            rel.target,
+            rel.type,
+            rel.strength,
+            rel.gloss || null,
+            now,
+            now
+          ]
+        });
+      }
+    }
+
+    await this.client.batch(statements, 'write');
+    await this.syncAfterWrite();
+
+    // Generate embeddings if enabled
+    if (this.vectorSearchEnabled) {
+      const { title, fullContent } = extractNodeSemantics(nodeData);
+      const [titleEmb, contentEmb] = await generateEmbeddingsBatch([title, fullContent]);
+
+      await this.client.execute({
+        sql: `
+          UPDATE nodes
+          SET title_embedding = vector32(?),
+              full_embedding = vector32(?)
+          WHERE id = ?
+        `,
+        args: [
+          serializeEmbedding(titleEmb),
+          serializeEmbedding(contentEmb),
+          nodeId
+        ]
+      });
+    }
+  }
+
+  /**
+   * Update space metadata (title and/or description) without touching nodes.
+   */
+  async updateSpaceMetadata(
+    spaceId: string,
+    updates: { title?: string; description?: string }
+  ): Promise<void> {
+    await this.ensureInitialized();
+
+    const setClause: string[] = [];
+    const args: any[] = [];
+
+    if (updates.title !== undefined) {
+      setClause.push('title = ?');
+      args.push(updates.title);
+    }
+    if (updates.description !== undefined) {
+      setClause.push('description = ?');
+      args.push(updates.description);
+    }
+
+    if (setClause.length === 0) return;
+
+    setClause.push('updated_at = ?');
+    args.push(Date.now());
+    args.push(spaceId);
+
+    await this.client.execute({
+      sql: `UPDATE spaces SET ${setClause.join(', ')} WHERE id = ?`,
+      args
+    });
+
+    await this.syncAfterWrite();
+  }
+
+  /**
+   * Append a single entry to the global history without rewriting the entire space.
+   */
+  async appendGlobalHistory(spaceId: string, entry: string): Promise<void> {
+    await this.ensureInitialized();
+
+    const now = Date.now();
+    const historyId = `${spaceId}:${now}`;
+
+    await this.client.execute({
+      sql: `INSERT INTO history (id, space_id, entry, created_at) VALUES (?, ?, ?, ?)`,
+      args: [historyId, spaceId, entry, now]
+    });
+
+    await this.syncAfterWrite();
+  }
+
+  /**
+   * Update a specific field in a node's data without replacing the entire node.
+   */
+  async updateNodeField(
+    spaceId: string,
+    nodeKey: string,
+    field: string,
+    value: any
+  ): Promise<void> {
+    await this.ensureInitialized();
+
+    // First, fetch the current node data
+    const nodeId = `${spaceId}:${nodeKey}`;
+    const result = await this.client.execute({
+      sql: 'SELECT data FROM nodes WHERE id = ?',
+      args: [nodeId]
+    });
+
+    if (result.rows.length === 0) {
+      throw new Error(`Node not found: ${nodeKey} in space ${spaceId}`);
+    }
+
+    const nodeData = JSON.parse(result.rows[0].data as string);
+    nodeData[field] = value;
+
+    // Update the node with the modified data
+    const now = Date.now();
+    await this.client.execute({
+      sql: `UPDATE nodes SET data = ?, updated_at = ? WHERE id = ?`,
+      args: [JSON.stringify(nodeData), now, nodeId]
+    });
+
+    await this.syncAfterWrite();
   }
 
   // ============================================================================
@@ -1054,6 +1279,98 @@ export class TursoDatabase {
     });
 
     // Sync immediately after write (Option 1: Aggressive Immediate Sync)
+    await this.syncAfterWrite(result.rowsAffected > 0);
+
+    return result.rowsAffected > 0;
+  }
+
+  // ============================================================================
+  // Edge Management Methods
+  // ============================================================================
+
+  /**
+   * Insert or update an edge between two nodes
+   */
+  async insertEdge(edge: {
+    spaceId: string;
+    sourceNode: string;
+    targetNode: string;
+    type: string;
+    strength: number;
+    gloss?: string;
+  }): Promise<void> {
+    await this.ensureInitialized();
+
+    const now = Date.now();
+    const edgeId = `${edge.spaceId}:${edge.sourceNode}:${edge.targetNode}`;
+
+    await this.client.execute({
+      sql: `
+        INSERT INTO edges (id, space_id, source_node, target_node, type, strength, gloss, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(space_id, source_node, target_node) DO UPDATE SET
+          type = excluded.type,
+          strength = excluded.strength,
+          gloss = excluded.gloss,
+          updated_at = excluded.updated_at
+      `,
+      args: [
+        edgeId,
+        edge.spaceId,
+        edge.sourceNode,
+        edge.targetNode,
+        edge.type,
+        edge.strength,
+        edge.gloss || null,
+        now,
+        now
+      ]
+    });
+
+    // Sync immediately after write
+    await this.syncAfterWrite();
+  }
+
+  /**
+   * List all edges for a space
+   */
+  async listEdges(spaceId: string): Promise<Array<{
+    id: string;
+    sourceNode: string;
+    targetNode: string;
+    type: string;
+    strength: number;
+    gloss?: string;
+  }>> {
+    await this.ensureInitialized();
+
+    const result = await this.client.execute({
+      sql: 'SELECT id, source_node, target_node, type, strength, gloss FROM edges WHERE space_id = ?',
+      args: [spaceId]
+    });
+
+    return result.rows.map(row => ({
+      id: row.id as string,
+      sourceNode: row.source_node as string,
+      targetNode: row.target_node as string,
+      type: row.type as string,
+      strength: row.strength as number,
+      gloss: row.gloss ? (row.gloss as string) : undefined
+    }));
+  }
+
+  /**
+   * Delete an edge by ID
+   */
+  async deleteEdge(edgeId: string): Promise<boolean> {
+    await this.ensureInitialized();
+
+    const result = await this.client.execute({
+      sql: 'DELETE FROM edges WHERE id = ?',
+      args: [edgeId]
+    });
+
+    // Sync immediately after write
     await this.syncAfterWrite(result.rowsAffected > 0);
 
     return result.rowsAffected > 0;

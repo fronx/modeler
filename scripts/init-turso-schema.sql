@@ -60,6 +60,29 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS sessions_last_used_idx ON sessions(last_used_at DESC);
 CREATE INDEX IF NOT EXISTS sessions_space_id_idx ON sessions(space_id);
 
+-- Edges: First-class relationships between thought nodes
+-- Enables graph analytics, semantic flow analysis, and referential integrity
+CREATE TABLE IF NOT EXISTS edges (
+  id TEXT PRIMARY KEY,              -- Generated: "${spaceId}:${sourceNode}:${targetNode}"
+  space_id TEXT NOT NULL,
+  source_node TEXT NOT NULL,        -- Node key (e.g., "Trust")
+  target_node TEXT NOT NULL,        -- Node key (e.g., "Evidence")
+  type TEXT NOT NULL,               -- 'supports' | 'conflicts-with' | 'relates-to'
+  strength REAL NOT NULL,           -- 0.0 to 1.0
+  gloss TEXT,                       -- Optional description
+  created_at INTEGER NOT NULL,      -- Unix timestamp (ms)
+  updated_at INTEGER NOT NULL,      -- Unix timestamp (ms)
+
+  UNIQUE(space_id, source_node, target_node),
+  FOREIGN KEY (space_id) REFERENCES spaces(id) ON DELETE CASCADE,
+  FOREIGN KEY (space_id, source_node) REFERENCES nodes(space_id, node_key) ON DELETE CASCADE,
+  FOREIGN KEY (space_id, target_node) REFERENCES nodes(space_id, node_key) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS edges_space_source_idx ON edges(space_id, source_node);
+CREATE INDEX IF NOT EXISTS edges_space_target_idx ON edges(space_id, target_node);
+CREATE INDEX IF NOT EXISTS edges_type_idx ON edges(space_id, type);
+
 -- Vector search indices (Phase 2: Vector Search)
 -- Using float8 compression for neighbors reduces index size with minimal quality impact
 CREATE INDEX IF NOT EXISTS spaces_title_vec_idx ON spaces (

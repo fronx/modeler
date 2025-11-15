@@ -76,56 +76,37 @@ export async function PATCH(
     const { spaceId } = await params;
     const updates = await request.json();
 
+    // Verify space exists
     const existingSpace = await db().getSpace(spaceId);
     if (!existingSpace) {
       return err('Space not found', 404);
     }
 
-    if (updates.title && typeof updates.title === 'string') {
-      const updatedSpace = {
-        ...existingSpace,
-        metadata: {
-          ...existingSpace.metadata,
-          title: updates.title,
-          updatedAt: Date.now()
-        }
-      };
+    const updatedFields: string[] = [];
 
-      await saveSpace(updatedSpace);
-
-      return ok({
-        success: true,
-        message: `Space title updated to "${updates.title}"`,
-        spaceId
-      });
+    // Handle metadata updates granularly
+    if (updates.title || updates.description) {
+      const metadataUpdates: { title?: string; description?: string } = {};
+      if (updates.title && typeof updates.title === 'string') {
+        metadataUpdates.title = updates.title;
+        updatedFields.push('title');
+      }
+      if (updates.description && typeof updates.description === 'string') {
+        metadataUpdates.description = updates.description;
+        updatedFields.push('description');
+      }
+      await db().updateSpaceMetadata(spaceId, metadataUpdates);
     }
 
-    if (updates.description && typeof updates.description === 'string') {
-      const updatedSpace = {
-        ...existingSpace,
-        metadata: {
-          ...existingSpace.metadata,
-          description: updates.description,
-          updatedAt: Date.now()
-        }
-      };
-
-      await saveSpace(updatedSpace);
-
-      return ok({
-        success: true,
-        message: `Space description updated`,
-        spaceId
-      });
-    }
-
-    const updatedNodes = { ...existingSpace.nodes };
-
+    // Handle node updates granularly
     if (updates.nodes) {
       const now = Date.now();
 
       for (const [nodeId, nodeUpdates] of Object.entries(updates.nodes)) {
         const typedUpdates = nodeUpdates as any;
+
+        // Get existing node or create new one
+        const existingNode = existingSpace.nodes[nodeId];
 
         // Process meanings to add timestamps if missing
         const processedMeanings = typedUpdates.meanings
@@ -135,47 +116,63 @@ export async function PATCH(
             }))
           : undefined;
 
-        if (updatedNodes[nodeId]) {
-          updatedNodes[nodeId] = {
-            ...updatedNodes[nodeId],
-            ...typedUpdates,
-            id: typedUpdates.id || updatedNodes[nodeId].id,
-            ...(processedMeanings && { meanings: processedMeanings }),
-            values: {
-              ...(updatedNodes[nodeId].values || {}),
-              ...(typedUpdates.values || {})
-            },
-            history: [
-              ...(updatedNodes[nodeId].history || []),
-              ...(typedUpdates.history || [])
-            ]
-          };
-        } else {
-          updatedNodes[nodeId] = {
-            ...typedUpdates,
-            ...(processedMeanings && { meanings: processedMeanings })
-          };
-        }
+        const updatedNode = existingNode
+          ? {
+              ...existingNode,
+              ...typedUpdates,
+              id: typedUpdates.id || existingNode.id,
+              ...(processedMeanings && { meanings: processedMeanings }),
+              values: {
+                ...(existingNode.values || {}),
+                ...(typedUpdates.values || {})
+              },
+              history: [
+                ...(existingNode.history || []),
+                ...(typedUpdates.history || [])
+              ]
+            }
+          : {
+              ...typedUpdates,
+              ...(processedMeanings && { meanings: processedMeanings })
+            };
+
+        await db().upsertNode(spaceId, nodeId, updatedNode);
       }
+      updatedFields.push('nodes');
     }
 
-    const updatedSpace = {
-      ...existingSpace,
-      metadata: {
-        ...existingSpace.metadata,
-        ...(updates.metadata || {})
-      },
-      nodes: updatedNodes,
-      globalHistory: updates.globalHistory || existingSpace.globalHistory
-    };
+    // Handle global history updates
+    if (updates.globalHistory && Array.isArray(updates.globalHistory)) {
+      // Append new history entries
+      const existingHistoryLength = existingSpace.globalHistory.length;
+      const newEntries = updates.globalHistory.slice(existingHistoryLength);
 
-    await saveSpace(updatedSpace);
+      for (const entry of newEntries) {
+        await db().appendGlobalHistory(spaceId, entry);
+      }
+      updatedFields.push('globalHistory');
+    }
+
+    // Handle metadata object (for other metadata fields)
+    if (updates.metadata && typeof updates.metadata === 'object') {
+      const metadataUpdates: { title?: string; description?: string } = {};
+      if (updates.metadata.title) {
+        metadataUpdates.title = updates.metadata.title;
+      }
+      if (updates.metadata.description) {
+        metadataUpdates.description = updates.metadata.description;
+      }
+      if (metadataUpdates.title || metadataUpdates.description) {
+        await db().updateSpaceMetadata(spaceId, metadataUpdates);
+        updatedFields.push('metadata');
+      }
+    }
 
     return ok({
       success: true,
       message: `Space ${spaceId} partially updated`,
       spaceId,
-      updatedFields: Object.keys(updates)
+      updatedFields
     });
 
   } catch (error) {

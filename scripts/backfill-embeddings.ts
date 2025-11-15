@@ -20,7 +20,7 @@
  */
 
 import { config } from 'dotenv';
-import { TursoDatabase } from '../src/lib/turso-database';
+import { TursoDatabase } from '../src/lib/turso-graph';
 
 // Load environment variables from .env file
 config();

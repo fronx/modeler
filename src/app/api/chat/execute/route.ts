@@ -24,16 +24,15 @@ export async function POST(request: NextRequest) {
 
     const db = createDatabase();
 
-    // Get existing space
+    // Verify space exists
     const existingSpace = await db.getSpace(spaceId);
     if (!existingSpace) {
       return NextResponse.json({ error: 'Space not found' }, { status: 404 });
     }
 
-    let updatedSpace = { ...existingSpace };
     const results = [];
 
-    // Process each change
+    // Process each change using granular updates
     for (const change of changes) {
       const { function: functionName, arguments: args } = change;
 
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
           const { id, meaning, focus = 1.0, position = 0.0 } = args;
 
           // Check if node already exists
-          if (updatedSpace.nodes[id]) {
+          if (existingSpace.nodes[id]) {
             return NextResponse.json(
               { error: `Node '${id}' already exists` },
               { status: 400 }
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Create new node
-          updatedSpace.nodes[id] = {
+          const newNode = {
             meanings: [
               {
                 content: meaning,
@@ -66,10 +65,14 @@ export async function POST(request: NextRequest) {
             history: [`Created via AI chat: ${new Date().toISOString()}`],
           };
 
-          updatedSpace.globalHistory = [
-            ...updatedSpace.globalHistory,
-            `AI added node: ${id}`,
-          ];
+          // Use granular upsert
+          await db.upsertNode(spaceId, id, newNode);
+
+          // Add to global history
+          await db.appendGlobalHistory(spaceId, `AI added node: ${id}`);
+
+          // Update local reference for validation in subsequent changes
+          existingSpace.nodes[id] = newNode;
 
           results.push({ nodeId: id, action: 'created' });
           break;
@@ -79,13 +82,13 @@ export async function POST(request: NextRequest) {
           const { sourceNode, targetNode, type, strength = 0.7 } = args;
 
           // Validate nodes exist
-          if (!updatedSpace.nodes[sourceNode]) {
+          if (!existingSpace.nodes[sourceNode]) {
             return NextResponse.json(
               { error: `Source node '${sourceNode}' not found` },
               { status: 400 }
             );
           }
-          if (!updatedSpace.nodes[targetNode]) {
+          if (!existingSpace.nodes[targetNode]) {
             return NextResponse.json(
               { error: `Target node '${targetNode}' not found` },
               { status: 400 }
@@ -93,20 +96,25 @@ export async function POST(request: NextRequest) {
           }
 
           // Add relationship to source node
-          if (!updatedSpace.nodes[sourceNode].relationships) {
-            updatedSpace.nodes[sourceNode].relationships = [];
+          const sourceNodeData = existingSpace.nodes[sourceNode];
+          if (!sourceNodeData.relationships) {
+            sourceNodeData.relationships = [];
           }
 
-          updatedSpace.nodes[sourceNode].relationships.push({
+          sourceNodeData.relationships.push({
             type,
             target: targetNode,
             strength,
           });
 
-          updatedSpace.globalHistory = [
-            ...updatedSpace.globalHistory,
-            `AI added relationship: ${sourceNode} ${type} ${targetNode}`,
-          ];
+          // Use granular upsert
+          await db.upsertNode(spaceId, sourceNode, sourceNodeData);
+
+          // Add to global history
+          await db.appendGlobalHistory(
+            spaceId,
+            `AI added relationship: ${sourceNode} ${type} ${targetNode}`
+          );
 
           results.push({ sourceNode, targetNode, type, action: 'relationship_added' });
           break;
@@ -119,9 +127,6 @@ export async function POST(request: NextRequest) {
           );
       }
     }
-
-    // Save updated space
-    await db.insertSpace(updatedSpace);
 
     // Trigger WebSocket broadcast
     const wsServer = getThoughtWebSocketServer();

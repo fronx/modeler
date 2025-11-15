@@ -6,8 +6,8 @@
  * Usage: npx tsx test-turso.ts
  */
 
-import { TursoDatabase } from './src/lib/turso-database';
-import type { CognitiveSpace } from './src/lib/turso-database';
+import { TursoDatabase } from './src/lib/turso-graph';
+import type { CognitiveSpace } from './src/lib/turso-graph';
 
 async function runTests() {
   console.log('🧪 Testing Turso Database Implementation\n');

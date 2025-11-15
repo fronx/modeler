@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createDatabase } from '@/lib/database-factory';
 import { getThoughtWebSocketServer } from '@/lib/websocket-server';
-import type { CognitiveSpace } from '@/lib/turso-database';
+import type { CognitiveSpace } from '@/lib/turso-graph';
 
 export const db = () => createDatabase();
 

@@ -1,4 +1,4 @@
-import { db, saveSpace, ok, err } from '@/lib/api-utils';
+import { db, ok, err } from '@/lib/api-utils';
 
 export async function POST(
   request: Request,
@@ -30,13 +30,19 @@ export async function POST(
       return err('Item index out of bounds', 400);
     }
 
-    node.checkableList[itemIndex].checked = checked;
+    // Update the checkable list with the new checked state
+    const updatedCheckableList = [...node.checkableList];
+    updatedCheckableList[itemIndex] = {
+      ...updatedCheckableList[itemIndex],
+      checked
+    };
 
-    await saveSpace(space);
+    // Use granular update instead of rewriting entire space
+    await db().updateNodeField(spaceId, nodeId, 'checkableList', updatedCheckableList);
 
     return ok({
       success: true,
-      item: node.checkableList[itemIndex],
+      item: updatedCheckableList[itemIndex],
       nodeId,
       itemIndex,
       checked

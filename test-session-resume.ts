@@ -4,7 +4,7 @@
  * Usage: npx tsx test-session-resume.ts <session-id>
  */
 
-import { TursoDatabase } from './src/lib/turso-database';
+import { TursoDatabase } from './src/lib/turso-graph';
 import { resumeCLISession } from './src/lib/claude-cli-session';
 
 const sessionId = process.argv[2] || '2f708c6a-a3f2-4d5b-b7dd-d7897c7b4f29';

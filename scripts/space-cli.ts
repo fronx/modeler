@@ -10,7 +10,7 @@
 
 import { Command } from 'commander';
 import { createDatabase } from '../src/lib/database-factory';
-import type { CognitiveSpace } from '../src/lib/turso-database';
+import type { CognitiveSpace } from '../src/lib/turso-graph';
 
 const program = new Command();
 

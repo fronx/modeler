@@ -1,4 +1,4 @@
-import { db, saveSpace, ok, err } from '@/lib/api-utils';
+import { db, ok, err } from '@/lib/api-utils';
 
 export async function GET(
   request: Request,
@@ -63,19 +63,8 @@ export async function POST(
       ...(thoughtData.checkableList && { checkableList: thoughtData.checkableList })
     };
 
-    const updatedSpace = {
-      ...existingSpace,
-      nodes: {
-        ...existingSpace.nodes,
-        [thoughtData.id]: newThought
-      },
-      globalHistory: [
-        ...existingSpace.globalHistory,
-        `Created thought: ${thoughtData.id}`
-      ]
-    };
-
-    await saveSpace(updatedSpace);
+    // Use granular node upsert instead of rewriting entire space
+    await db().upsertNode(spaceId, thoughtData.id, newThought);
 
     return ok({
       success: true,
