@@ -30,13 +30,28 @@ npm run dev
 ```
 
 **Database Migrations:**
+
+We use **incremental SQL migrations** for schema evolution. This is the standard approach for Turso/libSQL and ensures safe, reversible database changes.
+
 ```bash
-# Run database migrations (when updating from earlier versions)
-npx tsx scripts/run-migration.ts 001-add-sessions-table.sql
+# Run a migration (works on both local and remote databases)
+npx tsx scripts/run-migration.ts 002-add-edges-table.sql
+
+# For remote Turso database, set environment variables
+TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=... npx tsx scripts/run-migration.ts 002-add-edges-table.sql
 
 # Migration files are in scripts/migrations/
-# Each migration adds new features to the database schema
+# Each migration is version-controlled and adds new features to the schema
 ```
+
+**Migration System:**
+- **Idempotent**: Migrations use `CREATE TABLE IF NOT EXISTS`, safe to re-run
+- **Transaction-based**: Automatic rollback on failure
+- **Non-destructive**: Existing tables and data remain untouched
+- **Testable**: Test on local database before running on remote
+- **Version-controlled**: Migration history tracked in git
+
+See [docs/edges-table-migration.md](docs/edges-table-migration.md) for a detailed example of our migration strategy.
 
 ### 🤖 Claude Code Integration
 
