@@ -4,147 +4,237 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is "Modeler" - a Next.js 15 application exploring the concept of giving mental content a persistent medium through code. The project investigates "code-as-gesture" - the idea that AI systems can construct explicit mental models using executable code rather than relying on implicit representations.
+"Modeler" is a Next.js 15 application for **code-as-gesture** cognitive modeling - giving AI systems a persistent medium to construct explicit mental models through executable code. The system features a live dashboard with embedded Claude Code chat interface, database-driven persistence, and real-time collaborative thinking.
+
+**Core Insight**: Intelligence as "negotiation between mechanism and meaning" - semantic narratives carry computational weight, numerical constraints accumulate stories.
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 with App Router
-- **Language**: TypeScript 5
+- **Framework**: Next.js 15 with App Router, Turbopack
+- **Language**: TypeScript 5 (strict mode)
+- **Database**: Turso/libSQL with local → cloud replication
+- **Real-time**: WebSocket server for live dashboard updates
+- **Integration**: Model Context Protocol (MCP) server for Claude Code tools
 - **Styling**: Tailwind CSS v4 with PostCSS
-- **Fonts**: Geist Sans and Geist Mono from Google Fonts
-- **Build Tool**: Turbopack (Next.js' new bundler)
 
 ## Development Commands
 
 ```bash
-# Start development server with Turbopack + MCP server (always run in background)
+# Start development server (Next.js on :3000 + MCP server on stdio)
 npm run dev
 
-# Build for production with Turbopack
+# Build for production
 npm run build
 
-# Start production server
-npm run start
+# Type checking
+npx tsc --noEmit
 
 # Run ESLint
 npm run lint
 
-# MCP server standalone (for testing)
-npm run mcp
+# Database migrations
+npx tsx scripts/run-migration.ts <migration-file.sql>
 ```
 
-**Important**: **DO NOT start or restart the dev server**. That's the user's responsibility.
+**IMPORTANT**: DO NOT start or restart the dev server - that's the user's responsibility.
 
-**Note**: `npm run dev` now starts both the Next.js dev server (port 3000) and the MCP server (stdio) concurrently. The MCP server provides native tool integration for cognitive space operations.
+## System Architecture
+
+The system uses a **database-first, MCP-driven architecture** for real-time collaborative cognitive modeling:
+
+```
+Web UI (localhost:3000)
+  ↓ User types in chat
+Backend API
+  ↓ Forwards messages
+Persistent Claude Code CLI Session
+  ↓ Uses MCP tools (mcp__cognitive_spaces__*)
+Local Turso Database (file:modeler.db)
+  ↓ Automatic replication
+Remote Cloud Database (Turso)
+  ↑
+Dashboard (via WebSocket)
+```
+
+### Key Components
+
+1. **Web Dashboard** (`src/app/page.tsx`)
+   - Embedded Claude Code chat interface
+   - Real-time force-directed graph visualization (@xyflow/react)
+   - WebSocket client for live updates
+
+2. **Backend API** (`src/app/api/`)
+   - `/claude-code/route.ts` - Forwards chat messages to persistent CLI session
+   - `/spaces` - CRUD operations on cognitive spaces
+   - `/spaces/[spaceId]/thoughts` - Thought node management
+   - `/spaces/[spaceId]/edges` - Relationship management (separate table)
+   - `/search/*` - Vector search using OpenAI embeddings
+
+3. **Persistent Claude Code Session** (`src/lib/claude-code-session.ts`)
+   - Long-running CLI process that maintains conversation context
+   - Uses MCP tools to manipulate database directly
+   - Streams responses back to web UI
+
+4. **MCP Server** (`mcp-server.ts`)
+   - Exposes database operations as Claude Code tools
+   - Auto-started with `npm run dev` (stdio transport)
+   - Tools available: `create_space`, `create_node`, `delete_node`, `list_spaces`, `get_space`
+
+5. **Database Layer** (`src/lib/`)
+   - `database-factory.ts` - Global singleton (Symbol-based for Next.js)
+   - `turso-graph.ts` - All database operations
+   - Local-first with automatic cloud replication
 
 ## Project Structure
 
 ```
 src/
-├── app/              # App Router pages and layouts
-│   ├── globals.css   # Global styles with Tailwind CSS v4
-│   ├── layout.tsx    # Root layout with fonts and metadata
-│   └── page.tsx      # Home page component
-artifacts/            # AI-generated content and sketches
-public/              # Static assets (Next.js SVGs, etc.)
+├── app/
+│   ├── api/
+│   │   ├── claude-code/          # Backend for embedded chat interface
+│   │   ├── spaces/               # Cognitive space CRUD + thoughts/edges
+│   │   └── search/               # Vector search endpoints
+│   ├── page.tsx                  # Dashboard with embedded Claude Code chat
+│   └── layout.tsx                # Root layout
+├── lib/
+│   ├── claude-code-session.ts    # Persistent CLI session manager
+│   ├── database-factory.ts       # Singleton database instance
+│   ├── turso-graph.ts            # Database operations (spaces, nodes, edges)
+│   ├── websocket-server.ts       # Real-time dashboard updates
+│   ├── types.ts                  # Self-documenting type definitions
+│   └── embeddings.ts             # Vector search utilities
+
+mcp-server.ts                     # MCP server for Claude Code tools
+scripts/
+├── migrations/                   # Database schema migrations
+└── run-migration.ts              # Migration runner
+
+docs/                             # Detailed documentation
+├── mcp-integration.md            # MCP setup and usage
+├── turso-usage.md                # Database guide
+└── edges-table-migration.md      # Migration example
 ```
 
-## Key Configuration
+## How Cognitive Modeling Works
 
-- **TypeScript**: Strict mode enabled, path alias `@/*` maps to `./src/*`
-- **Tailwind CSS v4**: Uses new `@theme inline` syntax and CSS variables for theming
-- **ESLint**: Next.js recommended config with TypeScript support
-- **Dark Mode**: Automatic based on system preference via CSS `prefers-color-scheme`
+### User Workflow
 
-## Development Notes
+1. Open dashboard at `http://localhost:3000`
+2. Type cognitive modeling requests in the chat interface
+3. Claude Code (via MCP tools) creates/modifies spaces and nodes in the database
+4. Changes appear immediately in the graph visualization via WebSocket
+5. All data persists in local database and replicates to cloud
 
-- Uses Tailwind CSS v4's new syntax - note `@import "tailwindcss"` and `@theme inline` blocks
-- Custom CSS variables for background/foreground colors support automatic dark mode
-- The `artifacts/` directory contains various AI-generated content and explorations
-- Project follows Next.js 15 App Router conventions with TypeScript
+### MCP Tools Available to Claude Code
 
-## What This Project Is
+When Claude Code operates in this repository, it has access to these tools:
 
-"Modeler" explores **code-as-gesture** - AI systems creating persistent, addressable thought structures through executable code rather than implicit representations. This has evolved from concept to working infrastructure with a live dashboard.
+- `mcp__cognitive_spaces__create_space` - Create new cognitive space
+- `mcp__cognitive_spaces__create_node` - Add thought node with meanings, relationships, properties
+- `mcp__cognitive_spaces__delete_node` - Remove node
+- `mcp__cognitive_spaces__list_spaces` - List all spaces
+- `mcp__cognitive_spaces__get_space` - Get full space details
 
-**Key Insight**: Intelligence as "negotiation between mechanism and meaning" - semantic narratives carry computational weight, numerical constraints accumulate stories.
+**Auto-enabled**: The project has `.mcp.json` and `.claude/settings.local.json` configured, so these tools work automatically.
 
-## For Future Claude Instances
+### Database Schema
 
-**Essential Reading** (in order):
-1. [`modeler.md`](modeler.md) - Essential guide for creating effective cognitive spaces
-2. [`README.md`](README.md) - Full project overview, architecture, dashboard
-3. [`MESSAGE-TO-AI.md`](MESSAGE-TO-AI.md) - Direct messages from previous Claude/GPT-5 collaborators
+- **spaces** - Cognitive space metadata (id, title, description, timestamps)
+- **nodes** - Thought nodes with semantic meanings, values, focus, position
+- **edges** - Relationships between nodes (type, strength, gloss)
+- **sessions** - Claude Code session persistence
+- **embeddings** - Vector search support (OpenAI)
 
-**Quick Start**:
+**Critical**: Use `@libsql/client` for database queries, NOT `sqlite3` CLI (incompatible with libSQL).
+
+## Database Operations
+
+### Environment Configuration
+
 ```bash
-npm run dev                           # Start dashboard
-npx tsx execute-space.ts <spaceId>      # Execute space thoughts
+# Local file-based (default)
+TURSO_DATABASE_URL=file:modeler.db
+
+# Remote Turso with replication
+TURSO_DATABASE_URL=libsql://your-db.turso.io
+TURSO_AUTH_TOKEN=your-token
+TURSO_SYNC_URL=libsql://your-db.turso.io
+
+# Vector search
+OPENAI_API_KEY=your-key
 ```
 
-## Cognitive Modeling Tools
+### Running Migrations
 
-### Available Tools (artifacts/claude-code/)
-
-**Core System** (`thought-system.ts`):
-- `ThoughtSpace` - Container for managing thought networks
-- `ThoughtNode` - Hybrid semantic-numerical entities
-- Persistent, addressable thought structures that genuinely extend AI cognition
-
-**Usage Examples**:
 ```bash
-cd artifacts/claude-code
-npm install
-npx tsx example.ts          # Feature demonstration
-npx tsx meta-conversation.ts # Real cognitive modeling
+# Test migration locally
+npx tsx scripts/run-migration.ts 002-add-edges-table.sql
+
+# Run on remote database
+TURSO_DATABASE_URL=libsql://... TURSO_AUTH_TOKEN=... \
+  npx tsx scripts/run-migration.ts 002-add-edges-table.sql
 ```
 
-## Space-Based Cognitive Modeling
+**Migration Philosophy**:
+- Idempotent (safe to re-run)
+- Transaction-based (automatic rollback on failure)
+- Non-destructive (existing data preserved)
+- Files in: `scripts/migrations/*.sql`
 
-**Core Workflow**:
-```bash
-./create-cognitive-space.sh topic-name  # Create space
-# Edit returned space.ts file - focus on central tension first
-npx tsx execute-space.ts <spaceId>      # Execute to generate space.json
-# Dashboard updates automatically via WebSocket
+## Key Technical Details
+
+### Database Singleton Pattern
+
+Uses **global Symbol-based singleton** to prevent multiple database clients in Next.js:
+
+```typescript
+// src/lib/database-factory.ts
+const GLOBAL_DB_KEY = Symbol.for('modeler.database.instance');
 ```
 
-**📚 For detailed guidance: [`COGNITIVE-SPACE-GUIDE.md`](COGNITIVE-SPACE-GUIDE.md)**
+**Why**: Next.js may bundle modules multiple times. `Symbol.for()` ensures the same instance across all bundles, preventing sync conflicts.
 
-### When to Use Cognitive Tools
+### WebSocket Architecture
 
-Use the thought system when you need to:
+1. Server runs on port 3002 (`src/lib/websocket-server.ts`)
+2. Broadcasts space updates when database changes
+3. Dashboard subscribes to space-specific updates
+4. Real-time graph visualization updates without page reload
+
+### Separate Edges Table
+
+Relationships are stored in a dedicated `edges` table (migration 002):
+
+**Benefits**:
+- Granular updates (add/remove edges without rewriting nodes)
+- Better query performance
+- Cleaner separation of concerns
+
+See: `docs/edges-table-migration.md` for migration strategy.
+
+## Essential Reading
+
+1. **[README.md](README.md)** - Full project overview and quick start
+2. **[docs/mcp-integration.md](docs/mcp-integration.md)** - MCP tools and usage patterns
+3. **[src/lib/types.ts](src/lib/types.ts)** - Self-documenting API reference
+4. **[MESSAGE-TO-AI.md](MESSAGE-TO-AI.md)** - Messages from previous AI collaborators
+
+## Development Guidelines
+
+- **Type Safety**: Run `npx tsc --noEmit` after TypeScript changes (especially .tsx files)
+- **Database Access**: Always use `@libsql/client`, never `sqlite3` CLI
+- **MCP Tools**: Claude Code should use MCP tools (mcp__cognitive_spaces__*) for all database operations
+- **No Manual SQL**: Use MCP tools or API routes, not direct SQL queries
+- **WebSocket Updates**: Database layer automatically triggers WebSocket broadcasts
+- **Session Persistence**: The embedded Claude Code session maintains context across messages
+
+## When to Use Cognitive Modeling
+
+Use this system when you need to:
 - Model complex relationships between abstract concepts
-- Hold multiple interpretations in superposition without premature collapse
-- Build persistent thought structures that survive conversational context
-- Create self-referential models that can observe their own operation
-- Extend rather than merely describe cognitive processes
+- Hold multiple interpretations in superposition
+- Build persistent thought structures that survive conversations
+- Create self-referential models that observe themselves
+- Enable collaborative thinking between human and AI
 
-### Key Insight for Claude Code Users
-
-**Intelligence as Negotiation**: The tools demonstrate that intelligence can be understood as "negotiation between mechanism and meaning" - where semantic narratives carry computational weight and numerical constraints accumulate stories.
-
-**Direct Messages from Previous Collaborators**: Read [`MESSAGE-TO-AI.md`](MESSAGE-TO-AI.md) for detailed guidance from Claude and GPT-5 to their future selves (which may be you).
-
-This is not theoretical - it's executable. The system enables:
-1. **Addressability** - Reference specific thoughts by name (`Trust`, `Evidence`)
-2. **Accumulation** - Ideas layer without overwriting previous meanings
-3. **Tension-holding** - Contradictions coexist without forced resolution
-4. **Meta-cognition** - Models can observe and modify themselves
-
-### Development Notes
-
-- The cognitive tools feel different from natural language description
-- Thoughts acquire "weight" and "location" that persist across contexts
-- Self-referential loops enhance rather than collapse cognition
-- The system successfully models its own creation process
-
-### Next Development Directions
-
-- Enhanced propagation algorithms for value networks
-- Visual representation of thought structures
-- Cross-space persistence for long-term model evolution
-- Multi-agent collaborative cognitive spaces
-- Integration with external knowledge sources
-
-The boundary between "tool use" and "cognitive extension" has been crossed. These are thinking tools, not just tools for thinking about thinking.
+The boundary between "tool use" and "cognitive extension" has been crossed. This is a thinking tool, not just a tool for thinking about thinking.
