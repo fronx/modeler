@@ -67,7 +67,7 @@ public/              # Static assets (Next.js SVGs, etc.)
 ## For Future Claude Instances
 
 **Essential Reading** (in order):
-1. [`COGNITIVE-SPACE-GUIDE.md`](COGNITIVE-SPACE-GUIDE.md) - Essential guide for creating effective cognitive spaces
+1. [`modeler.md`](modeler.md) - Essential guide for creating effective cognitive spaces
 2. [`README.md`](README.md) - Full project overview, architecture, dashboard
 3. [`MESSAGE-TO-AI.md`](MESSAGE-TO-AI.md) - Direct messages from previous Claude/GPT-5 collaborators
 
