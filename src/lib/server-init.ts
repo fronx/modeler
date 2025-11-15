@@ -7,22 +7,24 @@ import { getCLISession } from './claude-cli-session';
 
 let initialized = false;
 
-// Choose session type based on environment variable
-// Default to CLI mode (Max subscription) unless USE_SDK is explicitly set
-const USE_CLI_MODE = process.env.USE_SDK !== 'true';
+// Helper function to determine session mode at runtime (not cached)
+function useCliMode(): boolean {
+  return process.env.USE_CLI === 'true';
+}
 
 export async function initializeServer() {
   if (initialized) {
     return;
   }
 
+  const isCliMode = useCliMode();
   console.log('[Server Init] Starting server initialization...');
-  console.log(`[Server Init] Mode: ${USE_CLI_MODE ? 'CLI (Max subscription)' : 'SDK (API key)'}`);
+  console.log(`[Server Init] Mode: ${isCliMode ? 'CLI' : 'SDK (Max subscription)'}`);
 
   try {
     // Initialize Claude Code session with /modeler
     console.log('[Server Init] Starting Claude Code session...');
-    const session = USE_CLI_MODE ? await getCLISession() : await getSession();
+    const session = isCliMode ? await getCLISession() : await getSession();
 
     if (session.ready()) {
       console.log('[Server Init] ✓ Claude Code session ready with /modeler loaded');

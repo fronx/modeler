@@ -78,6 +78,7 @@ export class ClaudeCodeSession extends EventEmitter {
   private responseProcessor: Promise<void> | null = null;
   private sessionInitialized: Promise<void> | null = null;
   private resolveSessionInit: (() => void) | null = null;
+  private isCancelled = false;
 
   constructor(config: SessionConfig = {}) {
     super();
@@ -89,21 +90,21 @@ export class ClaudeCodeSession extends EventEmitter {
     const modelerPath = join(this.config.workingDir!, '.claude/commands/modeler.md');
     const basePrompt = readFileSync(modelerPath, 'utf-8');
 
-    // Add space-cli tool usage guidance
+    // Add MCP tool usage guidance
     this.systemPrompt = `${basePrompt}
 
 ## Tool Usage for This Session
 
-You are running in a web-based Claude Code session. You have access to the space-cli.ts tool for working with cognitive spaces.
+You are running in a web-based Claude Code session with MCP cognitive-spaces tools enabled.
 
-**IMPORTANT**: Use the \`scripts/space-cli.ts\` tool for all cognitive space operations:
-- Reading spaces: \`npx tsx scripts/space-cli.ts get <spaceId>\`
-- Listing spaces: \`npx tsx scripts/space-cli.ts list\`
-- Creating spaces: \`npx tsx scripts/space-cli.ts create "title" "description"\`
-- Adding nodes: \`npx tsx scripts/space-cli.ts add-node <spaceId> --title "..." --body "..."\`
-- Analyzing: \`npx tsx scripts/space-cli.ts analyze <spaceId>\`
+**IMPORTANT**: Use MCP tools directly for all cognitive space operations:
+- \`mcp__cognitive-spaces__create_space\` - Create new cognitive space
+- \`mcp__cognitive-spaces__create_node\` - Add thought node with meanings, relationships
+- \`mcp__cognitive-spaces__delete_node\` - Remove node
+- \`mcp__cognitive-spaces__list_spaces\` - List all spaces
+- \`mcp__cognitive-spaces__get_space\` - Get full space details
 
-All space-cli.ts commands are auto-approved. Other tools require explicit permission.`;
+All MCP cognitive-spaces tools are auto-approved. Read-only tools (Read, Grep, Glob, WebFetch, WebSearch) are also auto-approved.`;
   }
 
   /**
@@ -113,6 +114,13 @@ All space-cli.ts commands are auto-approved. Other tools require explicit permis
   async start(): Promise<void> {
     if (this.isReady) {
       throw new Error('Session already started');
+    }
+
+    // Ensure ANTHROPIC_API_KEY is not set (forces Max subscription usage)
+    // This is critical because the env might be different when running from terminal vs VS Code
+    if (process.env.ANTHROPIC_API_KEY) {
+      console.log('[Claude Code SDK] Removing ANTHROPIC_API_KEY from environment to use Max subscription');
+      delete process.env.ANTHROPIC_API_KEY;
     }
 
     // Create promise that resolves when session ID is captured
@@ -139,18 +147,16 @@ All space-cli.ts commands are auto-approved. Other tools require explicit permis
           };
         }
 
+        // Auto-approve MCP cognitive-spaces tools (for feature parity with CLI mode)
+        if (toolName.startsWith('mcp__cognitive-spaces__')) {
+          return {
+            behavior: 'allow',
+            updatedInput: input
+          };
+        }
+
         // Auto-approve Bash commands that run space-cli.ts
         if (toolName === 'Bash' && input.command) {
-          const command = input.command as string;
-          // Check if command runs space-cli.ts
-          if (command.includes('scripts/space-cli.ts') || command.includes('space-cli.ts')) {
-            return {
-              behavior: 'allow',
-              updatedInput: input
-            };
-          }
-
-          // Deny other Bash commands
           return {
             behavior: 'deny',
             reason: 'Only scripts/space-cli.ts commands are auto-approved. Please use the space-cli.ts tool to work with cognitive spaces.'
@@ -191,6 +197,12 @@ All space-cli.ts commands are auto-approved. Other tools require explicit permis
 
     try {
       for await (const msg of this.currentQuery) {
+        // Skip processing if cancelled
+        if (this.isCancelled) {
+          console.log('[SDK Session] Skipping message due to cancellation');
+          continue;
+        }
+
         if (msg.type === 'system' && msg.subtype === 'init' && msg.session_id) {
           // Capture session ID and signal initialization complete
           this.sessionId = msg.session_id;
@@ -271,8 +283,36 @@ All space-cli.ts commands are auto-approved. Other tools require explicit permis
       throw new Error('Session not properly initialized');
     }
 
+    // Reset cancellation flag for new message
+    this.isCancelled = false;
+
     // Push message to the stream - no new process creation!
     this.messageStream.pushMessage(message, this.sessionId);
+  }
+
+  /**
+   * Cancel the current operation (interrupts without destroying the session)
+   * The session remains active and can accept new messages after cancellation
+   */
+  async cancel(): Promise<void> {
+    if (!this.currentQuery) {
+      throw new Error('No active query to cancel');
+    }
+
+    try {
+      // Set flag to stop processing in-flight messages
+      this.isCancelled = true;
+
+      // Call SDK interrupt to stop query execution
+      await this.currentQuery.interrupt();
+
+      this.emit('cancelled', { message: 'Operation cancelled by user' });
+      console.log('[SDK Session] Operation cancelled by user');
+    } catch (error: any) {
+      console.error('[SDK Cancel Error]', error);
+      this.isCancelled = false; // Reset on error
+      throw new Error(`Failed to cancel: ${error.message}`);
+    }
   }
 
   /**

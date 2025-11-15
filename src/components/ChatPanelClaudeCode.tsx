@@ -199,6 +199,29 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
     }
   };
 
+  const cancelOperation = async () => {
+    try {
+      const response = await fetch('/api/claude-code/cancel', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        setIsLoading(false);
+        const cancelMessage: Message = {
+          id: `system-${Date.now()}`,
+          role: 'assistant',
+          content: '\n\n_Operation cancelled by user_',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, cancelMessage]);
+      } else {
+        throw new Error('Failed to cancel operation');
+      }
+    } catch (error: any) {
+      console.error('Error cancelling operation:', error);
+    }
+  };
+
   const clearChat = () => {
     if (confirm('Clear all messages?')) {
       setMessages([]);
@@ -332,6 +355,7 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
 
             <ChatInput
               onSendMessage={sendMessage}
+              onCancel={cancelOperation}
               disabled={isLoading}
               placeholder="Ask Claude Code about your cognitive space..."
             />

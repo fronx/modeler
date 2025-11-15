@@ -9,7 +9,6 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "execute-space": "npx tsx execute-space.ts",
     "mcp": "npx tsx mcp-server.ts"
   },
   "dependencies": {

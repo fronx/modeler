@@ -305,6 +305,24 @@ export class ClaudeCLISession extends EventEmitter {
   }
 
   /**
+   * Cancel the current operation by sending SIGTERM
+   * Note: This will terminate the process. The session manager will restart it on next use.
+   */
+  cancel(): void {
+    if (!this.process) {
+      throw new Error('No active process to cancel');
+    }
+
+    console.log('[Claude CLI] Sending SIGTERM to cancel operation (process will restart)...');
+    // Send SIGTERM to gracefully terminate the process
+    // The global session manager will create a new process on next message
+    this.process.kill('SIGTERM');
+    this.isProcessing = false;
+    this.isReady = false;
+    this.emit('cancelled', { message: 'Operation cancelled by user' });
+  }
+
+  /**
    * Stop the session
    */
   stop(): void {
