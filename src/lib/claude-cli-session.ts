@@ -31,7 +31,14 @@ interface TextBlock {
   text: string;
 }
 
-type ContentBlock = TextBlock | ToolUseBlock;
+interface ToolResultBlock {
+  type: 'tool_result';
+  tool_use_id: string;
+  is_error?: boolean;
+  content: string | any;
+}
+
+type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock;
 
 interface SDKMessage {
   type: string;
@@ -201,6 +208,19 @@ export class ClaudeCLISession extends EventEmitter {
               console.log('\n[Claude CLI Tool Use]', block.name, {
                 id: block.id,
                 input: block.input
+              });
+            }
+          }
+        } else if (msg.type === 'user' && msg.message?.content) {
+          // Tool results come back as user messages with tool_result blocks
+          for (const block of msg.message.content) {
+            if (block.type === 'tool_result') {
+              console.log('\n[Claude CLI Tool Result]', {
+                tool_use_id: block.tool_use_id,
+                is_error: block.is_error,
+                content: typeof block.content === 'string'
+                  ? block.content.substring(0, 500) + (block.content.length > 500 ? '...' : '')
+                  : block.content
               });
             }
           }
