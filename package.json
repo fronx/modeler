@@ -3,15 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "concurrently -n \"next,mcp\" -c \"cyan,magenta\" \"next dev --turbopack\" \"npx tsx mcp-server.ts\"",
+    "dev:next": "next dev --turbopack",
+    "dev:mcp": "npx tsx mcp-server.ts",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "execute-space": "npx tsx execute-space.ts"
+    "execute-space": "npx tsx execute-space.ts",
+    "mcp": "npx tsx mcp-server.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.30",
     "@libsql/client": "^0.15.15",
+    "@modelcontextprotocol/sdk": "^1.22.0",
     "@types/d3-force": "^3.0.10",
     "@types/ws": "^8.18.1",
     "@xyflow/react": "^12.8.4",
@@ -36,6 +40,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "tailwindcss": "^4",

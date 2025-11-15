@@ -92,6 +92,15 @@ export class ClaudeCLISession extends EventEmitter {
 
     console.log('[Claude CLI] Spawning process...');
 
+    // Build allowed tools list
+    const allowedTools = [
+      'Bash(jq:*)',
+      'Read',
+      'Grep',
+      'Glob',
+      'mcp__cognitive-spaces'
+    ].join(' ');
+
     // Build args array - add --resume if resuming from existing session
     const args = [
       '--print',
@@ -99,13 +108,8 @@ export class ClaudeCLISession extends EventEmitter {
       '--output-format', 'stream-json',
       '--input-format', 'stream-json',
       '--system-prompt', this.systemPrompt,
-      // Allow safe read-only operations without confirmation
-      '--allowed-tools', 'Bash(curl -s -X GET:*)',
-      '--allowed-tools', 'Bash(jq:*)',
-      '--allowed-tools', 'Bash(ls:*)',
-      '--allowed-tools', 'Read',
-      '--allowed-tools', 'Grep',
-      '--allowed-tools', 'Glob'
+      '--mcp-config', '.mcp.json',
+      '--allowedTools', allowedTools
     ];
 
     // Add resume flag if we have a session ID to resume from
@@ -113,6 +117,9 @@ export class ClaudeCLISession extends EventEmitter {
       args.push('--resume', this.config.sessionId);
       console.log(`[Claude CLI] Resuming session: ${this.config.sessionId}`);
     }
+
+    // Debug: log all args
+    console.log('[Claude CLI] Spawn args:', args);
 
     // Spawn persistent Claude CLI process
     // IMPORTANT: Remove ANTHROPIC_API_KEY from env to use Max subscription instead of API credits

@@ -17,7 +17,7 @@ This is "Modeler" - a Next.js 15 application exploring the concept of giving men
 ## Development Commands
 
 ```bash
-# Start development server with Turbopack (always run in background)
+# Start development server with Turbopack + MCP server (always run in background)
 npm run dev
 
 # Build for production with Turbopack
@@ -28,9 +28,14 @@ npm run start
 
 # Run ESLint
 npm run lint
+
+# MCP server standalone (for testing)
+npm run mcp
 ```
 
-**Important**: **DO NOT start or restart the dev server**. That's the user's responsinbility.
+**Important**: **DO NOT start or restart the dev server**. That's the user's responsibility.
+
+**Note**: `npm run dev` now starts both the Next.js dev server (port 3000) and the MCP server (stdio) concurrently. The MCP server provides native tool integration for cognitive space operations.
 
 ## Project Structure
 
