@@ -1,5 +1,7 @@
 # Edges Table Migration Plan
 
+**⚠️ Important:** Use `@libsql/client` to query the database, not the `sqlite3` CLI (which may return incorrect results with Turso/libSQL databases).
+
 ## Why This Change?
 
 ### Current Limitations

@@ -29,6 +29,8 @@ npm run dev
 # For remote Turso, set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
 ```
 
+**⚠️ Important:** Use `@libsql/client` to query the database, not the `sqlite3` CLI (which may return incorrect results with Turso/libSQL databases).
+
 **Database Migrations:**
 
 We use **incremental SQL migrations** for schema evolution. This is the standard approach for Turso/libSQL and ensures safe, reversible database changes.
