@@ -32,6 +32,8 @@ export interface Message {
   // Keep for backwards compatibility
   toolUses?: ToolUse[];
   toolDenials?: ToolDenial[];
+  // Flag for system/automated messages
+  isSystem?: boolean;
 }
 
 interface ChatMessageProps {
@@ -182,6 +184,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       </>
     );
   };
+
+  // System messages get special styling (centered, subtle)
+  if (message.isSystem) {
+    return (
+      <div className="flex justify-center mb-4">
+        <div className="max-w-[80%] px-4 py-2 text-center">
+          <div className="text-xs text-gray-500 dark:text-gray-400 italic">
+            {message.content}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>

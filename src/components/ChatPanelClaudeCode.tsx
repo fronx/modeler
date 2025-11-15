@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Message } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ChatToggleButton } from './chat/ChatToggleButton';
@@ -23,14 +23,33 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showSessionBrowser, setShowSessionBrowser] = useState(false);
+  const previousSpaceIdRef = useRef<string | null | undefined>(undefined);
 
-  const sendMessage = async (content: string) => {
-    // Add user message immediately
+  // Detect space changes and prime Claude with space content
+  useEffect(() => {
+    // Skip on first render when previousSpaceIdRef is undefined
+    if (previousSpaceIdRef.current === undefined) {
+      previousSpaceIdRef.current = spaceId;
+      return;
+    }
+
+    // Only prime if space actually changed
+    if (previousSpaceIdRef.current !== spaceId && spaceId) {
+      previousSpaceIdRef.current = spaceId;
+
+      // Send a priming message to Claude when space changes
+      sendMessage('Ready to work with this space.', true);
+    }
+  }, [spaceId]);
+
+  const sendMessage = async (content: string, isSpaceSwitch = false) => {
+    // Add user message immediately (or system message for space switches)
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content,
+      content: isSpaceSwitch ? 'Switching to space...' : content,
       timestamp: new Date(),
+      isSystem: isSpaceSwitch,
     };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
@@ -52,6 +71,7 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
         body: JSON.stringify({
           message: content,
           spaceId: spaceId || undefined,
+          isSpaceSwitch,
           history,
         }),
       });

@@ -6,16 +6,57 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/claude-code-session';
 import { getCLISession } from '@/lib/claude-cli-session';
+import { createDatabase } from '@/lib/database-factory';
 
 // Helper function to determine session mode at runtime (not cached)
 function useCliMode(): boolean {
   return process.env.USE_CLI === 'true';
 }
 
+/**
+ * Format space data as a system context message for Claude
+ */
+async function formatSpaceContext(spaceId: string): Promise<string> {
+  const db = createDatabase();
+  const space = await db.getSpace(spaceId);
+
+  if (!space) {
+    return `[Space context: ${spaceId} (not found)]`;
+  }
+
+  const nodeCount = Object.keys(space.nodes).length;
+  const nodeList = Object.entries(space.nodes)
+    .map(([nodeKey, nodeData]) => {
+      const meanings = nodeData.meanings?.map((m: any) => `  - ${m.content} (${(m.confidence * 100).toFixed(0)}%)`).join('\n') || '';
+      const relationships = nodeData.relationships?.map((r: any) => `  - ${r.type} → ${r.target} (strength: ${r.strength})`).join('\n') || '';
+      const values = nodeData.values ? `\n  Values: ${JSON.stringify(nodeData.values)}` : '';
+
+      return `### ${nodeKey}
+${meanings ? `Meanings:\n${meanings}\n` : ''}${relationships ? `Relationships:\n${relationships}\n` : ''}${values}`;
+    })
+    .join('\n\n');
+
+  return `<space_context>
+You are working in cognitive space: **${space.metadata.title}**
+Description: ${space.metadata.description}
+Space ID: ${spaceId}
+
+This space contains ${nodeCount} thought node${nodeCount !== 1 ? 's' : ''}:
+
+${nodeList || '(No nodes yet)'}
+
+Use the MCP cognitive-spaces tools to interact with this space:
+- mcp__cognitive-spaces__create_node - Add new thoughts
+- mcp__cognitive-spaces__delete_node - Remove thoughts
+- mcp__cognitive-spaces__get_space - Refresh space data
+- mcp__cognitive-spaces__create_edge - Add relationships
+</space_context>`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, spaceId } = body;
+    const { message, spaceId, isSpaceSwitch } = body;
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -27,9 +68,16 @@ export async function POST(request: NextRequest) {
     // Build the full prompt for Claude Code
     let fullPrompt = message;
 
-    // If we have a space context, add it
+    // If we have a space context, format it with full space data
     if (spaceId) {
-      fullPrompt = `[Space context: ${spaceId}] ${fullPrompt}`;
+      const spaceContext = await formatSpaceContext(spaceId);
+
+      // For space switches, give Claude explicit instructions about how to respond
+      if (isSpaceSwitch) {
+        fullPrompt = `${spaceContext}\n\nI have switched to this cognitive space. Please respond with a brief acknowledgment (1-2 sentences) that you've reviewed the space content and are ready to work with it. Do NOT summarize or list the nodes - just confirm you're ready.\n\n${message}`;
+      } else {
+        fullPrompt = `${spaceContext}\n\n${message}`;
+      }
     }
 
     // Get or create the persistent Claude Code session
