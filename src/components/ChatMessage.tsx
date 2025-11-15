@@ -10,17 +10,28 @@ export interface ToolUse {
   input: any;
 }
 
+export interface ToolDenial {
+  tool_name: string;
+  tool_use_id: string;
+  tool_input: Record<string, unknown>;
+}
+
+// Content blocks that can be interleaved
+export type ContentBlock =
+  | { type: 'text'; content: string }
+  | { type: 'tool_use'; toolUse: ToolUse }
+  | { type: 'tool_denial'; denial: ToolDenial };
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  // New field for interleaved content
+  contentBlocks?: ContentBlock[];
+  // Keep for backwards compatibility
   toolUses?: ToolUse[];
-  toolDenials?: Array<{
-    tool_name: string;
-    tool_use_id: string;
-    tool_input: Record<string, unknown>;
-  }>;
+  toolDenials?: ToolDenial[];
 }
 
 interface ChatMessageProps {
@@ -70,6 +81,108 @@ const ToolDenialDisplay: React.FC<{ denial: { tool_name: string; tool_use_id: st
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.role === 'user';
 
+  // Render content blocks in order if available, otherwise fall back to old format
+  const renderContent = () => {
+    if (message.contentBlocks && message.contentBlocks.length > 0) {
+      return (
+        <>
+          {message.contentBlocks.map((block, index) => {
+            switch (block.type) {
+              case 'text':
+                return (
+                  <ReactMarkdown
+                    key={`text-${index}`}
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      // Customize link styling
+                      a: ({ node, ...props }) => (
+                        <a {...props} className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer" />
+                      ),
+                      // Customize code block styling
+                      code: ({ node, inline, ...props }: any) =>
+                        inline ? (
+                          <code {...props} className="bg-gray-800 dark:bg-gray-600 px-1 py-0.5 rounded text-xs" />
+                        ) : (
+                          <code {...props} className="block bg-gray-800 dark:bg-gray-600 p-2 rounded text-xs overflow-x-auto" />
+                        ),
+                      // Customize list styling
+                      ul: ({ node, ...props }) => <ul {...props} className="list-disc list-inside space-y-1" />,
+                      ol: ({ node, ...props }) => <ol {...props} className="list-decimal list-inside space-y-1" />,
+                      // Customize heading styling
+                      h1: ({ node, ...props }) => <h1 {...props} className="text-lg font-bold mt-2 mb-1" />,
+                      h2: ({ node, ...props }) => <h2 {...props} className="text-base font-bold mt-2 mb-1" />,
+                      h3: ({ node, ...props }) => <h3 {...props} className="text-sm font-bold mt-1 mb-1" />,
+                      // Customize paragraph spacing
+                      p: ({ node, ...props }) => <p {...props} className="mb-2 last:mb-0" />,
+                    }}
+                  >
+                    {block.content}
+                  </ReactMarkdown>
+                );
+              case 'tool_use':
+                return <ToolUseDisplay key={`tool-${block.toolUse.id}`} toolUse={block.toolUse} />;
+              case 'tool_denial':
+                return <ToolDenialDisplay key={`denial-${block.denial.tool_use_id}`} denial={block.denial} />;
+              default:
+                return null;
+            }
+          })}
+        </>
+      );
+    }
+
+    // Fall back to old format for backwards compatibility
+    return (
+      <>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            // Customize link styling
+            a: ({ node, ...props }) => (
+              <a {...props} className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer" />
+            ),
+            // Customize code block styling
+            code: ({ node, inline, ...props }: any) =>
+              inline ? (
+                <code {...props} className="bg-gray-800 dark:bg-gray-600 px-1 py-0.5 rounded text-xs" />
+              ) : (
+                <code {...props} className="block bg-gray-800 dark:bg-gray-600 p-2 rounded text-xs overflow-x-auto" />
+              ),
+            // Customize list styling
+            ul: ({ node, ...props }) => <ul {...props} className="list-disc list-inside space-y-1" />,
+            ol: ({ node, ...props }) => <ol {...props} className="list-decimal list-inside space-y-1" />,
+            // Customize heading styling
+            h1: ({ node, ...props }) => <h1 {...props} className="text-lg font-bold mt-2 mb-1" />,
+            h2: ({ node, ...props }) => <h2 {...props} className="text-base font-bold mt-2 mb-1" />,
+            h3: ({ node, ...props }) => <h3 {...props} className="text-sm font-bold mt-1 mb-1" />,
+            // Customize paragraph spacing
+            p: ({ node, ...props }) => <p {...props} className="mb-2 last:mb-0" />,
+          }}
+        >
+          {message.content}
+        </ReactMarkdown>
+
+        {/* Display tool uses */}
+        {message.toolUses && message.toolUses.length > 0 && (
+          <div className="mt-3 space-y-1">
+            {message.toolUses.map((toolUse) => (
+              <ToolUseDisplay key={toolUse.id} toolUse={toolUse} />
+            ))}
+          </div>
+        )}
+
+        {/* Display tool denials */}
+        {message.toolDenials && message.toolDenials.length > 0 && (
+          <div className="mt-3 space-y-1">
+            {message.toolDenials.map((denial) => (
+              <ToolDenialDisplay key={denial.tool_use_id} denial={denial} />
+            ))}
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
       <div
@@ -80,57 +193,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         }`}
       >
         <div className="text-sm break-words prose prose-sm dark:prose-invert max-w-none">
-          {isUser ? (
-            <div className="whitespace-pre-wrap">{message.content}</div>
-          ) : (
-            <>
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  // Customize link styling
-                  a: ({ node, ...props }) => (
-                    <a {...props} className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer" />
-                  ),
-                  // Customize code block styling
-                  code: ({ node, inline, ...props }: any) =>
-                    inline ? (
-                      <code {...props} className="bg-gray-800 dark:bg-gray-600 px-1 py-0.5 rounded text-xs" />
-                    ) : (
-                      <code {...props} className="block bg-gray-800 dark:bg-gray-600 p-2 rounded text-xs overflow-x-auto" />
-                    ),
-                  // Customize list styling
-                  ul: ({ node, ...props }) => <ul {...props} className="list-disc list-inside space-y-1" />,
-                  ol: ({ node, ...props }) => <ol {...props} className="list-decimal list-inside space-y-1" />,
-                  // Customize heading styling
-                  h1: ({ node, ...props }) => <h1 {...props} className="text-lg font-bold mt-2 mb-1" />,
-                  h2: ({ node, ...props }) => <h2 {...props} className="text-base font-bold mt-2 mb-1" />,
-                  h3: ({ node, ...props }) => <h3 {...props} className="text-sm font-bold mt-1 mb-1" />,
-                  // Customize paragraph spacing
-                  p: ({ node, ...props }) => <p {...props} className="mb-2 last:mb-0" />,
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
-
-              {/* Display tool uses */}
-              {message.toolUses && message.toolUses.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  {message.toolUses.map((toolUse) => (
-                    <ToolUseDisplay key={toolUse.id} toolUse={toolUse} />
-                  ))}
-                </div>
-              )}
-
-              {/* Display tool denials */}
-              {message.toolDenials && message.toolDenials.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  {message.toolDenials.map((denial) => (
-                    <ToolDenialDisplay key={denial.tool_use_id} denial={denial} />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          {isUser ? <div className="whitespace-pre-wrap">{message.content}</div> : renderContent()}
         </div>
         <div
           className={`text-xs mt-1 ${

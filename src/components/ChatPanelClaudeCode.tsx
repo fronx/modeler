@@ -63,9 +63,8 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
       // Handle streaming response
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      let assistantContent = '';
-      let toolUses: Array<{ id: string; name: string; input: any }> = [];
-      let toolDenials: Array<{ tool_name: string; tool_use_id: string; tool_input: Record<string, unknown> }> = [];
+      let contentBlocks: Array<{ type: 'text'; content: string } | { type: 'tool_use'; toolUse: any } | { type: 'tool_denial'; denial: any }> = [];
+      let currentTextBlock = '';
 
       // Create assistant message placeholder
       const assistantMessage: Message = {
@@ -73,8 +72,7 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
         role: 'assistant',
         content: '',
         timestamp: new Date(),
-        toolUses: [],
-        toolDenials: [],
+        contentBlocks: [],
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
@@ -96,13 +94,22 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
 
                 // Handle text content
                 if (parsed.content) {
-                  assistantContent += parsed.content;
+                  currentTextBlock += parsed.content;
                   // Update the assistant message in place
                   setMessages((prev) => {
                     const newMessages = [...prev];
                     const lastMsg = newMessages[newMessages.length - 1];
                     if (lastMsg.role === 'assistant') {
-                      lastMsg.content = assistantContent;
+                      // Update contentBlocks with current text
+                      const blocks = [...contentBlocks];
+                      // Update or add the current text block
+                      if (blocks.length > 0 && blocks[blocks.length - 1].type === 'text') {
+                        blocks[blocks.length - 1] = { type: 'text', content: currentTextBlock };
+                      } else {
+                        blocks.push({ type: 'text', content: currentTextBlock });
+                      }
+                      lastMsg.contentBlocks = blocks;
+                      lastMsg.content = currentTextBlock; // Keep for backwards compatibility
                     }
                     return newMessages;
                   });
@@ -110,12 +117,18 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
 
                 // Handle tool use
                 if (parsed.type === 'tool_use' && parsed.tool_use) {
-                  toolUses.push(parsed.tool_use);
+                  // Finalize current text block if any
+                  if (currentTextBlock) {
+                    contentBlocks.push({ type: 'text', content: currentTextBlock });
+                    currentTextBlock = '';
+                  }
+                  // Add tool use block
+                  contentBlocks.push({ type: 'tool_use', toolUse: parsed.tool_use });
                   setMessages((prev) => {
                     const newMessages = [...prev];
                     const lastMsg = newMessages[newMessages.length - 1];
                     if (lastMsg.role === 'assistant') {
-                      lastMsg.toolUses = [...toolUses];
+                      lastMsg.contentBlocks = [...contentBlocks];
                     }
                     return newMessages;
                   });
@@ -123,12 +136,20 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
 
                 // Handle tool denials
                 if (parsed.type === 'tool_denials' && parsed.denials) {
-                  toolDenials.push(...parsed.denials);
+                  // Finalize current text block if any
+                  if (currentTextBlock) {
+                    contentBlocks.push({ type: 'text', content: currentTextBlock });
+                    currentTextBlock = '';
+                  }
+                  // Add denial blocks
+                  for (const denial of parsed.denials) {
+                    contentBlocks.push({ type: 'tool_denial', denial });
+                  }
                   setMessages((prev) => {
                     const newMessages = [...prev];
                     const lastMsg = newMessages[newMessages.length - 1];
                     if (lastMsg.role === 'assistant') {
-                      lastMsg.toolDenials = [...toolDenials];
+                      lastMsg.contentBlocks = [...contentBlocks];
                     }
                     return newMessages;
                   });
@@ -137,11 +158,21 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
                 // Handle errors
                 if (parsed.error) {
                   console.error('Claude Code error:', parsed.error);
+                  const errorText = `\n\n**Error:** ${parsed.error}`;
+                  currentTextBlock += errorText;
                   setMessages((prev) => {
                     const newMessages = [...prev];
                     const lastMsg = newMessages[newMessages.length - 1];
                     if (lastMsg.role === 'assistant') {
-                      lastMsg.content += `\n\n**Error:** ${parsed.error}`;
+                      // Update contentBlocks with error
+                      const blocks = [...contentBlocks];
+                      if (blocks.length > 0 && blocks[blocks.length - 1].type === 'text') {
+                        blocks[blocks.length - 1] = { type: 'text', content: currentTextBlock };
+                      } else {
+                        blocks.push({ type: 'text', content: currentTextBlock });
+                      }
+                      lastMsg.contentBlocks = blocks;
+                      lastMsg.content = currentTextBlock;
                     }
                     return newMessages;
                   });
