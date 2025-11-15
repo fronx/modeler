@@ -55,6 +55,9 @@ export interface NodeSearchResult {
 }
 
 export class TursoDatabase {
+  private static instanceCount = 0;
+  private static instanceRegistry = new Set<string>();
+  private instanceId: string;
   private client: Client;
   private initialized = false;
   private synced = false;
@@ -67,8 +70,24 @@ export class TursoDatabase {
   private isEmbeddedReplica: boolean;
   private syncOnStartup: boolean;
   private syncQueue: Promise<void> = Promise.resolve();
+  private autoSyncSuspended = false;
+  private suspendedSyncInterval?: number;
 
   constructor(config: TursoDatabaseConfig = {}) {
+    // Generate unique instance ID for tracking
+    TursoDatabase.instanceCount++;
+    this.instanceId = `db-${TursoDatabase.instanceCount}-${Date.now()}`;
+    TursoDatabase.instanceRegistry.add(this.instanceId);
+
+    console.log(`[DB Instance] Creating new TursoDatabase instance: ${this.instanceId}`);
+    console.log(`[DB Instance] Total instances created: ${TursoDatabase.instanceCount}`);
+    console.log(`[DB Instance] Active instances: ${TursoDatabase.instanceRegistry.size}`);
+
+    if (TursoDatabase.instanceCount > 1) {
+      console.warn(`⚠️  WARNING: Multiple TursoDatabase instances detected!`);
+      console.warn(`   This may cause sync conflicts with embedded replicas.`);
+      console.warn(`   Active instances: ${Array.from(TursoDatabase.instanceRegistry).join(', ')}`);
+    }
     const url = config.url || process.env.TURSO_DATABASE_URL || "file:modeler.db";
     const syncUrl = config.syncUrl || process.env.TURSO_SYNC_URL;
     const syncInterval = config.syncInterval ?? (process.env.TURSO_SYNC_INTERVAL ? parseInt(process.env.TURSO_SYNC_INTERVAL) : 0);
@@ -667,15 +686,21 @@ export class TursoDatabase {
       return;
     }
 
-    // Chain sync requests to run sequentially so we never drop a write.
-    this.syncQueue = this.syncQueue.then(() => this.sync());
+    // Suspend auto-sync while we're doing immediate post-write sync
+    // This prevents the background timer from racing with our explicit sync
+    this.suspendAutoSync();
 
     try {
+      // Chain sync requests to run sequentially so we never drop a write.
+      this.syncQueue = this.syncQueue.then(() => this.sync());
       await this.syncQueue;
     } catch (error) {
       // Reset queue so future writes can attempt another sync.
       this.syncQueue = Promise.resolve();
       throw error;
+    } finally {
+      // Always resume auto-sync, even if sync failed
+      this.resumeAutoSync();
     }
   }
 
@@ -850,6 +875,12 @@ export class TursoDatabase {
 
     console.log(`Starting auto-sync every ${intervalSeconds} seconds`);
     this.syncIntervalId = setInterval(async () => {
+      // Skip auto-sync if suspended during write operations
+      if (this.autoSyncSuspended) {
+        console.log('[Auto-sync] Skipped (suspended during write operation)');
+        return;
+      }
+
       try {
         await this.sync();
       } catch (error) {
@@ -874,6 +905,36 @@ export class TursoDatabase {
       clearInterval(this.syncIntervalId);
       this.syncIntervalId = undefined;
       console.log('Auto-sync stopped');
+    }
+  }
+
+  /**
+   * Suspend auto-sync during write operations to prevent conflicts.
+   * Auto-sync will be skipped until resumed.
+   */
+  suspendAutoSync(): void {
+    if (!this.isEmbeddedReplica) return;
+    this.autoSyncSuspended = true;
+  }
+
+  /**
+   * Resume auto-sync after write operations complete.
+   */
+  resumeAutoSync(): void {
+    if (!this.isEmbeddedReplica) return;
+    this.autoSyncSuspended = false;
+  }
+
+  /**
+   * Execute a function with auto-sync suspended, then resume.
+   * Ensures auto-sync is always resumed even if the function throws.
+   */
+  async withSuspendedAutoSync<T>(fn: () => Promise<T>): Promise<T> {
+    this.suspendAutoSync();
+    try {
+      return await fn();
+    } finally {
+      this.resumeAutoSync();
     }
   }
 
@@ -1001,5 +1062,10 @@ export class TursoDatabase {
   async close(): Promise<void> {
     this.stopAutoSync();
     this.client.close();
+
+    // Remove from registry
+    TursoDatabase.instanceRegistry.delete(this.instanceId);
+    console.log(`[DB Instance] Closed instance: ${this.instanceId}`);
+    console.log(`[DB Instance] Remaining active instances: ${TursoDatabase.instanceRegistry.size}`);
   }
 }

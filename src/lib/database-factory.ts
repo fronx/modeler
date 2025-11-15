@@ -34,18 +34,26 @@ export interface DatabaseInterface {
   searchNodesInSpace?(spaceId: string, query: string, limit?: number, threshold?: number): Promise<NodeSearchResult[]>;
   searchAllNodes?(query: string, limit?: number, threshold?: number): Promise<NodeSearchResult[]>;
   updateNode?(spaceId: string, nodeKey: string, updates: any): Promise<void>;
+  withSuspendedAutoSync<T>(fn: () => Promise<T>): Promise<T>;
   close(): Promise<void>;
 }
 
-// Singleton instance to avoid recreating connections on every request
-let dbInstance: TursoDatabase | null = null;
-let cleanupRegistered = false;
+// Global singleton key - using Symbol.for ensures it's shared across all module instances
+// This is critical for Next.js which may bundle this module multiple times
+const GLOBAL_DB_KEY = Symbol.for('modeler.database.instance');
+const GLOBAL_CLEANUP_KEY = Symbol.for('modeler.database.cleanup_registered');
+
+// Type declarations for globalThis - we store using symbols for cross-bundle access
+interface GlobalDatabaseRegistry {
+  [key: symbol]: TursoDatabase | boolean | undefined;
+}
 
 /**
  * Factory function to create/get database instance.
  *
- * Uses Turso/libSQL as the database backend with singleton pattern.
- * This ensures we reuse the same connection and sync interval across requests.
+ * Uses Turso/libSQL as the database backend with TRUE singleton pattern.
+ * Uses Symbol.for() to ensure the same instance is shared across all Next.js bundles.
+ * This prevents multiple database clients from causing sync conflicts.
  *
  * Configuration via environment variables:
  * - TURSO_DATABASE_URL - file:modeler.db or https://...
@@ -53,32 +61,42 @@ let cleanupRegistered = false;
  * - TURSO_SYNC_URL - Sync URL for embedded replica
  */
 export function createDatabase(): DatabaseInterface {
-  if (!dbInstance) {
-    dbInstance = new TursoDatabase();
+  // Access global singleton using Symbol
+  const globalAny = globalThis as any;
 
-    // Register cleanup handlers only once
-    if (!cleanupRegistered) {
-      cleanupRegistered = true;
+  if (!globalAny[GLOBAL_DB_KEY]) {
+    console.log('[DB Factory] No global instance found, creating new TursoDatabase...');
+    globalAny[GLOBAL_DB_KEY] = new TursoDatabase();
+
+    // Register cleanup handlers only once globally
+    if (!globalAny[GLOBAL_CLEANUP_KEY]) {
+      globalAny[GLOBAL_CLEANUP_KEY] = true;
+      console.log('[DB Factory] Registering global cleanup handlers');
 
       // Only cleanup on actual process exit, not dev server restart
       process.on('SIGINT', () => {
-        if (dbInstance) {
-          console.log('Closing database connection...');
-          dbInstance.close();
-          dbInstance = null;
+        const instance = globalAny[GLOBAL_DB_KEY];
+        if (instance) {
+          console.log('[DB Factory] Closing database connection on SIGINT...');
+          instance.close();
+          delete globalAny[GLOBAL_DB_KEY];
         }
         process.exit(0);
       });
 
       process.on('SIGTERM', () => {
-        if (dbInstance) {
-          dbInstance.close();
-          dbInstance = null;
+        const instance = globalAny[GLOBAL_DB_KEY];
+        if (instance) {
+          console.log('[DB Factory] Closing database connection on SIGTERM...');
+          instance.close();
+          delete globalAny[GLOBAL_DB_KEY];
         }
         process.exit(0);
       });
     }
+  } else {
+    console.log('[DB Factory] Reusing existing global database instance');
   }
 
-  return dbInstance;
+  return globalAny[GLOBAL_DB_KEY];
 }
