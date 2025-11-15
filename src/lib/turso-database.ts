@@ -66,6 +66,7 @@ export class TursoDatabase {
   };
   private isEmbeddedReplica: boolean;
   private syncOnStartup: boolean;
+  private syncQueue: Promise<void> = Promise.resolve();
 
   constructor(config: TursoDatabaseConfig = {}) {
     const url = config.url || process.env.TURSO_DATABASE_URL || "file:modeler.db";
@@ -296,7 +297,7 @@ export class TursoDatabase {
     await this.client.batch(statements, 'write');
 
     // Sync immediately after write (Option 1: Aggressive Immediate Sync)
-    this.syncAfterWrite();
+    await this.syncAfterWrite();
 
     // Generate embeddings if enabled (Phase 2: Vector Search)
     if (this.vectorSearchEnabled) {
@@ -442,7 +443,7 @@ export class TursoDatabase {
     });
 
     // Sync immediately after write (Option 1: Aggressive Immediate Sync)
-    this.syncAfterWrite(result.rowsAffected > 0);
+    await this.syncAfterWrite(result.rowsAffected > 0);
 
     return result.rowsAffected > 0;
   }
@@ -463,7 +464,7 @@ export class TursoDatabase {
     console.log(`[DB] SQL DELETE took ${t3 - t2}ms`);
 
     // Sync immediately after write (Option 1: Aggressive Immediate Sync)
-    this.syncAfterWrite(result.rowsAffected > 0);
+    await this.syncAfterWrite(result.rowsAffected > 0);
 
     return result.rowsAffected > 0;
   }
@@ -498,7 +499,7 @@ export class TursoDatabase {
     });
 
     // Sync immediately after write (Option 1: Aggressive Immediate Sync)
-    this.syncAfterWrite(result.rowsAffected > 0);
+    await this.syncAfterWrite(result.rowsAffected > 0);
   }
 
   /**
@@ -661,22 +662,20 @@ export class TursoDatabase {
    *
    * @param changed - Whether the operation actually modified data (default: true)
    */
-  private syncAfterWrite(changed: boolean = true): void {
-    if (changed && this.isEmbeddedReplica) {
-      // Use setImmediate to ensure sync runs truly asynchronously without blocking
-      setImmediate(() => {
-        const t0 = Date.now();
-        console.log('[SYNC] Starting background sync...');
-        this.sync()
-          .then(() => {
-            const t1 = Date.now();
-            console.log(`[SYNC] Background sync completed in ${t1 - t0}ms`);
-          })
-          .catch(error => {
-            const t1 = Date.now();
-            console.error(`[SYNC] Background sync failed after ${t1 - t0}ms:`, error);
-          });
-      });
+  private async syncAfterWrite(changed: boolean = true): Promise<void> {
+    if (!changed || !this.isEmbeddedReplica) {
+      return;
+    }
+
+    // Chain sync requests to run sequentially so we never drop a write.
+    this.syncQueue = this.syncQueue.then(() => this.sync());
+
+    try {
+      await this.syncQueue;
+    } catch (error) {
+      // Reset queue so future writes can attempt another sync.
+      this.syncQueue = Promise.resolve();
+      throw error;
     }
   }
 
@@ -930,7 +929,7 @@ export class TursoDatabase {
     });
 
     // Sync immediately after write (Option 1: Aggressive Immediate Sync)
-    this.syncAfterWrite();
+    await this.syncAfterWrite();
   }
 
   /**
@@ -950,7 +949,7 @@ export class TursoDatabase {
     });
 
     // Sync immediately after write (Option 1: Aggressive Immediate Sync)
-    this.syncAfterWrite(result.rowsAffected > 0);
+    await this.syncAfterWrite(result.rowsAffected > 0);
   }
 
   /**
@@ -994,7 +993,7 @@ export class TursoDatabase {
     });
 
     // Sync immediately after write (Option 1: Aggressive Immediate Sync)
-    this.syncAfterWrite(result.rowsAffected > 0);
+    await this.syncAfterWrite(result.rowsAffected > 0);
 
     return result.rowsAffected > 0;
   }
