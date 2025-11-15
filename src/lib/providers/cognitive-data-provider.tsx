@@ -20,6 +20,7 @@ interface CognitiveDataContextType {
   nodes: ReturnType<typeof useThoughts>['nodes'];
   lastUpdate: ReturnType<typeof useThoughts>['lastUpdate'];
   updateNode: ReturnType<typeof useThoughts>['updateNode'];
+  deleteNode: (nodeId: string) => Promise<void>;  // Simplified - uses current space
   hasLoadedCurrentSpace: boolean;
 
   // WebSocket
@@ -165,6 +166,16 @@ const CognitiveDataProviderInner: React.FC<{ children: ReactNode }> = ({ childre
     return newSpace;
   }, [spacesContext.createSpace]);
 
+  // Wrap deleteNode to use current space path
+  const handleDeleteNode = useCallback(async (nodeId: string) => {
+    const currentSpaceId = spacesContext.currentSpaceId;
+    if (!currentSpaceId) {
+      throw new Error('No space selected');
+    }
+
+    await thoughtsContext.deleteNode(currentSpaceId, nodeId);
+  }, [spacesContext.currentSpaceId, thoughtsContext.deleteNode]);
+
   const value: CognitiveDataContextType = {
     // Spaces
     spaces: spacesContext.spaces,
@@ -179,6 +190,7 @@ const CognitiveDataProviderInner: React.FC<{ children: ReactNode }> = ({ childre
     nodes: thoughtsContext.nodes,
     lastUpdate: thoughtsContext.lastUpdate,
     updateNode: thoughtsContext.updateNode,
+    deleteNode: handleDeleteNode,
     hasLoadedCurrentSpace: spacesContext.currentSpaceId ? thoughtsContext.hasLoadedSpace(spacesContext.currentSpaceId) : false,
 
     // WebSocket

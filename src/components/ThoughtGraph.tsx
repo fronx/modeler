@@ -288,7 +288,7 @@ const ThoughtGraphComponent: React.FC<ThoughtGraphProps> = ({
   showArrows = false,
   showLabels = false
 }) => {
-  const { nodes: thoughtNodes, currentSpaceId, updateNode } = useCognitiveData();
+  const { nodes: thoughtNodes, currentSpaceId, updateNode, deleteNode } = useCognitiveData();
 
   // Handle checkbox changes with optimistic updates
   const handleCheckboxChange = React.useCallback(async (spaceId: string, nodeId: string, itemIndex: number, checked: boolean) => {
@@ -334,9 +334,9 @@ const ThoughtGraphComponent: React.FC<ThoughtGraphProps> = ({
     onNodesChange(selectChanges);
   }, [nodes, onNodesChange]);
 
-  // Handle escape key to clear selection
+  // Handle escape key to clear selection and delete key to delete nodes
   React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = async (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         // Clear all selections
         const selectChanges: NodeChange[] = nodes.map(node => ({
@@ -345,6 +345,30 @@ const ThoughtGraphComponent: React.FC<ThoughtGraphProps> = ({
           selected: false,
         }));
         onNodesChange(selectChanges);
+      } else if (event.key === 'Delete' || event.key === 'Backspace') {
+        // Find selected nodes
+        const selectedNodes = nodes.filter(node => node.selected);
+
+        if (selectedNodes.length === 0 || !currentSpaceId) {
+          return;
+        }
+
+        // Show confirmation dialog
+        const nodeNames = selectedNodes.map(n => n.id).join(', ');
+        const confirmMessage = selectedNodes.length === 1
+          ? `Are you sure you want to delete the node "${selectedNodes[0].id}"?`
+          : `Are you sure you want to delete ${selectedNodes.length} nodes (${nodeNames})?`;
+
+        if (window.confirm(confirmMessage)) {
+          // Delete all selected nodes
+          for (const node of selectedNodes) {
+            try {
+              await deleteNode(node.id);
+            } catch (error) {
+              console.error(`Failed to delete node ${node.id}:`, error);
+            }
+          }
+        }
       }
     };
 
@@ -352,7 +376,7 @@ const ThoughtGraphComponent: React.FC<ThoughtGraphProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [nodes, onNodesChange]);
+  }, [nodes, onNodesChange, currentSpaceId, deleteNode]);
 
   return (
     <div className="w-full h-full">
@@ -372,6 +396,7 @@ const ThoughtGraphComponent: React.FC<ThoughtGraphProps> = ({
         selectionKeyCode="Shift"
         selectionMode={SelectionMode.Partial}
         multiSelectionKeyCode={["Meta", "Control"]}
+        deleteKeyCode={null}
       >
         <Background />
         <Controls />

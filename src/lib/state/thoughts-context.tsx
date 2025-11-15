@@ -11,6 +11,7 @@ interface ThoughtsContextType {
   setNodes: (nodes: Map<string, ThoughtNode>) => void;
   setLastUpdate: (date: Date | null) => void;
   updateNode: (nodeId: string, updater: (node: ThoughtNode) => void) => void;
+  deleteNode: (spaceId: string, nodeId: string) => Promise<void>;
   loadSpaceThoughts: (spaceId: string) => Promise<void>;
   updateNodesFromData: (data: any, spaceId: string, timestamp?: string) => void;
   hasLoadedSpace: (spaceId: string) => boolean;
@@ -111,6 +112,51 @@ export const ThoughtsProvider: React.FC<ThoughtsProviderProps> = ({ children }) 
     });
   }, []);
 
+  const deleteNode = useCallback(async (spaceId: string, nodeId: string): Promise<void> => {
+    console.log(`[deleteNode] Attempting to delete node: ${nodeId} from space: ${spaceId}`);
+
+    // Optimistic update - remove from UI immediately
+    let removedNode: ThoughtNode | undefined;
+    setNodes(currentNodes => {
+      const newNodes = new Map(currentNodes);
+      removedNode = newNodes.get(nodeId);
+      newNodes.delete(nodeId);
+      console.log(`[deleteNode] Optimistically removed from local state`);
+      return newNodes;
+    });
+
+    try {
+      const response = await fetch(`/api/spaces/${spaceId}/thoughts/${nodeId}`, {
+        method: 'DELETE',
+      });
+
+      console.log(`[deleteNode] Response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[deleteNode] API error:`, errorText);
+        throw new Error(`Failed to delete node: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log(`[deleteNode] API success:`, result);
+    } catch (error) {
+      console.error('[deleteNode] Error:', error);
+
+      // Rollback optimistic update on error
+      if (removedNode) {
+        setNodes(currentNodes => {
+          const newNodes = new Map(currentNodes);
+          newNodes.set(nodeId, removedNode);
+          console.log(`[deleteNode] Rolled back deletion due to error`);
+          return newNodes;
+        });
+      }
+
+      throw error;
+    }
+  }, []);
+
   const hasLoadedSpace = useCallback((spaceId: string): boolean => {
     return loadedSpaceIds.has(spaceId);
   }, [loadedSpaceIds]);
@@ -122,6 +168,7 @@ export const ThoughtsProvider: React.FC<ThoughtsProviderProps> = ({ children }) 
     setNodes,
     setLastUpdate,
     updateNode,
+    deleteNode,
     loadSpaceThoughts,
     updateNodesFromData,
     hasLoadedSpace,
