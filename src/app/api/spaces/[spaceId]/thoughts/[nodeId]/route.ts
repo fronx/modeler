@@ -1,4 +1,5 @@
 import { deleteNode, ok, err } from '@/lib/api-utils';
+import type { DeleteThoughtResponse } from '../types';
 
 export async function DELETE(
   _request: Request,
@@ -10,7 +11,7 @@ export async function DELETE(
     // Use shared deleteNode (validates node exists, broadcasts)
     await deleteNode(spaceId, nodeId);
 
-    return ok({
+    return ok<DeleteThoughtResponse>({
       success: true,
       message: `Node '${nodeId}' deleted from space ${spaceId}`,
       nodeId,

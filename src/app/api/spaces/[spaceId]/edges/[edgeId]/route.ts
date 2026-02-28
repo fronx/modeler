@@ -1,4 +1,5 @@
 import { createEdge, deleteEdge as deleteEdgeShared, ok, err } from '@/lib/api-utils';
+import type { MutateEdgeResponse } from '../types';
 
 export async function DELETE(
   request: Request,
@@ -10,7 +11,7 @@ export async function DELETE(
     // Use shared deleteEdge (validates edge exists, broadcasts)
     await deleteEdgeShared(spaceId, edgeId);
 
-    return ok({
+    return ok<MutateEdgeResponse>({
       success: true,
       message: `Edge deleted: ${edgeId}`
     });
@@ -49,7 +50,7 @@ export async function PUT(
       edgeData.gloss
     );
 
-    return ok({
+    return ok<MutateEdgeResponse>({
       success: true,
       message: `Edge updated: ${edgeId}`
     });

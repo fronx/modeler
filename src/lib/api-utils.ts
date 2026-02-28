@@ -204,6 +204,6 @@ export async function deleteEdge(spaceId: string, edgeId: string) {
   return true;
 }
 
-export const ok = (data: any) => NextResponse.json(data);
+export const ok = <T>(data: T) => NextResponse.json<T>(data);
 export const err = (message: string, status = 400) =>
   NextResponse.json({ error: message }, { status });

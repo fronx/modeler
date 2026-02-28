@@ -1,11 +1,5 @@
 import { ThoughtNode } from '../thought-system';
-
-export interface ThoughtSpaceData {
-  thoughtSpace?: any;
-  nodes?: Record<string, any>;
-  metadata?: any;
-  globalHistory?: string[];
-}
+import type { SpaceDirectResponse } from '@/app/api/spaces/[spaceId]/thoughts-direct/types';
 
 class ThoughtsApiError extends Error {
   constructor(message: string, public status?: number) {
@@ -15,7 +9,7 @@ class ThoughtsApiError extends Error {
 }
 
 export const thoughtsApi = {
-  async getSpaceThoughts(spaceId: string): Promise<ThoughtSpaceData> {
+  async getSpaceThoughts(spaceId: string): Promise<SpaceDirectResponse> {
     try {
       const response = await fetch(`/api/spaces/${spaceId}/thoughts-direct`);
       if (!response.ok) {
@@ -28,10 +22,10 @@ export const thoughtsApi = {
     }
   },
 
-  parseThoughtData(data: ThoughtSpaceData): Map<string, ThoughtNode> {
+  parseThoughtData(data: SpaceDirectResponse): Map<string, ThoughtNode> {
     // Handle both new Space structure and old format
-    const thoughtSpaceData = data.thoughtSpace || data;
-    const nodesData = thoughtSpaceData.nodes || data.nodes || {};
+    const thoughtSpaceData = (data as any).thoughtSpace || data;
+    const nodesData = thoughtSpaceData.nodes || {};
 
     const nodeMap = new Map<string, ThoughtNode>();
 

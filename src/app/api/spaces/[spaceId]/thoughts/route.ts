@@ -1,4 +1,5 @@
 import { db, upsertNode, ok, err } from '@/lib/api-utils';
+import type { ThoughtsListResponse, CreateThoughtResponse } from './types';
 
 export async function GET(
   request: Request,
@@ -12,7 +13,7 @@ export async function GET(
       return err('Space not found', 404);
     }
 
-    return ok({
+    return ok<ThoughtsListResponse>({
       nodes: space.nodes,
       spaceId,
       loadedAt: new Date().toISOString(),
@@ -36,7 +37,7 @@ export async function POST(
     // Use shared upsertNode (validates space, processes node, broadcasts)
     await upsertNode(spaceId, thoughtData);
 
-    return ok({
+    return ok<CreateThoughtResponse>({
       success: true,
       message: `Thought '${thoughtData.id}' added to space ${spaceId}`,
       thoughtId: thoughtData.id,

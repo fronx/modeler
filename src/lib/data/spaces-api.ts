@@ -1,12 +1,5 @@
-export interface Space {
-  id: string;
-  title: string;
-  description: string;
-  created: string;
-  lastModified: string;
-  thoughtCount: number;
-  path: string;
-}
+import type { Space } from '@/app/api/spaces/types';
+export type { Space };
 
 export interface CreateSpaceRequest {
   title?: string;

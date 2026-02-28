@@ -1,4 +1,5 @@
 import { db, saveSpace, upsertNode, ok, err } from '@/lib/api-utils';
+import type { SpaceDetailResponse, UpdateSpaceResponse, DeleteSpaceResponse } from '../types';
 
 export async function GET(
   request: Request,
@@ -12,7 +13,7 @@ export async function GET(
       return err('Space not found', 404);
     }
 
-    return ok({
+    return ok<SpaceDetailResponse>({
       ...space,
       loadedAt: new Date().toISOString()
     });
@@ -56,7 +57,7 @@ export async function PUT(
     spaceData.nodes = processedNodes;
     await saveSpace(spaceData);
 
-    return ok({
+    return ok<UpdateSpaceResponse>({
       success: true,
       message: `Space ${spaceId} updated successfully`,
       spaceId
@@ -155,7 +156,7 @@ export async function PATCH(
       }
     }
 
-    return ok({
+    return ok<UpdateSpaceResponse>({
       success: true,
       message: `Space ${spaceId} partially updated`,
       spaceId,
@@ -180,7 +181,7 @@ export async function DELETE(
       return err('Space not found', 404);
     }
 
-    return ok({
+    return ok<DeleteSpaceResponse>({
       success: true,
       message: `Space ${spaceId} deleted successfully`,
       spaceId

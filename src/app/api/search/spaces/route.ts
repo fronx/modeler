@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createDatabase } from '@/lib/database-factory';
+import type { SearchSpacesResponse } from '../types';
 
 /**
  * GET /api/search/spaces?q=query&limit=10
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     const results = await db.searchSpaces(query, limit);
 
-    return NextResponse.json({
+    return NextResponse.json<SearchSpacesResponse>({
       query,
       results,
       count: results.length

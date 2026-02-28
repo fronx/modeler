@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getClaudeManager, getStartOptions } from '@/lib/claude-manager-singleton';
+import type { SessionActionResponse } from '../types';
 
 // POST /api/claude-code/session - Reset or stop the session
 export async function POST(request: NextRequest) {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     if (action === 'reset') {
       manager.clear('modeler');
       manager.start('modeler', getStartOptions());
-      return NextResponse.json({
+      return NextResponse.json<SessionActionResponse>({
         status: 'success',
         message: 'Session reset successfully',
       });
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'stop') {
       manager.clear('modeler');
-      return NextResponse.json({
+      return NextResponse.json<SessionActionResponse>({
         status: 'success',
         message: 'Session stopped successfully',
       });

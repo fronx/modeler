@@ -1,10 +1,11 @@
-import { db, saveSpace, broadcast, ok, err } from '@/lib/api-utils';
+import { db, saveSpace, ok, err } from '@/lib/api-utils';
+import type { Space, SpacesListResponse, CreateSpaceResponse, UpdateSpaceResponse } from './types';
 
 export async function GET() {
   try {
     const spaces = await db().listSpaces();
 
-    const formattedSpaces = spaces.map(space => ({
+    const formattedSpaces: Space[] = spaces.map(space => ({
       id: space.id,
       title: space.title,
       description: space.description || '',
@@ -14,7 +15,7 @@ export async function GET() {
       path: space.id
     }));
 
-    return ok({
+    return ok<SpacesListResponse>({
       spaces: formattedSpaces,
       count: formattedSpaces.length
     });
@@ -30,12 +31,13 @@ export async function POST(request: Request) {
     const { title, description } = await request.json();
 
     const spaceId = new Date().toISOString().replace(/[:.]/g, '-');
+    const createdAt = Date.now();
     const newSpace = {
       metadata: {
         id: spaceId,
         title: title || 'New Space',
         description: description || 'A new cognitive modeling space',
-        createdAt: Date.now()
+        createdAt
       },
       nodes: {},
       globalHistory: [`Space created: ${new Date().toISOString()}`]
@@ -43,10 +45,17 @@ export async function POST(request: Request) {
 
     await saveSpace(newSpace);
 
-    return ok({
-      space: newSpace,
-      message: 'Space created successfully'
-    });
+    const space: Space = {
+      id: spaceId,
+      title: newSpace.metadata.title,
+      description: newSpace.metadata.description,
+      created: new Date(createdAt).toISOString(),
+      lastModified: new Date(createdAt).toISOString(),
+      thoughtCount: 0,
+      path: spaceId
+    };
+
+    return ok<CreateSpaceResponse>({ space, message: 'Space created successfully' });
 
   } catch (error) {
     console.error('Failed to create space:', error);
@@ -72,7 +81,7 @@ export async function PUT(request: Request) {
     spaceData.metadata.id = spaceId;
     await saveSpace(spaceData);
 
-    return ok({
+    return ok<UpdateSpaceResponse>({
       success: true,
       message: `Space ${spaceId} updated successfully`,
       spaceId

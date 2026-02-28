@@ -1,4 +1,5 @@
 import { db, createEdge, ok, err } from '@/lib/api-utils';
+import type { EdgesListResponse, MutateEdgeResponse } from './types';
 
 export async function GET(
   request: Request,
@@ -8,7 +9,7 @@ export async function GET(
     const { spaceId } = await params;
     const edges = await db().listEdges(spaceId);
 
-    return ok({
+    return ok<EdgesListResponse>({
       edges,
       spaceId,
       loadedAt: new Date().toISOString(),
@@ -44,10 +45,9 @@ export async function POST(
       edgeData.gloss
     );
 
-    return ok({
+    return ok<MutateEdgeResponse>({
       success: true,
-      message: `Edge created: ${edgeData.sourceNode} -> ${edgeData.targetNode}`,
-      spaceId
+      message: `Edge created: ${edgeData.sourceNode} -> ${edgeData.targetNode}`
     });
 
   } catch (error) {

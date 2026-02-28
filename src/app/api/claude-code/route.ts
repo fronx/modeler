@@ -10,6 +10,7 @@ import {
   ReadableStreamAdapter,
   asServerResponse,
 } from '@/lib/claude-manager-singleton';
+import type { ClaudeCodeStatusResponse } from './types';
 import { createDatabase } from '@/lib/database-factory';
 
 /**
@@ -118,7 +119,7 @@ export async function GET() {
   try {
     const manager = getClaudeManager();
     const status = manager.getStatus('modeler');
-    return NextResponse.json({
+    return NextResponse.json<ClaudeCodeStatusResponse>({
       status: status.active ? 'ready' : 'starting',
       mode: 'library',
       billing: 'Max subscription',

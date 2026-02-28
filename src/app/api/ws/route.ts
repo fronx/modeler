@@ -9,6 +9,7 @@
 
 import { WEBSOCKET_PORT } from '@/lib/websocket-server';
 import { NextResponse } from 'next/server';
+import type { WsInfoResponse } from './types';
 
 export async function GET(request: Request) {
   const host = request.headers.get('host') ?? '';
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
     ? `wss://${hostname}`
     : `ws://localhost:${WEBSOCKET_PORT}`;
 
-  return NextResponse.json({
+  return NextResponse.json<WsInfoResponse>({
     message: 'ThoughtWebSocket server is running',
     port: WEBSOCKET_PORT,
     websocketUrl,

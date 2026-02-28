@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createDatabase } from '@/lib/database-factory';
+import type { SpaceDirectResponse } from './types';
 
 export async function GET(
   request: Request,
@@ -17,7 +18,7 @@ export async function GET(
       }, { status: 404 });
     }
 
-    return NextResponse.json({
+    return NextResponse.json<SpaceDirectResponse>({
       ...space,
       loadedAt: new Date().toISOString(),
       source: 'database'

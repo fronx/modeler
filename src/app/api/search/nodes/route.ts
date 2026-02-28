@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createDatabase } from '@/lib/database-factory';
+import type { SearchNodesResponse } from '../types';
 
 /**
  * GET /api/search/nodes?q=query&limit=10&threshold=0.5&spaceId=optional
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
       results = await db.searchAllNodes(query, limit, threshold);
     }
 
-    return NextResponse.json({
+    return NextResponse.json<SearchNodesResponse>({
       query,
       spaceId: spaceId || null,
       results,

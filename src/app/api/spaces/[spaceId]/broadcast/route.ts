@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getThoughtWebSocketServer } from '@/lib/websocket-server';
+import type { BroadcastResponse } from './types';
 
 export async function POST(
   request: Request,
@@ -17,7 +18,7 @@ export async function POST(
 
     await wsServer.broadcastSpaceUpdate(spaceId);
 
-    return NextResponse.json({
+    return NextResponse.json<BroadcastResponse>({
       success: true,
       message: `WebSocket update broadcast for space: ${spaceId}`
     });

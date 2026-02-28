@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getClaudeManager, getStartOptions } from '@/lib/claude-manager-singleton';
+import type { ResumeSessionResponse } from '../../types';
 
 // POST /api/claude-code/sessions/resume
 export async function POST(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     manager.clear('modeler');
     const conversation = manager.resume('modeler', getStartOptions());
 
-    return NextResponse.json({
+    return NextResponse.json<ResumeSessionResponse>({
       status: 'success',
       message: 'Session resumed successfully',
       sessionId: conversation.sessionId,

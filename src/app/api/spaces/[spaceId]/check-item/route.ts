@@ -1,4 +1,5 @@
 import { db, ok, err } from '@/lib/api-utils';
+import type { CheckItemResponse } from './types';
 
 export async function POST(
   request: Request,
@@ -40,7 +41,7 @@ export async function POST(
     // Use granular update instead of rewriting entire space
     await db().updateNodeField(spaceId, nodeId, 'checkableList', updatedCheckableList);
 
-    return ok({
+    return ok<CheckItemResponse>({
       success: true,
       item: updatedCheckableList[itemIndex],
       nodeId,
