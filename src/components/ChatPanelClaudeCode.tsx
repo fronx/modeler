@@ -18,13 +18,51 @@ interface ChatPanelClaudeCodeProps {
   onToggle: () => void;
 }
 
+const MESSAGES_STORAGE_KEY = 'claude-chat-messages';
+
+function loadPersistedMessages(): Message[] {
+  try {
+    const raw = localStorage.getItem(MESSAGES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
+  } catch {
+    return [];
+  }
+}
+
 export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceId, mode, onModeChange, isOpen, onToggle }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => loadPersistedMessages());
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showSessionBrowser, setShowSessionBrowser] = useState(false);
   const [messageQueue, setMessageQueue] = useState<string[]>([]);
   const previousSpaceIdRef = useRef<string | null | undefined>(undefined);
+
+  // Persist messages to localStorage on every change
+  useEffect(() => {
+    try {
+      localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(messages));
+    } catch {
+      // Ignore storage errors (e.g., quota exceeded)
+    }
+  }, [messages]);
+
+  // On mount: if no localStorage messages, try to load from the backend session history
+  useEffect(() => {
+    if (messages.length > 0) return;
+    fetch('/api/claude-code/history')
+      .then((r) => r.json())
+      .then(({ messages: history }) => {
+        if (history?.length > 0) {
+          setMessages(history.map((m: any) => ({
+            ...m,
+            timestamp: new Date(m.timestamp),
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Detect space changes and prime Claude with space content
   useEffect(() => {
@@ -258,6 +296,7 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
 
   const clearChat = () => {
     if (confirm('Clear all messages?')) {
+      localStorage.removeItem(MESSAGES_STORAGE_KEY);
       setMessages([]);
     }
   };
@@ -278,7 +317,7 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
       });
 
       if (response.ok) {
-        setMessages([]);
+        localStorage.removeItem(MESSAGES_STORAGE_KEY);
         const successMessage: Message = {
           id: `system-${Date.now()}`,
           role: 'assistant',
@@ -314,14 +353,18 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
       });
 
       if (response.ok) {
-        setMessages([]);
-        const successMessage: Message = {
-          id: `system-${Date.now()}`,
-          role: 'assistant',
-          content: `Resumed session ${sessionId.substring(0, 8)}. Continue your conversation from where you left off.`,
-          timestamp: new Date(),
-        };
-        setMessages([successMessage]);
+        localStorage.removeItem(MESSAGES_STORAGE_KEY);
+        // Load history from the resumed session
+        const historyRes = await fetch('/api/claude-code/history');
+        const { messages: history } = await historyRes.json();
+        if (history?.length > 0) {
+          setMessages(history.map((m: any) => ({
+            ...m,
+            timestamp: new Date(m.timestamp),
+          })));
+        } else {
+          setMessages([]);
+        }
       } else {
         throw new Error('Failed to resume session');
       }

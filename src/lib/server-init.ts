@@ -20,11 +20,16 @@ export async function initializeServer() {
     startThoughtWebSocketServer();
     console.log('[Server Init] WebSocket server started');
 
-    // Initialize ClaudeManager and start the 'modeler' conversation
+    // Initialize ClaudeManager — resume persisted session if one exists
     console.log('[Server Init] Starting Claude conversation...');
     const manager = getClaudeManager();
-    manager.start('modeler', getStartOptions());
-    console.log('[Server Init] Claude conversation started');
+    if (manager.hasPersistedSession('modeler')) {
+      manager.resume('modeler', getStartOptions());
+      console.log('[Server Init] Claude conversation resumed from persisted session');
+    } else {
+      manager.start('modeler', getStartOptions());
+      console.log('[Server Init] Claude conversation started (new session)');
+    }
 
     initialized = true;
   } catch (error) {
