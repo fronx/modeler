@@ -1,0 +1,19 @@
+# Caddy reverse proxy for local development
+# Add this block to your global Caddyfile (~/.config/caddy/Caddyfile)
+#
+# modeler.localhost resolves to 127.0.0.1 natively in all modern browsers.
+# No /etc/hosts edits required.
+
+modeler.localhost {
+  # WebSocket connections → internal WS server on 7351
+  @ws {
+    header Connection *Upgrade*
+    header Upgrade websocket
+  }
+  handle @ws {
+    reverse_proxy localhost:7351
+  }
+
+  # Everything else → Next.js on 7350
+  reverse_proxy localhost:7350
+}

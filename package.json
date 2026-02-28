@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n \"next,mcp\" -c \"cyan,magenta\" \"next dev --turbopack\" \"npx tsx mcp-server.ts\"",
+    "dev": "concurrently -n \"next,mcp\" -c \"cyan,magenta\" \"next dev --turbopack --port 7350\" \"npx tsx mcp-server.ts\"",
     "dev:next": "next dev --turbopack",
     "dev:mcp": "npx tsx mcp-server.ts",
     "build": "next build --turbopack",

@@ -25,9 +25,33 @@ npm install
 # Start the dashboard
 npm run dev
 
+# Open https://modeler.localhost (see Local Dev Setup below)
+
 # The system uses local file-based storage (file:modeler.db) by default
 # For remote Turso, set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
 ```
+
+**Local Dev Setup (one-time):**
+
+This app uses a local reverse proxy so the URL is always stable regardless of port changes. This keeps `localStorage` and browser state consistent across restarts.
+
+```bash
+# Install Caddy
+brew install caddy
+
+# Install Caddy's local CA into your system keychain (needed once per machine)
+sudo caddy trust
+
+# Add the modeler block to your global Caddy config
+cat Caddyfile >> /opt/homebrew/etc/Caddyfile
+
+# Start Caddy as a background service (survives reboots)
+brew services start caddy
+```
+
+After that, `https://modeler.localhost` is your permanent local address. The app runs on port 7350 and WebSocket on 7351 internally — Caddy handles routing transparently.
+
+To add other apps later, append their blocks to `/opt/homebrew/etc/Caddyfile` and run `brew services restart caddy`.
 
 **⚠️ Important:** Use `@libsql/client` to query the database, not the `sqlite3` CLI (which may return incorrect results with Turso/libSQL databases).
 
@@ -146,7 +170,7 @@ The theoretical foundation has evolved into a **fully operational system** for r
 ```bash
 # Start the cognitive dashboard
 npm run dev
-# Then open http://localhost:3000 to watch thoughts appear in real-time
+# Then open https://modeler.localhost to watch thoughts appear in real-time
 ```
 
 **For AI Systems:**

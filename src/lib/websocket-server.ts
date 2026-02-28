@@ -9,7 +9,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { createDatabase } from './database-factory';
 
-export const WEBSOCKET_PORT = 3002;
+export const WEBSOCKET_PORT = 7351;
 
 export class ThoughtWebSocketServer {
   private wss: WebSocketServer;
