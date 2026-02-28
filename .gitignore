@@ -49,3 +49,5 @@ next-env.d.ts
 *.db-info
 *.db.backup
 .env.local
+
+.claude/sessions/*
