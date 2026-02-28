@@ -390,6 +390,7 @@ const ThoughtGraphComponent: React.FC<ThoughtGraphProps> = ({
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={{ zIndex: 1 }}
+        minZoom={0.125}
         fitView
         fitViewOptions={{ padding: 0.1 }}
         selectionOnDrag={false}
