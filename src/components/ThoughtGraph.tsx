@@ -281,12 +281,14 @@ interface ThoughtGraphProps {
   backgroundEdgeOpacity?: number;
   showArrows?: boolean;
   showLabels?: boolean;
+  showHidden?: boolean;
 }
 
 const ThoughtGraphComponent: React.FC<ThoughtGraphProps> = ({
   backgroundEdgeOpacity = 0.2,
   showArrows = false,
-  showLabels = false
+  showLabels = false,
+  showHidden = false,
 }) => {
   const { nodes: thoughtNodes, currentSpaceId, updateNode, deleteNode } = useCognitiveData();
 
@@ -321,7 +323,7 @@ const ThoughtGraphComponent: React.FC<ThoughtGraphProps> = ({
     onNodesChange,
     onEdgesChange,
     setHoveredNodeId,
-  } = useThoughtGraphState(thoughtNodes, backgroundEdgeOpacity, showArrows, showLabels, currentSpaceId, handleCheckboxChange);
+  } = useThoughtGraphState(thoughtNodes, backgroundEdgeOpacity, showArrows, showLabels, currentSpaceId, handleCheckboxChange, showHidden);
 
   // Handle clearing selection when clicking on background or pressing escape
   const handlePaneClick = React.useCallback(() => {

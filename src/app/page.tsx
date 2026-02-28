@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ThoughtGraph } from '@/components/ThoughtGraph';
 import { SpaceSidebar } from '@/components/SpaceSidebar';
 import { NewSpaceDialog } from '@/components/NewSpaceDialog';
@@ -8,9 +8,27 @@ import { InlineEdit } from '@/components/InlineEdit';
 import { ChatPanelWrapper } from '@/components/ChatPanelWrapper';
 import { useCognitiveData } from '@/lib/providers/cognitive-data-provider';
 
+const SHOW_HIDDEN_KEY_PREFIX = 'show-hidden-nodes-';
+
 export default function CognitiveDashboard() {
   const { nodes, spaces, lastUpdate, currentSpaceId, setCurrentSpaceId, connectionStatus, hasLoadedCurrentSpace, deleteSpace, createSpace, updateSpaceTitle, updateSpaceDescription } = useCognitiveData();
   const [showNewSpaceDialog, setShowNewSpaceDialog] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
+
+  // Load showHidden from localStorage when space changes
+  useEffect(() => {
+    if (!currentSpaceId) return;
+    const saved = localStorage.getItem(`${SHOW_HIDDEN_KEY_PREFIX}${currentSpaceId}`);
+    setShowHidden(saved === 'true');
+  }, [currentSpaceId]);
+
+  const toggleShowHidden = () => {
+    const next = !showHidden;
+    setShowHidden(next);
+    if (currentSpaceId) {
+      localStorage.setItem(`${SHOW_HIDDEN_KEY_PREFIX}${currentSpaceId}`, String(next));
+    }
+  };
 
   // Get current space details
   const currentSpace = spaces.find(space => space.path === currentSpaceId);
@@ -58,6 +76,19 @@ export default function CognitiveDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
+              {currentSpaceId && (
+                <button
+                  onClick={toggleShowHidden}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm border transition-colors ${
+                    showHidden
+                      ? 'bg-gray-200 dark:bg-gray-600 border-gray-400 dark:border-gray-500 text-gray-800 dark:text-gray-100'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                  title="Toggle visibility of hidden nodes (focus = -1)"
+                >
+                  <span>{showHidden ? 'Hide hidden' : 'Show hidden'}</span>
+                </button>
+              )}
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' :
                     connectionStatus === 'connecting' ? 'bg-yellow-500' :
@@ -111,7 +142,7 @@ export default function CognitiveDashboard() {
               </div>
             </div>
           ) : (
-            <ThoughtGraph />
+            <ThoughtGraph showHidden={showHidden} />
           )}
         </main>
 

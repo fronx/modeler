@@ -120,7 +120,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="font-medium text-gray-900 dark:text-white">
-                        {session.title || `Session ${session.id.substring(0, 8)}`}
+                        {session.title || `Session ${session.id?.substring(0, 8) ?? 'unknown'}`}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {session.messageCount} messages • {formatDate(session.lastUsedAt)}
@@ -132,7 +132,7 @@ export const SessionBrowser: React.FC<SessionBrowserProps> = ({
                       )}
                     </div>
                     <div className="text-xs text-gray-400 dark:text-gray-500 font-mono">
-                      {session.id.substring(0, 8)}
+                      {session.id?.substring(0, 8) ?? ''}
                     </div>
                   </div>
                 </button>

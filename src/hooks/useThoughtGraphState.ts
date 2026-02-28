@@ -56,7 +56,8 @@ export const useThoughtGraphState = (
   showArrows: boolean = false,
   showLabels: boolean = false,
   spaceId: string | null = null,
-  onCheckboxChange?: (spaceId: string, nodeId: string, itemIndex: number, checked: boolean) => void
+  onCheckboxChange?: (spaceId: string, nodeId: string, itemIndex: number, checked: boolean) => void,
+  showHidden: boolean = false
 ) => {
   // Track if this is a fresh instance for debugging
   const instanceIdRef = React.useRef(Math.random().toString(36).substring(7));
@@ -134,7 +135,7 @@ export const useThoughtGraphState = (
 
   // Calculate D3 force layout only when node structure changes (not content updates)
   React.useEffect(() => {
-    const nodeArray = Array.from(thoughtNodes.values()).filter(node => node.focus !== -1);
+    const nodeArray = Array.from(thoughtNodes.values()).filter(node => showHidden || node.focus !== -1);
     if (nodeArray.length === 0) {
       console.log('🔄 Layout: No nodes to layout');
       return;
@@ -176,14 +177,14 @@ export const useThoughtGraphState = (
       simulation.stop();
       setIsAnimating(false);
     };
-  }, [structuralVersion]); // Only depend on structural version, not content
+  }, [structuralVersion, showHidden]); // Also re-run when showHidden changes
 
   // Convert thought nodes to React Flow nodes and edges
   const { flowNodes, allEdges } = React.useMemo(() => {
     const flowNodes: Node[] = [];
     const flowEdges: Edge[] = [];
 
-    const nodeArray = Array.from(thoughtNodes.values()).filter(node => node.focus !== -1);
+    const nodeArray = Array.from(thoughtNodes.values()).filter(node => showHidden || node.focus !== -1);
 
     // Calculate node colors based on positions and relationships
     const nodeColors = calculateNodeColors(nodeArray);
@@ -325,7 +326,7 @@ export const useThoughtGraphState = (
     });
 
     return { flowNodes, allEdges: flowEdges };
-  }, [thoughtNodes, layoutPositions, expandedNodes, toggleNodeExpansion]);
+  }, [thoughtNodes, layoutPositions, expandedNodes, toggleNodeExpansion, showHidden]);
 
   // Use nodes state to enable dragging
   const [nodes, setNodes, onNodesChangeOriginal] = useNodesState(flowNodes);

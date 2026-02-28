@@ -11,7 +11,21 @@ export async function GET() {
   try {
     const manager = getClaudeManager();
     const status = manager.getStatus('modeler');
-    return NextResponse.json({ sessions: [status] });
+
+    if (!status.active && !status.hasPersistedSession) {
+      return NextResponse.json({ sessions: [] });
+    }
+
+    const session = {
+      id: status.claudeSessionId ?? status.sessionId ?? 'modeler',
+      title: null,
+      spaceId: null,
+      messageCount: status.messageCount,
+      createdAt: Date.now(),
+      lastUsedAt: Date.now(),
+    };
+
+    return NextResponse.json({ sessions: [session] });
   } catch (error: any) {
     console.error('Failed to list sessions:', error);
     return NextResponse.json(
