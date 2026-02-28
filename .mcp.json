@@ -4,7 +4,7 @@
       "command": "npm",
       "args": ["run", "mcp"],
       "env": {
-        "MODELER_URL": "http://localhost:3000"
+        "MODELER_URL": "http://modeler.localhost"
       }
     }
   }
