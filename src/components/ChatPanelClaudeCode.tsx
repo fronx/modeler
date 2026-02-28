@@ -23,6 +23,7 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showSessionBrowser, setShowSessionBrowser] = useState(false);
+  const [messageQueue, setMessageQueue] = useState<string[]>([]);
   const previousSpaceIdRef = useRef<string | null | undefined>(undefined);
 
   // Detect space changes and prime Claude with space content
@@ -42,7 +43,20 @@ export const ChatPanelClaudeCode: React.FC<ChatPanelClaudeCodeProps> = ({ spaceI
     }
   }, [spaceId]);
 
+  // Drain queued messages when loading finishes
+  useEffect(() => {
+    if (!isLoading && messageQueue.length > 0) {
+      const [next, ...rest] = messageQueue;
+      setMessageQueue(rest);
+      sendMessage(next);
+    }
+  }, [isLoading]);
+
   const sendMessage = async (content: string, isSpaceSwitch = false) => {
+    if (isLoading && !isSpaceSwitch) {
+      setMessageQueue(q => [...q, content]);
+      return;
+    }
     // Add user message immediately (or system message for space switches)
     const userMessage: Message = {
       id: `user-${Date.now()}`,

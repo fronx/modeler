@@ -15,7 +15,6 @@ export const NewSpaceDialog: React.FC<NewSpaceDialogProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -39,20 +38,12 @@ export const NewSpaceDialog: React.FC<NewSpaceDialogProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!title.trim()) return;
-
-    setIsCreating(true);
-    try {
-      await onCreateSpace(title.trim(), description.trim() || 'A new cognitive modeling space');
-      onClose();
-    } catch (error) {
-      console.error('Failed to create space:', error);
-    } finally {
-      setIsCreating(false);
-    }
+    onClose();
+    onCreateSpace(title.trim(), description.trim() || 'A new cognitive modeling space')
+      .catch(error => console.error('Failed to create space:', error));
   };
 
   if (!isOpen) return null;
@@ -77,7 +68,6 @@ export const NewSpaceDialog: React.FC<NewSpaceDialogProps> = ({
               placeholder="Enter space name..."
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               autoFocus
-              disabled={isCreating}
             />
           </div>
 
@@ -92,7 +82,6 @@ export const NewSpaceDialog: React.FC<NewSpaceDialogProps> = ({
               placeholder="Describe what this space will be used for..."
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
-              disabled={isCreating}
             />
           </div>
 
@@ -101,16 +90,15 @@ export const NewSpaceDialog: React.FC<NewSpaceDialogProps> = ({
               type="button"
               onClick={onClose}
               className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-              disabled={isCreating}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!title.trim() || isCreating}
+              disabled={!title.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isCreating ? 'Creating...' : 'Create Space'}
+              Create Space
             </button>
           </div>
         </form>

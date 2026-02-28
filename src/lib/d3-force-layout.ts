@@ -60,6 +60,7 @@ export const createAnimatedForceLayout = (
     repulsionStrength?: number;
     anchoringStrength?: number;
     collisionRadius?: number;
+    fixedPositions?: Map<string, LayoutPosition>;
   } = {}
 ) => {
   const {
@@ -70,6 +71,7 @@ export const createAnimatedForceLayout = (
     repulsionStrength = -10,
     anchoringStrength = 10,
     collisionRadius = 180,
+    fixedPositions,
   } = options;
 
   // Simple approach: determine left vs right vs neutral based on semantic position
@@ -86,6 +88,23 @@ export const createAnimatedForceLayout = (
       side = 'right';
     }
 
+    const savedPos = fixedPositions?.get(node.id);
+    if (savedPos) {
+      // Pin this node at its saved position — it won't move during simulation
+      return {
+        id: node.id,
+        originalNode: node,
+        isCore,
+        corePosition: node.semanticPosition,
+        side,
+        layer: 0,
+        x: savedPos.x,
+        y: savedPos.y,
+        fx: savedPos.x,
+        fy: savedPos.y,
+      };
+    }
+
     // Start nodes near their intended side, closer to center
     let sideOffset: number;
     if (side === 'left') {
@@ -99,14 +118,13 @@ export const createAnimatedForceLayout = (
     const initialX = width / 2 + sideOffset + (Math.random() - 0.5) * 250;
     const initialY = height / 2 + (Math.random() - 0.5) * 250;
 
-
     return {
       id: node.id,
       originalNode: node,
       isCore,
       corePosition: node.semanticPosition,
       side,
-      layer: 0, // Simplified - no layers for now
+      layer: 0,
       x: initialX,
       y: initialY
     };

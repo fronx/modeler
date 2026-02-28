@@ -38,13 +38,8 @@ export const SpacesProvider: React.FC<SpacesProviderProps> = ({ children }) => {
   const createSpace = useCallback(async (data: CreateSpaceRequest): Promise<Space> => {
     try {
       const newSpace = await spacesApi.createSpace(data);
-
-      // Add to local state
-      setSpaces(currentSpaces => [newSpace, ...currentSpaces]);
-
-      // Note: Auto-selection is handled by the CognitiveDataProvider
-      // which has access to both spaces and thoughts contexts
-
+      // Don't add optimistically — the WebSocket spaces_update broadcast arrives
+      // before the API response returns, so the optimistic add would create a duplicate.
       return newSpace;
     } catch (error) {
       console.error('Failed to create space:', error);

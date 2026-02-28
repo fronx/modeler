@@ -154,12 +154,12 @@ export const useThoughtGraphState = (
       // onTick - update positions in real-time
       (positions) => {
         layoutPositionsRef.current = positions;
-        setLayoutPositions(positions);
+        setLayoutPositions(new Map(positions));
       },
       // onComplete - animation finished
       (finalPositions) => {
         layoutPositionsRef.current = finalPositions;
-        setLayoutPositions(finalPositions);
+        setLayoutPositions(new Map(finalPositions));
         setIsAnimating(false);
       },
       {
@@ -168,7 +168,8 @@ export const useThoughtGraphState = (
         iterations: 200,
         linkStrength: 0.3,
         repulsionStrength: -50,
-        anchoringStrength: 0.3
+        anchoringStrength: 0.3,
+        fixedPositions: layoutPositionsRef.current,
       }
     );
 
