@@ -1,24 +1,22 @@
 /**
- * Claude CLI Sessions API
- * List and manage saved conversation sessions
+ * Claude Sessions API
+ * Returns the status of the active 'modeler' conversation.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { listCLISessions } from '@/lib/claude-cli-session';
+import { NextResponse } from 'next/server';
+import { getClaudeManager } from '@/lib/claude-manager-singleton';
 
-// GET /api/claude-code/sessions - List all saved sessions
+// GET /api/claude-code/sessions - List sessions
 export async function GET() {
   try {
-    const sessions = await listCLISessions();
-    return NextResponse.json({ sessions });
+    const manager = getClaudeManager();
+    const status = manager.getStatus('modeler');
+    return NextResponse.json({ sessions: [status] });
   } catch (error: any) {
     console.error('Failed to list sessions:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to list sessions',
-        details: error.message
-      },
-      { status: 500 }
+      { error: 'Failed to list sessions', details: error.message },
+      { status: 500 },
     );
   }
 }

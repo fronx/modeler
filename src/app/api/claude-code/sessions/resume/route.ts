@@ -1,41 +1,30 @@
 /**
- * Resume Claude CLI Session API
- * Resume a conversation from a specific session ID
+ * Resume Claude Session API
+ * Clears current session and resumes from persisted state.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { resumeCLISession } from '@/lib/claude-cli-session';
+import { getClaudeManager, getStartOptions } from '@/lib/claude-manager-singleton';
 
-// POST /api/claude-code/sessions/resume - Resume from session ID
+// POST /api/claude-code/sessions/resume
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { sessionId, spaceId } = body;
+    const manager = getClaudeManager();
 
-    if (!sessionId || typeof sessionId !== 'string') {
-      return NextResponse.json(
-        { error: 'sessionId is required and must be a string' },
-        { status: 400 }
-      );
-    }
-
-    console.log(`[API] Resuming Claude CLI session: ${sessionId}`);
-
-    await resumeCLISession(sessionId, spaceId);
+    // Clear current conversation, then resume from persisted session
+    manager.clear('modeler');
+    const conversation = manager.resume('modeler', getStartOptions());
 
     return NextResponse.json({
       status: 'success',
-      message: `Session ${sessionId} resumed successfully`,
-      sessionId
+      message: 'Session resumed successfully',
+      sessionId: conversation.sessionId,
     });
   } catch (error: any) {
     console.error('Failed to resume session:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to resume session',
-        details: error.message
-      },
-      { status: 500 }
+      { error: 'Failed to resume session', details: error.message },
+      { status: 500 },
     );
   }
 }

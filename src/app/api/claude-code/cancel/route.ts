@@ -1,37 +1,25 @@
 /**
  * Claude Code Cancel API endpoint
- * Cancels the current Claude operation by sending Escape to stdin
+ * Stops the current Claude response via ClaudeManager.
  */
 
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/claude-code-session';
-import { getCLISession } from '@/lib/claude-cli-session';
-
-// Helper function to determine session mode at runtime (not cached)
-function useCliMode(): boolean {
-  return process.env.USE_CLI === 'true';
-}
+import { getClaudeManager } from '@/lib/claude-manager-singleton';
 
 export async function POST() {
   try {
-    // Get the active session
-    const session = useCliMode() ? await getCLISession() : await getSession();
-
-    // Cancel the current operation
-    session.cancel();
+    const manager = getClaudeManager();
+    manager.stop('modeler');
 
     return NextResponse.json({
       success: true,
-      message: 'Operation cancelled'
+      message: 'Operation cancelled',
     });
   } catch (error: any) {
     console.error('Cancel error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message
-      },
-      { status: 500 }
+      { success: false, error: error.message },
+      { status: 500 },
     );
   }
 }
