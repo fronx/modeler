@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { getClaudeManager } from '@/lib/claude-manager-singleton';
+import type { Session, SessionsResponse } from './types';
 
 // GET /api/claude-code/sessions - List sessions
 export async function GET() {
@@ -13,10 +14,10 @@ export async function GET() {
     const status = manager.getStatus('modeler');
 
     if (!status.active && !status.hasPersistedSession) {
-      return NextResponse.json({ sessions: [] });
+      return NextResponse.json<SessionsResponse>({ sessions: [] });
     }
 
-    const session = {
+    const session: Session = {
       id: status.claudeSessionId ?? status.sessionId ?? 'modeler',
       title: null,
       spaceId: null,
@@ -25,7 +26,7 @@ export async function GET() {
       lastUsedAt: Date.now(),
     };
 
-    return NextResponse.json({ sessions: [session] });
+    return NextResponse.json<SessionsResponse>({ sessions: [session] });
   } catch (error: any) {
     console.error('Failed to list sessions:', error);
     return NextResponse.json(

@@ -1,15 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-
-interface Session {
-  id: string;
-  title: string | null;
-  spaceId: string | null;
-  messageCount: number;
-  createdAt: number;
-  lastUsedAt: number;
-}
+import type { Session } from '@/app/api/claude-code/sessions/types';
 
 interface SessionBrowserProps {
   isOpen: boolean;
