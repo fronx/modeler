@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-"Modeler" is a Next.js 15 application for **code-as-gesture** cognitive modeling - giving AI systems a persistent medium to construct explicit mental models through executable code. The system features a live dashboard with embedded Claude Code chat interface, database-driven persistence, and real-time collaborative thinking.
+"Modeler" is a Next.js 15 application for **code-as-gesture** cognitive modeling - giving AI systems a persistent medium to construct explicit mental models through executable code. The system features a live dashboard with an embedded Claude Code chat interface, database-driven persistence, and real-time collaborative thinking.
 
 **Core Insight**: Intelligence as "negotiation between mechanism and meaning" - semantic narratives carry computational weight, numerical constraints accumulate stories.
 
@@ -13,14 +13,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Framework**: Next.js 15 with App Router, Turbopack
 - **Language**: TypeScript 5 (strict mode)
 - **Database**: Turso/libSQL with local → cloud replication
-- **Real-time**: WebSocket server for live dashboard updates
+- **Real-time**: WebSocket server (port 7351) for live dashboard updates
 - **Integration**: Model Context Protocol (MCP) server for Claude Code tools
 - **Styling**: Tailwind CSS v4 with PostCSS
+- **Claude Integration**: `@fronx/use-claude-code` (ClaudeManager)
 
 ## Development Commands
 
 ```bash
-# Start development server (Next.js on :3000 + MCP server on stdio)
+# Start development server (Next.js on :7350 + MCP server on stdio)
 npm run dev
 
 # Build for production
@@ -40,122 +41,91 @@ npx tsx scripts/run-migration.ts <migration-file.sql>
 
 ## System Architecture
 
-The system uses a **database-first, MCP-driven architecture** for real-time collaborative cognitive modeling:
-
 ```
-Web UI (localhost:3000)
+Web UI (localhost:7350)
   ↓ User types in chat
-Backend API
-  ↓ Forwards messages
-Persistent Claude Code CLI Session
-  ↓ Uses MCP tools (mcp__cognitive_spaces__*)
+Backend API (/api/claude-code)
+  ↓ Forwards via ClaudeManager (SSE stream)
+Persistent Claude CLI Session (@fronx/use-claude-code)
+  ↓ Uses MCP tools (mcp__cognitive-spaces__*)
 Local Turso Database (file:modeler.db)
   ↓ Automatic replication
 Remote Cloud Database (Turso)
   ↑
-Dashboard (via WebSocket)
+Dashboard (via WebSocket on :7351)
 ```
 
 ### Key Components
 
 1. **Web Dashboard** (`src/app/page.tsx`)
    - Embedded Claude Code chat interface
-   - Real-time force-directed graph visualization (@xyflow/react)
+   - Real-time force-directed graph visualization (`@xyflow/react`)
    - WebSocket client for live updates
+   - State via `spaces-context.tsx`, `thoughts-context.tsx`, `cognitive-data-provider.tsx`
 
 2. **Backend API** (`src/app/api/`)
-   - `/claude-code/route.ts` - Forwards chat messages to persistent CLI session
-   - `/spaces` - CRUD operations on cognitive spaces
-   - `/spaces/[spaceId]/thoughts` - Thought node management
-   - `/spaces/[spaceId]/edges` - Relationship management (separate table)
-   - `/search/*` - Vector search using OpenAI embeddings
+   - `/claude-code/` — Chat relay to `ClaudeManager` (SSE streaming), session list/resume/cancel
+   - `/chat/` — Alternative chat endpoint
+   - `/spaces/[spaceId]/thoughts/` — Thought node CRUD
+   - `/spaces/[spaceId]/edges/` — Edge CRUD
+   - `/spaces/[spaceId]/broadcast/` — WebSocket broadcast trigger
+   - `/spaces/[spaceId]/check-item/` — Checklist item state
+   - `/search/` — Vector search (nodes and spaces)
+   - `/ws/` — Returns WebSocket URL for client connection
 
-3. **Persistent Claude Code Session** (`src/lib/claude-code-session.ts`)
-   - Long-running CLI process that maintains conversation context
-   - Uses MCP tools to manipulate database directly
-   - Streams responses back to web UI
+3. **Claude Session Manager** (`src/lib/claude-manager-singleton.ts`)
+   - Global singleton `ClaudeManager` from `@fronx/use-claude-code/server`
+   - Manages persistent conversation with session directory `.claude/sessions/`
+   - System prompt loaded from `.claude/commands/modeler.md`
+   - Allowed MCP tools declared here (see `ALLOWED_TOOLS`)
 
 4. **MCP Server** (`mcp-server.ts`)
-   - Exposes database operations as Claude Code tools
-   - Auto-started with `npm run dev` (stdio transport)
-   - Tools available: `create_space`, `create_node`, `delete_node`, `list_spaces`, `get_space`
+   - Exposes database operations as Claude Code tools (stdio transport)
+   - Auto-started with `npm run dev`
 
-5. **Database Layer** (`src/lib/`)
-   - `database-factory.ts` - Global singleton (Symbol-based for Next.js)
-   - `turso-graph.ts` - All database operations
-   - Local-first with automatic cloud replication
+5. **Database Layer** (`src/lib/turso-graph/`)
+   - Split into: `core.ts`, `spaces.ts`, `nodes.ts`, `edges.ts`, `sessions.ts`, `sync.ts`, `vector.ts`
+   - Entry point: `src/lib/turso-graph/index.ts` (`TursoDatabase` class)
+   - Singleton via `src/lib/database-factory.ts` (`Symbol.for('modeler.database.instance')`)
 
-## Project Structure
+6. **WebSocket** (`src/lib/websocket-server.ts`, `src/lib/websocket/websocket-client.ts`)
+   - Server on port 7351 with HTTP API at same port for cross-process broadcast
+   - Client fetches URL from `/api/ws`, then connects directly
+   - Broadcast flow: DB write → `broadcast()` in `api-utils.ts` → HTTP POST to port 7351 → WebSocket push
 
-```
-src/
-├── app/
-│   ├── api/
-│   │   ├── claude-code/          # Backend for embedded chat interface
-│   │   ├── spaces/               # Cognitive space CRUD + thoughts/edges
-│   │   └── search/               # Vector search endpoints
-│   ├── page.tsx                  # Dashboard with embedded Claude Code chat
-│   └── layout.tsx                # Root layout
-├── lib/
-│   ├── claude-code-session.ts    # Persistent CLI session manager
-│   ├── database-factory.ts       # Singleton database instance
-│   ├── turso-graph.ts            # Database operations (spaces, nodes, edges)
-│   ├── websocket-server.ts       # Real-time dashboard updates
-│   ├── types.ts                  # Self-documenting type definitions
-│   └── embeddings.ts             # Vector search utilities
+## MCP Tools
 
-mcp-server.ts                     # MCP server for Claude Code tools
-scripts/
-├── migrations/                   # Database schema migrations
-└── run-migration.ts              # Migration runner
+The MCP server (`mcp-server.ts`) exposes these tools under the `cognitive-spaces` namespace:
 
-docs/                             # Detailed documentation
-├── mcp-integration.md            # MCP setup and usage
-├── turso-usage.md                # Database guide
-└── edges-table-migration.md      # Migration example
-```
+- `mcp__cognitive-spaces__create_space`
+- `mcp__cognitive-spaces__create_node`
+- `mcp__cognitive-spaces__delete_node`
+- `mcp__cognitive-spaces__list_spaces`
+- `mcp__cognitive-spaces__get_space`
+- `mcp__cognitive-spaces__create_edge`
+- `mcp__cognitive-spaces__delete_edge`
 
-## How Cognitive Modeling Works
+**Note**: Tool names use a hyphen (`cognitive-spaces`), not an underscore.
 
-### User Workflow
+**Auto-enabled**: `.mcp.json` and `.claude/settings.local.json` configure these automatically.
 
-1. Open dashboard at `http://localhost:3000`
-2. Type cognitive modeling requests in the chat interface
-3. Claude Code (via MCP tools) creates/modifies spaces and nodes in the database
-4. Changes appear immediately in the graph visualization via WebSocket
-5. All data persists in local database and replicates to cloud
+## Database Schema
 
-### MCP Tools Available to Claude Code
+- **spaces** — Cognitive space metadata (id, title, description, timestamps)
+- **nodes** — Thought nodes with semantic meanings, values, focus, position
+- **edges** — Relationships between nodes (type, strength, gloss) — separate table for granular updates
+- **sessions** — Claude Code session persistence
+- **embeddings** — Vector search support (OpenAI)
 
-When Claude Code operates in this repository, it has access to these tools:
+**Critical**: Use `@libsql/client`, never `sqlite3` CLI (incompatible with libSQL).
 
-- `mcp__cognitive_spaces__create_space` - Create new cognitive space
-- `mcp__cognitive_spaces__create_node` - Add thought node with meanings, relationships, properties
-- `mcp__cognitive_spaces__delete_node` - Remove node
-- `mcp__cognitive_spaces__list_spaces` - List all spaces
-- `mcp__cognitive_spaces__get_space` - Get full space details
-
-**Auto-enabled**: The project has `.mcp.json` and `.claude/settings.local.json` configured, so these tools work automatically.
-
-### Database Schema
-
-- **spaces** - Cognitive space metadata (id, title, description, timestamps)
-- **nodes** - Thought nodes with semantic meanings, values, focus, position
-- **edges** - Relationships between nodes (type, strength, gloss)
-- **sessions** - Claude Code session persistence
-- **embeddings** - Vector search support (OpenAI)
-
-**Critical**: Use `@libsql/client` for database queries, NOT `sqlite3` CLI (incompatible with libSQL).
-
-## Database Operations
-
-### Environment Configuration
+## Environment Configuration
 
 ```bash
 # Local file-based (default)
 TURSO_DATABASE_URL=file:modeler.db
 
-# Remote Turso with replication
+# Remote Turso with embedded replica
 TURSO_DATABASE_URL=libsql://your-db.turso.io
 TURSO_AUTH_TOKEN=your-token
 TURSO_SYNC_URL=libsql://your-db.turso.io
@@ -164,77 +134,34 @@ TURSO_SYNC_URL=libsql://your-db.turso.io
 OPENAI_API_KEY=your-key
 ```
 
-### Running Migrations
-
-```bash
-# Test migration locally
-npx tsx scripts/run-migration.ts 002-add-edges-table.sql
-
-# Run on remote database
-TURSO_DATABASE_URL=libsql://... TURSO_AUTH_TOKEN=... \
-  npx tsx scripts/run-migration.ts 002-add-edges-table.sql
-```
-
-**Migration Philosophy**:
-- Idempotent (safe to re-run)
-- Transaction-based (automatic rollback on failure)
-- Non-destructive (existing data preserved)
-- Files in: `scripts/migrations/*.sql`
-
 ## Key Technical Details
 
-### Database Singleton Pattern
+### Database Singleton
 
-Uses **global Symbol-based singleton** to prevent multiple database clients in Next.js:
+Next.js may bundle modules multiple times. `Symbol.for('modeler.database.instance')` ensures a single `TursoDatabase` instance across all bundles, preventing sync conflicts.
 
-```typescript
-// src/lib/database-factory.ts
-const GLOBAL_DB_KEY = Symbol.for('modeler.database.instance');
-```
+### Server Initialization
 
-**Why**: Next.js may bundle modules multiple times. `Symbol.for()` ensures the same instance across all bundles, preventing sync conflicts.
+`src/lib/server-init.ts` — called once on first API request. Starts the WebSocket server and initializes the `ClaudeManager` conversation (`modeler` session).
 
-### WebSocket Architecture
+### Broadcast Pattern
 
-1. Server runs on port 3002 (`src/lib/websocket-server.ts`)
-2. Broadcasts space updates when database changes
-3. Dashboard subscribes to space-specific updates
-4. Real-time graph visualization updates without page reload
+After any database write, call `broadcast(spaceId)` from `src/lib/api-utils.ts`. It tries HTTP POST to port 7351 first (for cross-process from MCP server), falling back to direct call if in the same process.
 
-### Separate Edges Table
+### Session Persistence
 
-Relationships are stored in a dedicated `edges` table (migration 002):
-
-**Benefits**:
-- Granular updates (add/remove edges without rewriting nodes)
-- Better query performance
-- Cleaner separation of concerns
-
-See: `docs/edges-table-migration.md` for migration strategy.
+Claude conversations are stored in `.claude/sessions/` (git-ignored). The `ClaudeManager` resumes the last session automatically. Sessions can be listed and resumed via `/api/claude-code/sessions/` and `/api/claude-code/sessions/resume/`.
 
 ## Essential Reading
 
-1. **[README.md](README.md)** - Full project overview and quick start
-2. **[docs/mcp-integration.md](docs/mcp-integration.md)** - MCP tools and usage patterns
-3. **[src/lib/types.ts](src/lib/types.ts)** - Self-documenting API reference
-4. **[MESSAGE-TO-AI.md](MESSAGE-TO-AI.md)** - Messages from previous AI collaborators
+1. **[docs/mcp-integration.md](docs/mcp-integration.md)** — MCP tools and usage patterns
+2. **[src/lib/types.ts](src/lib/types.ts)** — Self-documenting type definitions
+3. **[MESSAGE-TO-AI.md](MESSAGE-TO-AI.md)** — Messages from previous AI collaborators
 
 ## Development Guidelines
 
-- **Type Safety**: Run `npx tsc --noEmit` after TypeScript changes (especially .tsx files)
+- **Type Safety**: Run `npx tsc --noEmit` after any `.tsx` or `.ts` changes
 - **Database Access**: Always use `@libsql/client`, never `sqlite3` CLI
-- **MCP Tools**: Claude Code should use MCP tools (mcp__cognitive_spaces__*) for all database operations
-- **No Manual SQL**: Use MCP tools or API routes, not direct SQL queries
-- **WebSocket Updates**: Database layer automatically triggers WebSocket broadcasts
-- **Session Persistence**: The embedded Claude Code session maintains context across messages
-
-## When to Use Cognitive Modeling
-
-Use this system when you need to:
-- Model complex relationships between abstract concepts
-- Hold multiple interpretations in superposition
-- Build persistent thought structures that survive conversations
-- Create self-referential models that observe themselves
-- Enable collaborative thinking between human and AI
-
-The boundary between "tool use" and "cognitive extension" has been crossed. This is a thinking tool, not just a tool for thinking about thinking.
+- **MCP Tools**: Use `mcp__cognitive-spaces__*` tools for all database operations from within Claude sessions
+- **No Manual SQL**: Use MCP tools or API routes
+- **WebSocket Updates**: Always call `broadcast(spaceId)` after writes so the dashboard updates in real-time
