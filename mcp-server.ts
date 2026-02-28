@@ -20,7 +20,7 @@ import {
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-const BASE_URL = process.env.MODELER_URL || 'http://localhost:3000';
+const BASE_URL = process.env.MODELER_URL || 'http://localhost:7350';
 
 // Create MCP server
 const server = new Server(
