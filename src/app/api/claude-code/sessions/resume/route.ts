@@ -8,12 +8,10 @@ import { getClaudeManager, getStartOptions } from '@/lib/claude-manager-singleto
 import type { ResumeSessionResponse } from '../../types';
 
 // POST /api/claude-code/sessions/resume
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const manager = getClaudeManager();
 
-    // Clear current conversation, then resume from persisted session
-    manager.clear('modeler');
     const conversation = manager.resume('modeler', getStartOptions());
 
     return NextResponse.json<ResumeSessionResponse>({
