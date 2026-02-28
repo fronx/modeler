@@ -4,7 +4,8 @@
       "command": "npm",
       "args": ["run", "mcp"],
       "env": {
-        "MODELER_URL": "http://modeler.localhost"
+        "MODELER_URL": "https://modeler.localhost",
+        "NODE_EXTRA_CA_CERTS": "/opt/homebrew/var/lib/caddy/pki/authorities/local/root.crt"
       }
     }
   }
