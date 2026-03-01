@@ -12,7 +12,7 @@
     "mcp": "npx tsx mcp-server.ts"
   },
   "dependencies": {
-    "@fronx/use-claude-code": "^0.1.2",
+    "@fronx/use-claude-code": "^0.1.3",
     "@libsql/client": "^0.15.15",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "@types/d3-force": "^3.0.10",
